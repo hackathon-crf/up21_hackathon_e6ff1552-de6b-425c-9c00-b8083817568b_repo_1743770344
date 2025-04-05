@@ -1,40 +1,46 @@
 [
   {
-    "id": "b2f62d6e-b9f5-4f13-8771-79f93b9b3d4a",
+    "id": "ed5969c9-3a6a-464e-a8b8-4c72be00c9e0",
+    "title": "Hemorragie Externe",
+    "question": "Test",
+    "answer": "Test",
+    "image_url": "https://files.catbox.moe/6ki23x.png",
+    "created_at": "2025-04-05T14:52:22.437953",
+    "tags": [],
+    "repetitions": 0,
+    "ease_factor": 2.5
+  },
+  {
+    "id": "26921516-5c1a-4179-942c-86565c5bb65e",
+    "title": "Brulure Grave",
     "question": "Comment traiter une brulure grave ?",
-    "answer": "Refroidir immédiatement sous l'eau froide pendant au moins 20 minutes, ne jamais retirer les vêtements collés à la peau et couvrir la brûlure avec un pansement stérile.",
-    "created_at": "2025-04-05T15:00:30.123456",
-    "tags": [],
-    "repetitions": 0,
-    "ease_factor": 2.5,
-    "interval": 1,
-    "next_review": "2025-04-06T15:05:30.123456",
+    "answer": "Refroidir imm\u00e9diatement sous l'eau froide pendant au moins 20 minutes, ne jamais retirer les v\u00eatements coll\u00e9s \u00e0 la peau et couvrir la br\u00fblure avec un pansement st\u00e9rile.",
     "image_url": "https://files.catbox.moe/n5k9cy.png",
-    "last_review": "2025-04-05T15:05:30.123456"
+    "created_at": "2025-04-05T16:14:25.550976",
+    "tags": [],
+    "repetitions": 0,
+    "ease_factor": 2.5
   },
   {
-    "id": "f5b65cb7-ea90-46a1-94c2-9ab924fcdf4b",
+    "id": "72ac7d19-bb15-4bb1-962b-b7c1acad7e00",
+    "title": "Perte de conscience",
     "question": "Comment savoir si une personne a perdu conscience ?",
-    "answer": "Vérifier si la personne réagit à un stimulus (comme secouer doucement l'épaule), vérifier la respiration et la réactivité des pupilles.",
-    "created_at": "2025-04-05T15:03:50.123456",
+    "answer": "V\u00e9rifier si la personne r\u00e9agit \u00e0 un stimulus (comme secouer doucement l'\u00e9paule), v\u00e9rifier la respiration et la r\u00e9activit\u00e9 des pupilles.",
+    "image_url": "",
+    "created_at": "2025-04-05T16:15:39.330584",
     "tags": [],
     "repetitions": 0,
-    "ease_factor": 2.5,
-    "interval": 1,
-    "image_url": "https://files.catbox.moe/kqa5bj.jpg",
-    "next_review": "2025-04-06T15:08:50.123456",
-    "last_review": "2025-04-05T15:08:50.123456"
+    "ease_factor": 2.5
   },
   {
-    "id": "ea9bfa56-b34d-42ca-b2f7-d23e71a7e76e",
-    "question": "Quelles sont les étapes de la réanimation cardio-pulmonaire (RCP) ?",
-    "answer": "Vérifier la sécurité de la scène, vérifier la respiration, pratiquer des compressions thoraciques à un rythme de 100 à 120 par minute, et utiliser un défibrillateur si disponible.",
-    "created_at": "2025-04-05T15:07:40.123456",
+    "id": "b0d43f68-ff64-4c6f-b7ad-0e15d897e0b2",
+    "title": "RCP",
+    "question": "Quelles sont les \u00e9tapes de la r\u00e9animation cardio-pulmonaire (RCP) ?",
+    "answer": "V\u00e9rifier la s\u00e9curit\u00e9 de la sc\u00e8ne, v\u00e9rifier la respiration, pratiquer des compressions thoraciques \u00e0 un rythme de 100 \u00e0 120 par minute, et utiliser un d\u00e9fibrillateur si disponible.",
+    "image_url": "",
+    "created_at": "2025-04-05T16:16:44.774675",
     "tags": [],
     "repetitions": 0,
-    "ease_factor": 2.5,
-    "interval": 1,
-    "next_review": "2025-04-06T15:12:40.123456",
-    "last_review": "2025-04-05T15:12:40.123456"
+    "ease_factor": 2.5
   }
 ]
