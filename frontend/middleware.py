@@ -353,3 +353,70 @@ def retrieve_rag_answer(query: str, model_family: str, model_name: str,
     except Exception as e:
         print(f"Error retrieving RAG answer: {str(e)}")
         return {"status": "error", "message": f"Connection error: {str(e)}"}
+
+def analyze_difficult_flashcards(cards: List[Dict[str, Any]]):
+    """
+    Analyze flashcards to identify those with poor performance
+    
+    Args:
+        cards: List of flashcards with review history
+        
+    Returns:
+        dict: Analysis results with difficult cards
+    """
+    try:
+        url = f"http://{DOMAIN_NAME}:{BACKEND_PORT}{ROOT_PATH}/api/flashcards/analyze/"
+        print(f"Analyzing flashcards for difficulty")
+        
+        payload = {
+            "cards": cards
+        }
+        
+        response = requests.post(url, json=payload)
+        print(f"Response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            return response.json().get("data", {})
+        else:
+            print(f"Error from backend: {response.text}")
+            return {"status": "error", "message": f"Error: {response.status_code}"}
+    except Exception as e:
+        print(f"Error analyzing flashcards: {str(e)}")
+        return {"status": "error", "message": f"Connection error: {str(e)}"}
+
+def generate_ai_flashcards(difficult_cards: List[Dict[str, Any]], num_to_generate: int = 3, 
+                         difficulty_level: str = "medium", generation_strategy: str = "related"):
+    """
+    Generate new flashcards using AI based on difficult cards
+    
+    Args:
+        difficult_cards: List of flashcards identified as difficult
+        num_to_generate: Number of cards to generate
+        difficulty_level: Desired difficulty level (easy, medium, hard)
+        generation_strategy: Strategy for generation (related, breakdown, alternative)
+        
+    Returns:
+        dict: Generation results with new cards
+    """
+    try:
+        url = f"http://{DOMAIN_NAME}:{BACKEND_PORT}{ROOT_PATH}/api/flashcards/generate/"
+        print(f"Generating AI flashcards: {num_to_generate} cards at {difficulty_level} difficulty using {generation_strategy} strategy")
+        
+        payload = {
+            "difficult_cards": difficult_cards,
+            "num_to_generate": num_to_generate,
+            "difficulty_level": difficulty_level,
+            "generation_strategy": generation_strategy
+        }
+        
+        response = requests.post(url, json=payload)
+        print(f"Response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            return response.json().get("data", {})
+        else:
+            print(f"Error from backend: {response.text}")
+            return {"status": "error", "message": f"Error: {response.status_code}"}
+    except Exception as e:
+        print(f"Error generating flashcards: {str(e)}")
+        return {"status": "error", "message": f"Connection error: {str(e)}"}

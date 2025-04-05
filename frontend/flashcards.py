@@ -11,6 +11,8 @@ import base64
 from io import BytesIO
 from PIL import Image
 import urllib.parse
+from frontend.middleware import analyze_difficult_flashcards, generate_ai_flashcards
+from frontend.flashcard_ai import init_flashcard_ai_state, render_ai_tab, apply_custom_ai_css
 
 # Default flashcard settings
 DEFAULT_FLASHCARD_SETTINGS = {
@@ -99,6 +101,9 @@ def init_flashcards_state():
     # Add a flag to get the next card
     if "get_next_flashcard" not in st.session_state:
         st.session_state.get_next_flashcard = False
+        
+    # Initialize AI-related state
+    init_flashcard_ai_state()
 
 # Spaced repetition algorithm functions
 def calculate_next_review(card, ease):
@@ -217,6 +222,14 @@ def save_flashcard_settings():
             json.dump(st.session_state.flashcard_settings, f, indent=2)
     except Exception as e:
         st.error(f"Failed to save flashcard settings: {e}")
+
+def save_ai_settings():
+    """Save AI assistant settings to file"""
+    try:
+        with open("flashcard_ai_settings.json", "w") as f:
+            json.dump(st.session_state.ai_settings, f, indent=2)
+    except Exception as e:
+        st.error(f"Failed to save AI settings: {e}")
 
 def save_flashcard_stats():
     """Save flashcard stats to file"""
@@ -1085,15 +1098,68 @@ def render_settings_tab():
         help="Automatically save changes when creating or reviewing cards"
     )
     
+    # AI Assistant Settings
+    st.subheader("AI Assistant Settings")
+    
+    # Default values if not present
+    if 'ai_settings' not in st.session_state:
+        st.session_state.ai_settings = {
+            "num_cards_to_generate": 3,
+            "generation_strategy": "related",
+            "difficulty_level": "medium"
+        }
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.session_state.ai_settings['num_cards_to_generate'] = st.slider(
+            "Default cards to generate",
+            min_value=1,
+            max_value=10,
+            value=st.session_state.ai_settings.get('num_cards_to_generate', 3),
+            step=1,
+            help="Default number of cards the AI should generate"
+        )
+    
+    with col2:
+        st.session_state.ai_settings['difficulty_level'] = st.selectbox(
+            "Default difficulty level",
+            options=["easy", "medium", "hard"],
+            index=["easy", "medium", "hard"].index(st.session_state.ai_settings.get('difficulty_level', 'medium')),
+            format_func=lambda x: x.capitalize(),
+            help="Default difficulty level for AI-generated cards"
+        )
+    
+    st.session_state.ai_settings['generation_strategy'] = st.selectbox(
+        "Default generation strategy",
+        options=["related", "breakdown", "alternative"],
+        index=["related", "breakdown", "alternative"].index(st.session_state.ai_settings.get('generation_strategy', 'related')),
+        format_func=lambda x: {
+            "related": "Related Concepts",
+            "breakdown": "Break Down Concepts",
+            "alternative": "Alternative Approaches"
+        }.get(x, x),
+        help="Default strategy for generating new flashcards"
+    )
+    
     # Save button
     if st.button("Save Settings", use_container_width=True):
         save_flashcard_settings()
+        # Save AI settings as well
+        save_ai_settings()
         st.success("Settings saved successfully!")
     
     # Reset button
     if st.button("Reset to Defaults", use_container_width=True):
         st.session_state.flashcard_settings = DEFAULT_FLASHCARD_SETTINGS
+        # Reset AI settings
+        st.session_state.ai_settings = {
+            "num_cards_to_generate": 3,
+            "generation_strategy": "related", 
+            "difficulty_level": "medium"
+        }
         save_flashcard_settings()
+        save_ai_settings()
         st.success("Settings reset to defaults!")
         st.rerun()
 
@@ -1116,7 +1182,7 @@ def render_flashcards_interface():
         st.button("💬 Chat", key="goto_chat", on_click=switch_to_chat)
     
     # Create tabs for different sections
-    tab_labels = ["Study", "Create", "Manage", "Stats", "Settings"]
+    tab_labels = ["Study", "Create", "Manage", "Stats", "AI Assistant", "Settings"]
     tabs = st.tabs(tab_labels)
     
     # Study Tab
@@ -1135,8 +1201,13 @@ def render_flashcards_interface():
     with tabs[3]:
         render_stats_tab()
     
-    # Settings Tab
+    # AI Assistant Tab
     with tabs[4]:
+        apply_custom_ai_css()
+        render_ai_tab()
+    
+    # Settings Tab
+    with tabs[5]:
         render_settings_tab()
     
     # Footer

@@ -6,6 +6,7 @@ import random
 import uuid
 from frontend.settings import init_settings_state, render_settings_tab
 from frontend.flashcards import init_flashcards_state, render_flashcards_interface
+from frontend.multiplayer import init_multiplayer_state, render_multiplayer_interface
 
 # Configure page at module level for importing modules
 st.set_page_config(
@@ -21,6 +22,9 @@ def initialize_session_state():
     
     # Initialize flashcards-related state
     init_flashcards_state()
+    
+    # Initialize multiplayer-related state
+    init_multiplayer_state()
     
     if "messages" not in st.session_state:
         st.session_state.messages = [
@@ -83,6 +87,10 @@ def switch_to_chat():
 def switch_to_flashcards():
     """Switch to the flashcards page"""
     st.session_state.page = "flashcards"
+    
+def switch_to_multiplayer():
+    """Switch to the multiplayer page"""
+    st.session_state.page = "multiplayer"
 
 def apply_custom_css():
     """Apply custom CSS for a beautiful chat interface"""
@@ -435,6 +443,12 @@ def render_sidebar():
                    type="secondary" if st.session_state.page != "flashcards" else "primary"):
             switch_to_flashcards()
         
+        # Multiplayer navigation item
+        multiplayer_class = "active" if st.session_state.page == "multiplayer" else ""
+        if st.button("🎮 Multiplayer", key="multiplayer-nav-btn", help="Go to Multiplayer", use_container_width=True,
+                   type="secondary" if st.session_state.page != "multiplayer" else "primary"):
+            switch_to_multiplayer()
+        
         # Settings navigation item
         settings_class = "active" if st.session_state.page == "settings" else ""
         if st.button("⚙️ Settings", key="settings-nav-btn", help="Go to Settings", use_container_width=True,
@@ -594,5 +608,7 @@ def main():
         render_settings_tab()
     elif st.session_state.page == "flashcards":
         render_flashcards_interface()
+    elif st.session_state.page == "multiplayer":
+        render_multiplayer_interface()
     else:
         render_chat_interface()

@@ -1,13 +1,40 @@
 [
   {
-    "id": "ed5969c9-3a6a-464e-a8b8-4c72be00c9e0",
-    "title": "Hemorragie Externe",
-    "question": "Test",
-    "answer": "Test",
-    "image_url": "https://files.catbox.moe/6ki23x.png",
-    "created_at": "2025-04-05T14:52:22.437953",
+    "id": "b2f62d6e-b9f5-4f13-8771-79f93b9b3d4a",
+    "question": "Comment traiter une brulure grave ?",
+    "answer": "Refroidir immédiatement sous l'eau froide pendant au moins 20 minutes, ne jamais retirer les vêtements collés à la peau et couvrir la brûlure avec un pansement stérile.",
+    "created_at": "2025-04-05T15:00:30.123456",
     "tags": [],
     "repetitions": 0,
-    "ease_factor": 2.5
+    "ease_factor": 2.5,
+    "interval": 1,
+    "next_review": "2025-04-06T15:05:30.123456",
+    "image_url": "https://files.catbox.moe/n5k9cy.png",
+    "last_review": "2025-04-05T15:05:30.123456"
+  },
+  {
+    "id": "f5b65cb7-ea90-46a1-94c2-9ab924fcdf4b",
+    "question": "Comment savoir si une personne a perdu conscience ?",
+    "answer": "Vérifier si la personne réagit à un stimulus (comme secouer doucement l'épaule), vérifier la respiration et la réactivité des pupilles.",
+    "created_at": "2025-04-05T15:03:50.123456",
+    "tags": [],
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "interval": 1,
+    "image_url": "https://files.catbox.moe/kqa5bj.jpg",
+    "next_review": "2025-04-06T15:08:50.123456",
+    "last_review": "2025-04-05T15:08:50.123456"
+  },
+  {
+    "id": "ea9bfa56-b34d-42ca-b2f7-d23e71a7e76e",
+    "question": "Quelles sont les étapes de la réanimation cardio-pulmonaire (RCP) ?",
+    "answer": "Vérifier la sécurité de la scène, vérifier la respiration, pratiquer des compressions thoraciques à un rythme de 100 à 120 par minute, et utiliser un défibrillateur si disponible.",
+    "created_at": "2025-04-05T15:07:40.123456",
+    "tags": [],
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "interval": 1,
+    "next_review": "2025-04-06T15:12:40.123456",
+    "last_review": "2025-04-05T15:12:40.123456"
   }
 ]

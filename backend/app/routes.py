@@ -12,6 +12,10 @@ from backend.app.services import (
     get_embeddings_service,
     retrieve_answer_service
 )
+from backend.app.flashcard_services import (
+    analyze_card_difficulty,
+    generate_related_cards
+)
 from settings.config import settings
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -30,6 +34,11 @@ chat_router = APIRouter(
 rag_router = APIRouter(
     prefix="/api/rag",
     tags=["RAG"],
+)
+
+flashcard_router = APIRouter(
+    prefix="/api/flashcards",
+    tags=["Flashcards"],
 )
 
 class RAGConfig(BaseModel):
@@ -73,6 +82,29 @@ class RetrieveAnswerRequest(BaseModel):
     collection_name: str
     history_data: Optional[str] = "[]"
 
+class FlashcardData(BaseModel):
+    id: str
+    question: str
+    answer: str
+    title: Optional[str] = ""
+    image_url: Optional[str] = ""
+    created_at: Optional[str] = None
+    tags: Optional[List[str]] = None
+    repetitions: Optional[int] = 0
+    ease_factor: Optional[float] = 2.5
+    last_review: Optional[str] = None
+    next_review: Optional[str] = None
+    difficulty_score: Optional[float] = None
+
+class AnalyzeFlashcardsRequest(BaseModel):
+    cards: List[FlashcardData]
+
+class GenerateFlashcardsRequest(BaseModel):
+    difficult_cards: List[FlashcardData]
+    num_to_generate: Optional[int] = 3
+    difficulty_level: Optional[str] = "medium"
+    generation_strategy: Optional[str] = "related"
+
 def create_app(root_path: str = "") -> FastAPI:
     """
     Creating a FastAPI instance and registering routes.
@@ -100,6 +132,7 @@ def create_app(root_path: str = "") -> FastAPI:
     backend_app.include_router(app_router)
     backend_app.include_router(chat_router)
     backend_app.include_router(rag_router)
+    backend_app.include_router(flashcard_router)
     return backend_app
 
 @app_router.get("/test/")
@@ -267,4 +300,47 @@ async def retrieve_rag_answer(request: RetrieveAnswerRequest):
         "status": "success",
         "message": "Answer retrieved successfully",
         "data": response
+    }
+
+@flashcard_router.post("/analyze/")
+async def analyze_flashcards(request: AnalyzeFlashcardsRequest):
+    """
+    Analyze flashcards to identify difficult ones
+    """
+    # Convert Pydantic models to dictionaries
+    cards_data = [card.dict() for card in request.cards]
+    
+    # Call the service to analyze difficult cards
+    difficult_cards = analyze_card_difficulty(cards_data)
+    
+    return {
+        "status": "success",
+        "message": f"Analyzed {len(request.cards)} flashcards, found {len(difficult_cards)} difficult cards",
+        "data": {
+            "difficult_cards": difficult_cards
+        }
+    }
+
+@flashcard_router.post("/generate/")
+async def generate_flashcards(request: GenerateFlashcardsRequest):
+    """
+    Generate new flashcards using AI based on difficult cards
+    """
+    # Convert Pydantic models to dictionaries
+    difficult_cards_data = [card.dict() for card in request.difficult_cards]
+    
+    # Call the service to generate new cards
+    generated_cards = generate_related_cards(
+        difficult_cards_data,
+        num_to_generate=request.num_to_generate,
+        difficulty_level=request.difficulty_level,
+        generation_strategy=request.generation_strategy
+    )
+    
+    return {
+        "status": "success",
+        "message": f"Generated {len(generated_cards)} new flashcards",
+        "data": {
+            "generated_cards": generated_cards
+        }
     }
