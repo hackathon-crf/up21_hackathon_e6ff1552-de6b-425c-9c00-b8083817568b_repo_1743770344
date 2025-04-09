@@ -30,16 +30,6 @@ This plan details the migration from the current Python-based stack (Streamlit f
 *   **RAG:** Implement our own RAG solution using Supabase Vector. ⏳ *To be implemented*
 *   **Deployment:** On my own server ⏳ *To be configured*
 
-**Why Migrate?**
-
-*   **Scalability & Reliability:** Robust PostgreSQL replacing fragile JSON files.
-*   **Type Safety:** End-to-end safety with TypeScript, tRPC, Drizzle reducing runtime errors.
-*   **Developer Experience:** Modern React/Next.js ecosystem, tRPC autocompletion, Drizzle inference.
-*   **Performance:** Optimized rendering via Next.js strategies.
-*   **Integrated Backend Services:** Simplified DB, Auth, Realtime via Supabase.
-*   **Unified Codebase:** More cohesive TypeScript stack.
-*   **Ecosystem & Community:** Access to vast JS/TS libraries and tooling.
-
 ---
 
 **Development Workflow & Standards**
@@ -460,38 +450,6 @@ This plan details the migration from the current Python-based stack (Streamlit f
     *   Implemented procedures for profile access and user synchronization ✅ *Done*
     *   Connected tRPC to the dashboard page for testing ✅ *Done*
 
-**Important Implementation Notes:**
-
-1. **Database Connection Issues:**
-   * Used explicit connection parameters instead of connection string to avoid URI encoding issues with password
-   * Disabled SSL verification in development with `rejectUnauthorized: false` to prevent certificate errors
-   * Added connection pooling configuration (max, timeout) to improve stability
-   * Environment-specific SSL configuration for development vs. production
-
-2. **Next.js 15.2.4 Cookie Handling Challenges:**
-   * **Critical Issue:** Next.js 15.2.4 requires awaiting cookies() API, which conflicts with the way Supabase Auth accesses cookies
-   * **API Routes Solution:** Implemented a two-path authentication approach:
-     * For API routes: Pre-fetch authentication in the handler using request.cookies (which doesn't need await)
-     * For Server Components: Use try/catch with await on cookies() in a more resilient pattern
-   * **Context Sharing:** Pass pre-fetched auth data from API routes to tRPC context
-   * **Error Handling:** Added fallbacks for all cookie access with proper error handling
-
-3. **Authentication Architecture:**
-   * **Separating Concerns:**
-     * API routes use direct request.cookies access without cookies() API
-     * Server components safely use await with cookies()
-     * Middleware uses direct request.cookies access which is already available
-   * **Auth Data Flow:**
-     * Supabase Auth provides user session via cookies
-     * tRPC context receives either:
-       1. Pre-fetched auth data from API routes
-       2. Safely retrieved auth data in server components
-     * Protected routes and procedures check session existence
-   * **User Synchronization:**
-     * Authentication managed by Supabase Auth
-     * User data synchronized to application database
-     * Protected API endpoints check both auth systems
-
 **Phase 2: Port Backend Features to tRPC**
 
 *   *(Standard for all procedures: Implement within tRPC routers (`src/server/api/routers/`). Use Drizzle for database operations. Use Zod for input validation (`.input(zodSchema)`). Adhere to async/await and camelCase naming. Ensure procedures requiring auth are protected.)*
@@ -546,11 +504,6 @@ This plan details the migration from the current Python-based stack (Streamlit f
 
 **IMPORTANT: THERE ARE NO TAILWIND CONFIGURATION FILES ANYMORE (NO tailwind.config.js). TAILWIND IS NOW CSS-FIRST.**
 
-* **Installation:** 
-  ```bash
-  pnpm add tailwindcss
-  ```
-
 * **CSS Import:**
   ```css
   /* In your main CSS file (e.g., globals.css) */
@@ -573,74 +526,11 @@ This plan details the migration from the current Python-based stack (Streamlit f
   }
   ```
 
-* **Next.js Integration:**
-  ```javascript
-  // Next.js automatically supports Tailwind v4 - no additional configuration needed!
-  // Just create your CSS file and import it in your app
-  ```
-
-* **Vite Integration (if applicable):**
-  ```javascript
-  // vite.config.ts
-  import { defineConfig } from "vite";
-  import tailwindcss from "@tailwindcss/vite";
-  export default defineConfig({
-    plugins: [
-      tailwindcss(),
-    ],
-  });
-  ```
-
 * **CSS-First Configuration:** All customizations should be directly in the CSS file where you import Tailwind, not in a separate config file.
   * Color schemes using CSS variables: `--color-primary`, `--color-secondary`, etc.
   * Custom breakpoints via `@media (min-width: 1280px) { /* styles */ }`
   * Custom components via `@layer components { .custom-component { /* styles */ } }`
   * Extend Tailwind's utilities via `@layer utilities { .custom-utility { /* styles */ } }`
-
-* **Design Tokens with CSS Variables:**
-  ```css
-  @layer base {
-    :root {
-      /* Colors */
-      --color-primary: #3b82f6;
-      --color-secondary: #10b981;
-      
-      /* Spacing */
-      --spacing-tight: 0.5rem;
-      --spacing-default: 1rem;
-      --spacing-loose: 2rem;
-      
-      /* Typography */
-      --font-size-base: 1rem;
-      --font-size-lg: 1.25rem;
-    }
-  }
-  ```
-
-* **Using Custom Properties:**
-  ```html
-  <!-- In your components -->
-  <button class="bg-[var(--color-primary)] text-white px-[var(--spacing-default)]">
-    Click me
-  </button>
-  ```
-
-* **Dark Mode:**
-  ```css
-  /* In your CSS file */
-  @layer base {
-    :root {
-      --color-bg: white;
-      --color-text: black;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --color-bg: black;
-        --color-text: white;
-      }
-    }
-  }
-  ```
 
 * **Style Guidelines:**
   * Use Tailwind utility classes for all styling needs
@@ -746,6 +636,22 @@ This plan details the migration from the current Python-based stack (Streamlit f
 6.  **Performance Optimization:** Use Next.js Bundle Analyzer. Analyze database query performance via Supabase dashboard or `EXPLAIN`. Optimize slow queries or component rendering.
 7.  **Security Audit:** Review Supabase Row Level Security (RLS) policies for all tables. Ensure tRPC procedures correctly authorize actions based on `ctx.session`. Check for standard web vulnerabilities (though Next.js/React/tRPC mitigate many).
 8.  **Documentation:** Update `README.md` with new stack details, setup instructions, `pnpm` commands from `CLAUDE.md`, and an overview of the architecture. Add comments to complex code sections.
+
+**Important Next.js 15+ Implementation Notes:**
+
+1. **Route Parameters with React.use():**
+   * In Next.js 15.2.4+, route parameters are Promises that must be unwrapped with `React.use()`.
+   * Warning: "A param property was accessed directly with `params.id`. `params` is now a Promise..."
+   * Correct usage:
+     ```tsx
+     // Page component with dynamic route params
+     export default function PageComponent({ params }: { params: { id: string } }) {
+       const unwrappedParams = React.use(params);
+       return <ChildComponent id={unwrappedParams.id} />;
+     }
+     ```
+   * Direct access may work now but could break in future versions or cause re-render issues.
+   * Use proper TypeScript typing for safe parameter handling.
 
 **Phase 7: Deployment & Monitoring (Ongoing)**
 

@@ -1,174 +1,253 @@
 "use client"
 import Link from "next/link"
 import type React from "react"
-
 import { usePathname } from "next/navigation"
-import {
-  BookOpen,
-  ChevronDown,
-  Gamepad2,
-  Heart,
-  Home,
-  LogOut,
-  MessageSquare,
-  Settings,
-  Shield,
-  User,
+import { 
+  BookOpen, ChevronDown, Gamepad2, Home, LogOut, 
+  MessageSquare, Settings, User, Shield, 
+  BookCheck, BookX
 } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
+import { cn } from "~/lib/utils"
+import { useEffect, useRef } from "react"
 
 export function AppSidebar() {
   const pathname = usePathname()
 
   const isActive = (path: string) => {
-    return pathname === path
+    return pathname === path || pathname.startsWith(`${path}/`)
   }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-red-600">
-            <Shield className="h-5 w-5 text-white" />
+    <nav 
+      className="flex h-full w-64 flex-col border-r bg-gradient-to-b from-background to-background/95 backdrop-blur-sm" 
+      aria-label="Main Navigation"
+    >
+      {/* App Brand Header */}
+      <div className="relative overflow-hidden border-b bg-primary/5 px-4 py-4 bg-red">
+        <div className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-primary/10 blur-2xl" />
+        <div className="absolute -left-10 -bottom-8 h-20 w-20 rounded-full bg-primary/10 blur-3xl" />
+
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-md shadow-primary/20">
+            <Shield className="h-5 w-5 text-white" aria-hidden="true" />
           </div>
-          <span className="text-xl font-bold hidden md:inline">Red Cross Training</span>
-          <span className="text-xl font-bold md:hidden">RC Training</span>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold tracking-tight text-foreground">Red Cross</span>
+            <span className="text-xs font-medium text-muted-foreground">Training Platform</span>
+          </div>
         </div>
-        <Button variant="ghost" size="icon" className="md:hidden">
-          <ChevronDown className="h-4 w-4" />
-        </Button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto py-2">
-        {/* Navigation Section */}
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-muted-foreground">Navigation</h2>
-          <div className="space-y-1">
-            <NavItem href="/dashboard" icon={<Home className="h-4 w-4" />} isActive={isActive("/dashboard")}>
-              <span className="hidden sm:inline">Dashboard</span>
-              <span className="sm:hidden">Home</span>
+      {/* Navigation Content */}
+      <div className="flex-1 overflow-auto py-6 px-3">
+        {/* Main Navigation Group */}
+        <div className="space-y-6">
+          <NavigationGroup label="Main">
+            <NavItem 
+              href="/dashboard" 
+              icon={<Home className="h-4 w-4" aria-hidden="true" />} 
+              isActive={isActive("/dashboard")}
+            >
+              Dashboard
             </NavItem>
-            <NavItem href="/flashcards" icon={<BookOpen className="h-4 w-4" />} isActive={isActive("/flashcards")}>
+            <NavItem
+              href="/flashcards"
+              icon={<BookOpen className="h-4 w-4" aria-hidden="true" />}
+              isActive={isActive("/flashcards")}
+              badge="12"
+              badgeLabel="12 flashcards available"
+              badgeColor="bg-red-500"
+            >
               Flashcards
             </NavItem>
-            <NavItem href="/chat" icon={<MessageSquare className="h-4 w-4" />} isActive={isActive("/chat")}>
+            <NavItem
+              href="/chat"
+              icon={<MessageSquare className="h-4 w-4" aria-hidden="true" />}
+              isActive={isActive("/chat")}
+              badge="New"
+              badgeColor="bg-blue-500"
+              badgeLabel="New feature"
+            >
               AI Assistant
             </NavItem>
-            <NavItem href="/multiplayer" icon={<Gamepad2 className="h-4 w-4" />} isActive={isActive("/multiplayer")}>
+            <NavItem
+              href="/multiplayer"
+              icon={<Gamepad2 className="h-4 w-4" aria-hidden="true" />}
+              isActive={isActive("/multiplayer")}
+              badge="5"
+              badgeColor="bg-green-500"
+              badgeLabel="5 active games"
+            >
               Multiplayer
             </NavItem>
-          </div>
-        </div>
+          </NavigationGroup>
 
-        {/* Divider */}
-        <div className="my-2 border-t mx-3" />
-
-        {/* Training Categories Section */}
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-muted-foreground">Training Categories</h2>
-          <div className="space-y-1">
-            <NavItem href="/categories/cpr" icon={<Heart className="h-4 w-4" />} isActive={isActive("/categories/cpr")}>
-              CPR & AED
-            </NavItem>
-            <NavItem
-              href="/categories/first-aid"
-              icon={<Shield className="h-4 w-4" />}
-              isActive={isActive("/categories/first-aid")}
-            >
-              First Aid Basics
-            </NavItem>
-            <NavItem
-              href="/categories/emergency"
-              icon={<Shield className="h-4 w-4" />}
-              isActive={isActive("/categories/emergency")}
-            >
-              Emergency Response
-            </NavItem>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="my-2 border-t mx-3" />
-
-        {/* Account Section */}
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-muted-foreground">Account</h2>
-          <div className="space-y-1">
-            <NavItem href="/profile" icon={<User className="h-4 w-4" />} isActive={isActive("/profile")}>
-              Profile
-            </NavItem>
-            <NavItem href="/settings" icon={<Settings className="h-4 w-4" />} isActive={isActive("/settings")}>
-              Settings
-            </NavItem>
-          </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="border-t p-2 md:p-4">
+      {/* User Profile Footer */}
+      <div className="border-t border-border/50 bg-muted/30 p-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src="/avatar.svg?height=32&width=32" alt="User" />
-                <AvatarFallback>JD</AvatarFallback>
-              </Avatar>
-              <span className="truncate hidden sm:inline">John Doe</span>
-              <ChevronDown className="ml-auto h-4 w-4" />
+            <Button
+              variant="ghost"
+              className="w-full justify-between gap-3 rounded-xl bg-background/80 px-3 py-5 shadow-sm transition-all hover:bg-background hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              aria-label="User menu"
+            >
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9 border-2 border-background shadow-sm">
+                  <AvatarImage src="/avatar.svg?height=36&width=36" alt="" />
+                  <AvatarFallback className="bg-primary/10 text-primary">JD</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start text-left">
+                  <span className="text-sm font-medium">John Doe</span>
+                  <span className="text-xs text-muted-foreground">Instructor</span>
+                </div>
+              </div>
+              <ChevronDown 
+                className="h-4 w-4 text-muted-foreground transition-transform duration-200 ease-in-out group-data-[state=open]:rotate-180" 
+                aria-hidden="true"
+              />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem asChild>
-              <Link href="/profile" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
+          <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
+            <DropdownMenuItem asChild className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5">
+              <Link href="/profile" className="flex w-full items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <span>Profile</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/settings" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
+            <DropdownMenuItem asChild className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5">
+              <Link href="/settings" className="flex w-full items-center gap-2">
+                <Settings className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <span>Settings</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/auth/login" className="flex items-center gap-2">
-                <LogOut className="h-4 w-4" />
+            <DropdownMenuItem
+              asChild
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Link href="/auth/login" className="flex w-full items-center gap-2">
+                <LogOut className="h-4 w-4" aria-hidden="true" />
                 <span>Log out</span>
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+    </nav>
+  )
+}
+
+// Navigation Group component for better organization
+function NavigationGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <h2 
+        className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+        aria-hidden="true"
+      >
+        {label}
+      </h2>
+      {children}
     </div>
   )
 }
 
-// Custom NavItem component that doesn't use nested list items
+// Enhanced NavItem component with accessibility improvements
 function NavItem({
   href,
   icon,
   children,
   isActive,
+  badge,
+  badgeColor = "bg-primary",
+  badgeLabel,
 }: {
   href: string
   icon: React.ReactNode
   children: React.ReactNode
   isActive: boolean
+  badge?: string
+  badgeColor?: string
+  badgeLabel?: string
 }) {
+  const linkRef = useRef<HTMLAnchorElement>(null)
+
+  // Auto-focus active navigation item on page load for keyboard users
+  useEffect(() => {
+    if (isActive && linkRef.current) {
+      linkRef.current.focus({ preventScroll: true })
+    }
+  }, [isActive])
+
   return (
-    <Link
-      href={href}
-      className={`flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm font-medium ${
-        isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
-      }`}
+    <Link 
+      ref={linkRef}
+      href={href} 
+      className={cn(
+        "group block outline-none",
+        "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "rounded-xl transition-all"
+      )}
+      aria-current={isActive ? "page" : undefined}
     >
-      {icon}
-      <span>{children}</span>
+      <div
+        className={cn(
+          "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+          isActive 
+            ? "bg-primary text-primary-foreground shadow-md" 
+            : "text-foreground hover:bg-muted/80"
+        )}
+      >
+        {/* Animated background for active state with reduced motion option */}
+        {isActive && (
+          <>
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary to-primary opacity-80" />
+            <div 
+              className={cn(
+                "absolute -right-1 -top-1 h-3 w-3 rounded-full bg-primary/30 blur-sm",
+                "@media (prefers-reduced-motion: reduce) { opacity: 0 }"
+              )}
+            />
+            <div 
+              className={cn(
+                "absolute -left-1 -bottom-1 h-3 w-3 rounded-full bg-primary/30 blur-sm",
+                "@media (prefers-reduced-motion: reduce) { opacity: 0 }"
+              )}
+            />
+          </>
+        )}
+
+        {/* Icon with improved contrast */}
+        <div
+          className={cn(
+            "relative z-10 flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200",
+            isActive
+              ? "bg-white/20 text-primary-foreground"
+              : "bg-muted text-muted-foreground group-hover:bg-background group-hover:text-foreground"
+          )}
+        >
+          {icon}
+        </div>
+
+        {/* Text with improved positioning */}
+        <span className="relative z-10 flex-1">{children}</span>
+
+        {/* Badge with accessibility improvements */}
+        {badge && (
+          <span 
+            className={`relative z-10 rounded-full ${badgeColor} px-2 py-0.5 text-xs font-semibold text-white`}
+            aria-label={badgeLabel || badge}
+          >
+            {badge}
+          </span>
+        )}
+      </div>
     </Link>
   )
 }

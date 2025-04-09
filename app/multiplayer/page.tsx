@@ -10,20 +10,14 @@ import { Input } from "~/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { DashboardHeader } from "~/components/dashboard-header"
 import { useToast } from "~/hooks/use-toast"
-import { GameNotificationsProvider, useGameNotifications } from "./components/game-notifications-provider"
 
 export default function MultiplayerPage() {
-  return (
-    <GameNotificationsProvider>
-      <MultiplayerContent />
-    </GameNotificationsProvider>
-  )
+  return <MultiplayerContent />
 }
 
 function MultiplayerContent() {
   const router = useRouter()
   const { toast } = useToast()
-  const { showNotification } = useGameNotifications()
   const [gameCode, setGameCode] = useState("")
 
   const handleCopyCode = (code: string) => {
@@ -33,13 +27,6 @@ function MultiplayerContent() {
         title: "Game code copied",
         description: "Share this code with your team to join the training session",
       })
-      
-      showNotification(
-        "success",
-        "Game code copied",
-        "Share this code with your team to join the training session",
-        3000
-      )
     }
   }
 
@@ -52,13 +39,6 @@ function MultiplayerContent() {
       title: `${mode} created`,
       description: `Your ${mode.toLowerCase()} session has been created`,
     })
-    
-    showNotification(
-      "success",
-      `${mode} created`,
-      `Your ${mode.toLowerCase()} session has been created`,
-      3000
-    )
 
     // Redirect to the lobby page
     if (router) {
@@ -73,13 +53,6 @@ function MultiplayerContent() {
         description: "Please enter a game code",
         variant: "destructive",
       })
-      
-      showNotification(
-        "error",
-        "Error",
-        "Please enter a game code",
-        3000
-      )
       return
     }
 
@@ -89,13 +62,6 @@ function MultiplayerContent() {
         title: "Joining session",
         description: `Connecting to training session ${gameCode}...`,
       })
-      
-      showNotification(
-        "info",
-        "Joining session",
-        `Connecting to training session ${gameCode}...`,
-        3000
-      )
 
       // Redirect to the lobby page
       if (router) {
@@ -107,13 +73,6 @@ function MultiplayerContent() {
         description: "Invalid game code. Try FIRST123 for the demo.",
         variant: "destructive",
       })
-      
-      showNotification(
-        "error",
-        "Invalid game code",
-        "Try FIRST123 for the demo.",
-        3000
-      )
     }
   }
 
@@ -132,7 +91,7 @@ function MultiplayerContent() {
           </TabsList>
 
           <TabsContent value="join" className="space-y-4 mt-6">
-            <Card>
+            <Card className="p-4 px-0">
               <CardHeader>
                 <CardTitle>Join an Existing Session</CardTitle>
                 <CardDescription>Enter a session code to join a training activity with your team</CardDescription>
@@ -159,7 +118,7 @@ function MultiplayerContent() {
               </CardFooter>
             </Card>
 
-            <Card>
+            <Card className="p-4 px-0">
               <CardHeader>
                 <CardTitle>Recent Sessions</CardTitle>
                 <CardDescription>Your recently played training sessions</CardDescription>
@@ -224,4 +183,57 @@ function MultiplayerContent() {
                           <p className="text-sm font-medium">Your Session Code</p>
                           <p className="text-2xl font-bold tracking-wider mt-1">RAPID123</p>
                         </div>
-                        <Button variant="outline" size="icon" onClick={() => handleCopy
+                        <Button variant="outline" size="icon" onClick={() => handleCopyCode("RAPID123")}>
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button className="w-full" onClick={() => handleCreateGame("Rapid Response")}>
+                    Create Rapid Response
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <CardTitle>Card Clash</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Team-based flashcard challenge where teams compete to answer correctly
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-4 border rounded-lg bg-muted/50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Your Session Code</p>
+                          <p className="text-2xl font-bold tracking-wider mt-1">CLASH123</p>
+                        </div>
+                        <Button variant="outline" size="icon" onClick={() => handleCopyCode("CLASH123")}>
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button className="w-full" onClick={() => handleCreateGame("Card Clash")}>
+                    Create Card Clash
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  )
+}

@@ -13,15 +13,88 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { useToast } from "~/hooks/use-toast"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, we'd handle authentication here
-    router.push("/dashboard")
+    setIsLoading(true)
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // In a real app, we'd handle authentication here
+      toast({
+        title: "Login successful",
+        description: "Welcome back! You've been logged in.",
+        variant: "success",
+      })
+      
+      router.push("/dashboard")
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // In a real app, we'd handle registration here
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created! You can now log in.",
+        variant: "success",
+      })
+      
+      // Switch to login tab after successful registration
+      document.querySelector('[data-value="login"]')?.click()
+    } catch (error) {
+      toast({
+        title: "Registration failed",
+        description: "There was an error creating your account. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSocialLogin = (provider: string) => {
+    toast.promise(
+      // This would be your actual authentication logic
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+      {
+        loading: {
+          title: `Signing in with ${provider}`,
+          description: "Please wait while we connect to your account..."
+        },
+        success: {
+          title: "Login successful",
+          description: `You've successfully signed in with ${provider}.`
+        },
+        error: {
+          title: "Authentication failed",
+          description: `Could not authenticate with ${provider}. Please try again.`
+        }
+      }
+    )
   }
 
   return (
@@ -41,7 +114,7 @@ export default function LoginPage() {
 
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="login" data-value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
 
@@ -73,8 +146,8 @@ export default function LoginPage() {
                       </Button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full">
-                    Sign in
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Signing in..." : "Sign in"}
                   </Button>
                 </form>
 
@@ -94,10 +167,20 @@ export default function LoginPage() {
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-4">
-                  <Button variant="outline" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => handleSocialLogin("Google")} 
+                    disabled={isLoading}
+                  >
                     Google
                   </Button>
-                  <Button variant="outline" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => handleSocialLogin("Microsoft")} 
+                    disabled={isLoading}
+                  >
                     Microsoft
                   </Button>
                 </div>
@@ -112,7 +195,7 @@ export default function LoginPage() {
                 <CardDescription>Join our training platform to enhance your first aid skills</CardDescription>
               </CardHeader>
               <CardContent>
-                <form className="space-y-4">
+                <form className="space-y-4" onSubmit={handleRegister}>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="first-name">First name</Label>
@@ -157,8 +240,8 @@ export default function LoginPage() {
                       <option value="instructor">Instructor</option>
                     </select>
                   </div>
-                  <Button type="submit" className="w-full">
-                    Create account
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Creating account..." : "Create account"}
                   </Button>
                 </form>
 
@@ -172,10 +255,20 @@ export default function LoginPage() {
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-4">
-                  <Button variant="outline" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => handleSocialLogin("Google")} 
+                    disabled={isLoading}
+                  >
                     Google
                   </Button>
-                  <Button variant="outline" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => handleSocialLogin("Microsoft")} 
+                    disabled={isLoading}
+                  >
                     Microsoft
                   </Button>
                 </div>

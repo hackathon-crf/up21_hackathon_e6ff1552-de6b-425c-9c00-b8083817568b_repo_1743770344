@@ -17,11 +17,65 @@ import { useToast } from "~/hooks/use-toast"
 export default function SettingsPage() {
   const { toast } = useToast()
   const [theme, setTheme] = useState("system")
+  const [isSaving, setIsSaving] = useState(false)
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = (section: string) => {
+    setIsSaving(true)
+
+    // Simulate API call with promise toast
+    toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+      {
+        loading: {
+          title: "Saving changes",
+          description: `Updating your ${section.toLowerCase()} settings...`
+        },
+        success: {
+          title: "Settings saved",
+          description: `Your ${section.toLowerCase()} settings have been updated successfully.`
+        },
+        error: {
+          title: "Failed to save",
+          description: "There was an error saving your settings. Please try again."
+        }
+      }
+    ).finally(() => setIsSaving(false))
+  }
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme)
     toast({
-      title: "Settings saved",
-      description: "Your preferences have been updated",
+      title: "Theme updated",
+      description: `Theme changed to ${newTheme}.`,
+      variant: "info"
+    })
+  }
+
+  const handleDownloadData = () => {
+    toast({
+      title: "Preparing data",
+      description: "Your data is being prepared for download. This may take a moment.",
+      variant: "info"
+    })
+
+    // Simulate a delay for data preparation
+    setTimeout(() => {
+      toast({
+        title: "Data ready",
+        description: "Your data has been prepared and is ready to download.",
+        variant: "success"
+      })
+      // In a real app, this would trigger the actual download
+    }, 2000)
+  }
+
+  const handleToggleNotification = (setting: string, enabled: boolean) => {
+    toast({
+      title: enabled ? `${setting} enabled` : `${setting} disabled`,
+      description: enabled 
+        ? `You will now receive ${setting.toLowerCase()} notifications.` 
+        : `You will no longer receive ${setting.toLowerCase()} notifications.`,
+      variant: enabled ? "success" : "info"
     })
   }
 
@@ -62,7 +116,12 @@ export default function SettingsPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleSaveSettings}>Save Changes</Button>
+                  <Button 
+                    onClick={() => handleSaveSettings("Profile")} 
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
                 </CardFooter>
               </Card>
 
@@ -106,7 +165,12 @@ export default function SettingsPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleSaveSettings}>Save Changes</Button>
+                  <Button 
+                    onClick={() => handleSaveSettings("Learning Preferences")}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
                 </CardFooter>
               </Card>
             </TabsContent>
@@ -118,7 +182,11 @@ export default function SettingsPage() {
                   <CardDescription>Customize the appearance of the application</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <RadioGroup defaultValue={theme} onValueChange={setTheme} className="grid grid-cols-3 gap-4">
+                  <RadioGroup 
+                    defaultValue={theme} 
+                    onValueChange={handleThemeChange} 
+                    className="grid grid-cols-3 gap-4"
+                  >
                     <div>
                       <RadioGroupItem value="light" id="theme-light" className="sr-only" />
                       <Label
@@ -155,7 +223,12 @@ export default function SettingsPage() {
                   </RadioGroup>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleSaveSettings}>Save Changes</Button>
+                  <Button 
+                    onClick={() => handleSaveSettings("Theme")}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
                 </CardFooter>
               </Card>
             </TabsContent>
@@ -172,7 +245,11 @@ export default function SettingsPage() {
                       <Label htmlFor="study-notifications">Study reminders</Label>
                       <p className="text-sm text-muted-foreground">Receive notifications for daily study reminders</p>
                     </div>
-                    <Switch id="study-notifications" defaultChecked />
+                    <Switch 
+                      id="study-notifications" 
+                      defaultChecked 
+                      onCheckedChange={(checked) => handleToggleNotification("Study reminders", checked)}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
@@ -181,25 +258,41 @@ export default function SettingsPage() {
                         Receive notifications when invited to multiplayer games
                       </p>
                     </div>
-                    <Switch id="game-notifications" defaultChecked />
+                    <Switch 
+                      id="game-notifications" 
+                      defaultChecked 
+                      onCheckedChange={(checked) => handleToggleNotification("Game invitations", checked)}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label htmlFor="achievement-notifications">Achievements</Label>
                       <p className="text-sm text-muted-foreground">Receive notifications when you earn achievements</p>
                     </div>
-                    <Switch id="achievement-notifications" defaultChecked />
+                    <Switch 
+                      id="achievement-notifications" 
+                      defaultChecked 
+                      onCheckedChange={(checked) => handleToggleNotification("Achievement", checked)}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label htmlFor="email-notifications">Email notifications</Label>
                       <p className="text-sm text-muted-foreground">Receive weekly summary emails about your progress</p>
                     </div>
-                    <Switch id="email-notifications" />
+                    <Switch 
+                      id="email-notifications" 
+                      onCheckedChange={(checked) => handleToggleNotification("Email", checked)}
+                    />
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleSaveSettings}>Save Changes</Button>
+                  <Button 
+                    onClick={() => handleSaveSettings("Notification")}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
                 </CardFooter>
               </Card>
             </TabsContent>
@@ -218,14 +311,21 @@ export default function SettingsPage() {
                         Allow others to see your profile and learning progress
                       </p>
                     </div>
-                    <Switch id="public-profile" />
+                    <Switch 
+                      id="public-profile" 
+                      onCheckedChange={(checked) => handleToggleNotification("Public profile visibility", checked)}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label htmlFor="share-activity">Share activity</Label>
                       <p className="text-sm text-muted-foreground">Share your learning activity with friends</p>
                     </div>
-                    <Switch id="share-activity" defaultChecked />
+                    <Switch 
+                      id="share-activity" 
+                      defaultChecked 
+                      onCheckedChange={(checked) => handleToggleNotification("Activity sharing", checked)}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
@@ -234,12 +334,21 @@ export default function SettingsPage() {
                         Allow anonymous data collection to improve the platform
                       </p>
                     </div>
-                    <Switch id="data-collection" defaultChecked />
+                    <Switch 
+                      id="data-collection" 
+                      defaultChecked 
+                      onCheckedChange={(checked) => handleToggleNotification("Data collection", checked)}
+                    />
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">
-                  <Button variant="outline">Download My Data</Button>
-                  <Button onClick={handleSaveSettings}>Save Changes</Button>
+                  <Button variant="outline" onClick={handleDownloadData}>Download My Data</Button>
+                  <Button 
+                    onClick={() => handleSaveSettings("Privacy")}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
                 </CardFooter>
               </Card>
             </TabsContent>

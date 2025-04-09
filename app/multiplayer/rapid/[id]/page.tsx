@@ -11,10 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Separator } from "~/components/ui/separator"
 import { useToast } from "~/hooks/use-toast"
-import { ConnectionStatus } from "../components/connection-status"
-import { PlayerAvatar } from "../components/player-avatar"
-import { GameChat } from "../components/game-chat"
-import { GameNotificationsProvider, useGameNotifications } from "../components/game-notifications-provider"
+import { ConnectionStatus } from "../../components/connection-status"
+import { PlayerAvatar } from "../../components/player-avatar"
+import { GameChat } from "../../components/game-chat"
 import { cn } from "~/lib/utils"
 
 // Define types for better type safety
@@ -42,16 +41,13 @@ interface Question {
 
 export default function RapidResponsePage({ params }: { params: { id: string } }) {
   return (
-    <GameNotificationsProvider>
-      <RapidResponseContent params={params} />
-    </GameNotificationsProvider>
+    <RapidResponseContent params={params} />
   )
 }
 
 function RapidResponseContent({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { toast } = useToast()
-  const { showNotification } = useGameNotifications()
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [timeLeft, setTimeLeft] = useState(30)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
@@ -219,6 +215,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
       avatar: "/avatar.svg?height=40&width=40",
       score: 0,
       rank: 5,
+      streak: 0,
       isCurrentUser: false,
       status: "idle",
     },
@@ -231,14 +228,13 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
   // Show welcome notification when game starts
   useEffect(() => {
     if (gameStarted && currentQuestion === 0) {
-      showNotification(
-        "info",
-        "Game started!",
-        "Answer quickly for bonus points. Consecutive correct answers build your streak!",
-        5000,
-      )
+      toast({
+        title: "Game started!",
+        description: "Answer quickly for bonus points. Consecutive correct answers build your streak!",
+        duration: 5000,
+      })
     }
-  }, [gameStarted, currentQuestion, showNotification])
+  }, [gameStarted, currentQuestion, toast])
 
   // Update player scores randomly to simulate real-time competition
   useEffect(() => {
@@ -286,12 +282,11 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
       setShowFeedback(true)
       setStreak(0) // Reset streak on timeout
 
-      showNotification(
-        "timer",
-        "Time's up!",
-        `The correct answer was: ${currentQuestionData.options[currentQuestionData.correctAnswer]}`,
-        3000,
-      )
+      toast({
+        title: "Time's up!",
+        description: `The correct answer was: ${currentQuestionData.options[currentQuestionData.correctAnswer]}`,
+        duration: 3000,
+      })
 
       // Update other players
       simulateOtherPlayersAnswers()
@@ -302,7 +297,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
       }, 4000)
       return () => clearTimeout(timer)
     }
-  }, [timeLeft, selectedAnswer, gameStarted, gameEnded, showFeedback, showCountdown, currentQuestionData])
+  }, [timeLeft, selectedAnswer, gameStarted, gameEnded, showFeedback, showCountdown, currentQuestionData, toast])
 
   // Simulate other players answering
   const simulateOtherPlayersAnswers = useCallback(() => {
@@ -361,14 +356,17 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 
     // Show notification
     if (isCorrect) {
-      showNotification("success", "Correct answer!", currentQuestionData.explanation, 4000)
+      toast({
+        title: "Correct answer!",
+        description: currentQuestionData.explanation,
+        duration: 4000,
+      })
     } else {
-      showNotification(
-        "error",
-        "Incorrect answer",
-        `The correct answer was: ${currentQuestionData.options[currentQuestionData.correctAnswer]}. ${currentQuestionData.explanation}`,
-        4000,
-      )
+      toast({
+        title: "Incorrect answer",
+        description: `The correct answer was: ${currentQuestionData.options[currentQuestionData.correctAnswer]}. ${currentQuestionData.explanation}`,
+        duration: 4000,
+      })
     }
 
     // Update streak
@@ -377,7 +375,11 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
       setStreak(newStreak)
 
       if (newStreak > 1) {
-        showNotification("achievement", `${newStreak}x Streak!`, "Keep it up for bonus points!", 2000)
+        toast({
+          title: `${newStreak}x Streak!`,
+          description: "Keep it up for bonus points!",
+          duration: 2000,
+        })
       }
     } else {
       setStreak(0)
@@ -453,7 +455,11 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
       // Game completed, navigate to results
       setGameEnded(true)
 
-      showNotification("success", "Game completed!", "Redirecting to results page...", 3000)
+      toast({
+        title: "Game completed!",
+        description: "Redirecting to results page...",
+        duration: 3000,
+      })
 
       setTimeout(() => {
         if (router) {
@@ -461,7 +467,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
         }
       }, 3000)
     }
-  }, [currentQuestion, totalQuestions, challenge.questions, router, params.id, showNotification])
+  }, [currentQuestion, totalQuestions, challenge.questions, router, params.id, toast])
 
   const getButtonVariant = (index: number) => {
     if (!showFeedback) return "outline"
