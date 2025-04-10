@@ -12,6 +12,8 @@ import { Progress } from "~/components/ui/progress"
 import { useToast } from "~/hooks/use-toast"
 import { Badge } from "~/components/ui/badge"
 import { Separator } from "~/components/ui/separator"
+import { api } from "~/trpc/react"
+import Image from "next/image"
 
 export default function StudyDeckPage({ params }: { params: Promise<{ deck: string }> }) {
   // Unwrap params using React.use()
@@ -29,6 +31,38 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
   })
   const [showConfetti, setShowConfetti] = useState(false)
   const [studyDuration, setStudyDuration] = useState(0)
+  const [cards, setCards] = useState<Array<any>>([])
+  
+  // Fetch deck information
+  const { data: deck, isLoading: deckLoading } = api.flashcard.getDeckById.useQuery({
+    id: deckId
+  })
+
+  // Fetch due cards or all cards from this deck
+  const { data: dueCards, isLoading: cardsLoading } = api.flashcard.getFlashcards.useQuery({
+    deckId: deckId
+  })
+  
+  // Record study results
+  const recordStudyResult = api.flashcard.recordStudyResult.useMutation({
+    onSuccess: () => {
+      // Success handled in the card rating function
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save your progress",
+        variant: "destructive"
+      })
+    }
+  })
+  
+  // Set up cards once data is loaded
+  useEffect(() => {
+    if (dueCards && dueCards.length > 0) {
+      setCards(dueCards)
+    }
+  }, [dueCards])
 
   // Update the duration every second
   useEffect(() => {
@@ -50,15 +84,19 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
       } else if (e.key === 'ArrowLeft' && !flipped && currentCard > 0) {
         handlePrevious();
       } else if (e.key === '1' && flipped) {
-        handleCardRating('hard');
+        handleCardRating(1);
       } else if (e.key === '2' && flipped) {
-        handleCardRating('easy');
+        handleCardRating(2);
+      } else if (e.key === '3' && flipped) {
+        handleCardRating(3);
+      } else if (e.key === '4' && flipped) {
+        handleCardRating(4);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [flipped, currentCard]);
+  }, [flipped, currentCard, cards]);
 
   // Show confetti effect on deck completion
   useEffect(() => {
@@ -71,71 +109,9 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
     }
   }, [showConfetti]);
 
-  // Update the card interface to include titles
-  const cards = {
-    "cpr-aed": [
-      {
-        title: "CPR Compression Rate",
-        question: "What is the correct compression rate for adult CPR?",
-        answer: "100-120 compressions per minute",
-      },
-      {
-        title: "Compression Depth",
-        question: "How deep should chest compressions be for an adult?",
-        answer: "At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
-      },
-      {
-        title: "Hand Placement",
-        question: "What is the correct hand placement for adult CPR?",
-        answer:
-          "Place the heel of one hand on the center of the chest (sternum), then place the other hand on top and interlock fingers",
-      },
-    ],
-    "first-aid": [
-      {
-        title: "Severe Bleeding",
-        question: "What is the first step in treating a severe bleeding wound?",
-        answer: "Apply direct pressure to the wound with a clean cloth or bandage",
-      },
-      {
-        title: "Shock Symptoms",
-        question: "What are the signs of shock?",
-        answer: "Pale, cold, clammy skin; rapid, weak pulse; rapid breathing; nausea; and altered mental status",
-      },
-      {
-        title: "Burn Treatment",
-        question: "How should you treat a minor burn?",
-        answer:
-          "Cool the burn with cool (not cold) running water for 10-15 minutes, then cover with a clean, dry bandage",
-      },
-    ],
-    emergency: [
-      {
-        title: "SAMPLE Assessment",
-        question: "What does the acronym SAMPLE stand for in patient assessment?",
-        answer:
-          "Signs/Symptoms, Allergies, Medications, Past medical history, Last oral intake, Events leading to injury/illness",
-      },
-      {
-        title: "Primary Assessment",
-        question: "What is the correct sequence for the primary assessment?",
-        answer: "Check for responsiveness, call for help, check breathing and pulse, check for severe bleeding",
-      },
-      {
-        title: "Recovery Position",
-        question: "What is the recovery position and when should it be used?",
-        answer:
-          "A stable position where the patient lies on their side with the lower arm forward and head tilted back. Used for unconscious patients who are breathing normally and have no suspected spinal injuries.",
-      },
-    ],
-  }
-
-  // Get the correct deck based on the URL parameter
-  const deckName = deckId as keyof typeof cards
-  const currentDeck = cards[deckName] || cards["first-aid"] // Default to first-aid if deck not found
-
-  const totalCards = currentDeck.length
-  const progress = ((currentCard + 1) / totalCards) * 100
+  // Calculate total cards
+  const totalCards = cards.length;
+  const progress = totalCards ? ((currentCard + 1) / totalCards) * 100 : 0;
   
   // Calculate study statistics
   const accuracy = studyStats.totalReviewed > 0 
@@ -162,23 +138,37 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
     }
   }
 
-  const handleCardRating = (rating: 'easy' | 'hard') => {
+  const handleCardRating = (rating: 1 | 2 | 3 | 4) => {
+    if (!cards[currentCard]) return;
+    
     // Update study statistics
+    const isEasy = rating >= 3;
     const newStats = {
       ...studyStats,
-      easyCards: rating === 'easy' ? studyStats.easyCards + 1 : studyStats.easyCards,
-      hardCards: rating === 'hard' ? studyStats.hardCards + 1 : studyStats.hardCards,
+      easyCards: isEasy ? studyStats.easyCards + 1 : studyStats.easyCards,
+      hardCards: !isEasy ? studyStats.hardCards + 1 : studyStats.hardCards,
       totalReviewed: studyStats.totalReviewed + 1,
     }
     setStudyStats(newStats)
 
     // Show rating toast with different messages based on rating
+    const messages = {
+      1: "This was hard! We'll show it more often.",
+      2: "Got it, but needs more review.",
+      3: "Good job! Getting better at this one.",
+      4: "Perfect! You've mastered this card."
+    };
+    
     toast({
-      title: rating === 'easy' ? "Marked as Easy" : "Marked as Hard",
-      description: rating === 'easy' 
-        ? "Great job! This card will be shown less frequently." 
-        : "Don't worry! We'll show this card more often to help you learn.",
-      variant: rating === 'easy' ? "success" : "warning",
+      title: isEasy ? "Marked as Known" : "Marked for Review",
+      description: messages[rating],
+      variant: isEasy ? "success" : "warning",
+    })
+    
+    // Record the study result in the database
+    recordStudyResult.mutate({
+      flashcardId: cards[currentCard].id,
+      rating: rating
     })
 
     // Automatically move to the next card if available
@@ -199,7 +189,7 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
       setTimeout(() => {
         toast({
           title: "Deck completed! 🎉",
-          description: `You've reviewed all ${totalCards} cards. ${newStats.easyCards} marked as easy, ${newStats.hardCards} marked as hard.`,
+          description: `You've reviewed all ${totalCards} cards. ${newStats.easyCards} marked as known, ${newStats.hardCards} marked for review.`,
           variant: "success",
         })
       }, 1000)
@@ -240,24 +230,69 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
     }
   }
 
-  // Format the deck name for display
-  const formatDeckName = (name: string) => {
-    return name
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" & ")
+  // Get difficulty badge based on card ease factor
+  const getDifficultyBadge = () => {
+    if (!deck) return <Badge variant="outline" className="bg-green-500/20 text-green-600 dark:bg-green-700/30 dark:text-green-400 border-green-300">Loading...</Badge>
+    
+    const cardCount = cards.length;
+    if (cardCount > 30) {
+      return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:bg-amber-700/30 dark:text-amber-400 border-amber-300">Large Deck</Badge>
+    } else if (cardCount > 10) {
+      return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:bg-amber-700/30 dark:text-amber-400 border-amber-300">Medium</Badge>
+    } else {
+      return <Badge variant="outline" className="bg-green-500/20 text-green-600 dark:bg-green-700/30 dark:text-green-400 border-green-300">Small Deck</Badge>
+    }
   }
 
-  // Get a difficulty badge based on the deck name
-  const getDifficultyBadge = (deck: string) => {
-    switch (deck) {
-      case "cpr-aed":
-        return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:bg-amber-700/30 dark:text-amber-400 border-amber-300">Medium</Badge>
-      case "emergency":
-        return <Badge variant="outline" className="bg-red-500/20 text-red-700 dark:bg-red-700/30 dark:text-red-400 border-red-300">Advanced</Badge>
-      default:
-        return <Badge variant="outline" className="bg-green-500/20 text-green-600 dark:bg-green-700/30 dark:text-green-400 border-green-300">Beginner</Badge>
-    }
+  // Show loading state when data is being fetched
+  if (deckLoading || cardsLoading) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin h-12 w-12 rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-lg font-medium">Loading flashcards...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show empty state if there are no cards
+  if (!cards.length) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-secondary/10">
+        <header className="bg-gradient-to-r from-primary/10 via-background to-primary/10 border-b">
+          <div className="container mx-auto py-4">
+            <div className="flex items-center">
+              <Button variant="ghost" size="icon" asChild className="mr-3">
+                <Link href="/flashcards">
+                  <ArrowLeft className="h-5 w-5" />
+                  <span className="sr-only">Back to decks</span>
+                </Link>
+              </Button>
+              <h1 className="text-2xl font-bold">{deck?.name || "Deck"}</h1>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 container mx-auto p-6 flex flex-col items-center justify-center">
+          <Card className="max-w-md w-full">
+            <CardHeader>
+              <h2 className="text-xl font-bold text-center">No Cards to Study</h2>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="mb-6">There are no cards in this deck yet, or all cards have been reviewed.</p>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+              <Button asChild className="w-full">
+                <Link href={`/flashcards/manage/${deckId}`}>Manage Deck</Link>
+              </Button>
+              <Button variant="outline" asChild className="w-full">
+                <Link href="/flashcards">Back to Decks</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -296,9 +331,9 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-                    {formatDeckName(deckId)}
+                    {deck?.name || "Loading..."}
                   </h1>
-                  {getDifficultyBadge(deckId)}
+                  {getDifficultyBadge()}
                 </div>
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1">
@@ -460,12 +495,21 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
                     </div>
                   </div>
                   <div className="text-2xl font-extrabold tracking-tight text-foreground mt-4 pb-2 border-b">
-                    {currentDeck && currentDeck[currentCard] ? currentDeck[currentCard].title : "Loading..."}
+                    {cards[currentCard]?.title || "Question"}
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 flex items-center justify-center p-6">
+                <CardContent className="flex-1 flex flex-col items-center justify-center p-6 space-y-4">
+                  {cards[currentCard]?.imageUrl && (
+                    <div className="relative w-full max-w-xs h-40 rounded-lg overflow-hidden mb-4">
+                      <img 
+                        src={cards[currentCard].imageUrl} 
+                        alt="Flashcard illustration" 
+                        className="object-contain w-full h-full"
+                      />
+                    </div>
+                  )}
                   <div className="text-lg sm:text-xl font-medium text-center max-w-2xl">
-                    {currentDeck && currentDeck[currentCard] ? currentDeck[currentCard].question : "Loading..."}
+                    {cards[currentCard]?.question || "Loading..."}
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-center pb-8 opacity-70">
@@ -507,40 +551,64 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
                     </div>
                   </div>
                   <div className="text-2xl font-extrabold tracking-tight text-foreground mt-4 pb-2 border-b">
-                    {currentDeck && currentDeck[currentCard] ? currentDeck[currentCard].title : "Loading..."}
+                    {cards[currentCard]?.title || "Answer"}
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 flex items-center justify-center p-6">
+                <CardContent className="flex-1 flex flex-col items-center justify-center p-6 space-y-4">
+                  {cards[currentCard]?.imageUrl && (
+                    <div className="relative w-full max-w-xs h-40 rounded-lg overflow-hidden mb-4">
+                      <img 
+                        src={cards[currentCard].imageUrl} 
+                        alt="Flashcard illustration" 
+                        className="object-contain w-full h-full"
+                      />
+                    </div>
+                  )}
                   <div className="text-lg sm:text-xl font-medium text-center leading-relaxed max-w-2xl">
-                    {currentDeck && currentDeck[currentCard] ? currentDeck[currentCard].answer : "Loading..."}
+                    {cards[currentCard]?.answer || "Loading..."}
                   </div>
                 </CardContent>
                 <CardFooter className="flex flex-col sm:flex-row justify-center gap-4 pb-8">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="gap-2 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 w-full sm:w-auto transition-colors group"
-                    onClick={() => handleCardRating('hard')}
-                  >
-                    <ThumbsDown className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
-                    <span>Didn't Know It</span>
-                    <span className="text-xs opacity-70 ml-1 bg-muted/50 px-1.5 rounded">1</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="gap-2 border-green-300 text-green-500 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950/50 w-full sm:w-auto transition-colors group"
-                    onClick={() => handleCardRating('easy')}
-                  >
-                    <ThumbsUp className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
-                    <span>Knew It</span>
-                    <span className="text-xs opacity-70 ml-1 bg-muted/50 px-1.5 rounded">2</span>
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3 w-full max-w-md">
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 transition-colors group"
+                      onClick={() => handleCardRating(1)}
+                    >
+                      <ThumbsDown className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+                      <span>Hard</span>
+                      <span className="text-xs opacity-70 ml-1 bg-muted/50 px-1.5 rounded">1</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/50 transition-colors group"
+                      onClick={() => handleCardRating(2)}
+                    >
+                      <span>Good</span>
+                      <span className="text-xs opacity-70 ml-1 bg-muted/50 px-1.5 rounded">2</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-green-300 text-green-600 hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-950/50 transition-colors group"
+                      onClick={() => handleCardRating(3)}
+                    >
+                      <span>Easy</span>
+                      <span className="text-xs opacity-70 ml-1 bg-muted/50 px-1.5 rounded">3</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/50 transition-colors group"
+                      onClick={() => handleCardRating(4)}
+                    >
+                      <ThumbsUp className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+                      <span>Perfect</span>
+                      <span className="text-xs opacity-70 ml-1 bg-muted/50 px-1.5 rounded">4</span>
+                    </Button>
+                  </div>
                 </CardFooter>
                 {/* Keyboard hints with improved styling */}
                 <div className="absolute bottom-3 right-3 flex gap-2">
-                  <kbd className="text-xs border rounded-md px-2 py-0.5 bg-muted/50 shadow-sm">1</kbd>
-                  <kbd className="text-xs border rounded-md px-2 py-0.5 bg-muted/50 shadow-sm">2</kbd>
+                  <kbd className="text-xs border rounded-md px-2 py-0.5 bg-muted/50 shadow-sm">1-4</kbd>
                 </div>
               </div>
             </Card>
@@ -596,12 +664,8 @@ export default function StudyDeckPage({ params }: { params: Promise<{ deck: stri
                 <span>next card</span>
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="px-2 py-0.5 rounded-md border shadow-sm mx-1 bg-background">1</kbd>
-                <span>mark hard</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="px-2 py-0.5 rounded-md border shadow-sm mx-1 bg-background">2</kbd>
-                <span>mark easy</span>
+                <kbd className="px-2 py-0.5 rounded-md border shadow-sm mx-1 bg-background">1-4</kbd>
+                <span>rate difficulty</span>
               </span>
             </p>
           </div>

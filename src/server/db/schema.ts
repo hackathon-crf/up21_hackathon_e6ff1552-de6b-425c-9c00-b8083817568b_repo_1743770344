@@ -46,6 +46,7 @@ export const users = createTable(
 
 export const userRelations = relations(users, ({ many }) => ({
   flashcards: many(flashcards),
+  flashcardDecks: many(flashcardDecks),
   studyStats: many(studyStats),
   chatSessions: many(chatSessions),
   gameLobbyHost: many(gameLobbies, { relationName: "host" }),
@@ -83,6 +84,37 @@ export const userPreferencesRelations = relations(userPreferences, ({ one }) => 
 }));
 
 /**
+ * Flashcard decks table
+ */
+export const flashcardDecks = createTable(
+  "flashcard_deck",
+  (t) => ({
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    description: text("description").default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("flashcard_deck_user_id_idx").on(t.userId),
+  ]
+);
+
+export const flashcardDeckRelations = relations(flashcardDecks, ({ one, many }) => ({
+  user: one(users, {
+    fields: [flashcardDecks.userId],
+    references: [users.id],
+  }),
+  flashcards: many(flashcards),
+}));
+
+/**
  * Flashcards table - core data structure
  */
 export const flashcards = createTable(
@@ -92,6 +124,8 @@ export const flashcards = createTable(
     userId: varchar("user_id", { length: 36 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    deckId: uuid("deck_id")
+      .references(() => flashcardDecks.id, { onDelete: "cascade" }),
     question: text("question").notNull(),
     answer: text("answer").notNull(),
     title: varchar("title", { length: 256 }).default(""),
@@ -111,6 +145,7 @@ export const flashcards = createTable(
   }),
   (t) => [
     index("flashcard_user_id_idx").on(t.userId),
+    index("flashcard_deck_id_idx").on(t.deckId),
     index("flashcard_next_review_idx").on(t.nextReview),
   ]
 );
@@ -119,6 +154,10 @@ export const flashcardRelations = relations(flashcards, ({ one, many }) => ({
   user: one(users, {
     fields: [flashcards.userId],
     references: [users.id],
+  }),
+  deck: one(flashcardDecks, {
+    fields: [flashcards.deckId],
+    references: [flashcardDecks.id],
   }),
   gameRounds: many(gameRounds),
 }));
