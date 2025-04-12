@@ -377,8 +377,6 @@ export const chatRouter = createTRPCRouter({
       permanent: z.boolean().optional().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
-      console.log("[chat.deleteSession] - Request received:", input);
-      
       const userId = ctx.auth.user?.id;
       if (!userId) {
         throw new TRPCError({
@@ -386,8 +384,6 @@ export const chatRouter = createTRPCRouter({
           message: "You must be logged in to delete chat sessions"
         });
       }
-      
-      console.log(`[chat.deleteSession] - Checking session ownership for: ${input.session_id}`);
       
       // Verify session belongs to user
       const session = await db.select()
@@ -399,40 +395,64 @@ export const chatRouter = createTRPCRouter({
         .limit(1);
       
       if (!session.length) {
-        console.log(`[chat.deleteSession] - Session not found or not owned by user: ${userId}`);
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Chat session not found"
+          message: "Chat session not found or you don't have permission to delete it"
         });
       }
       
       try {
-        if (input.permanent) {
-          // Hard delete - remove from database
-          console.log(`[chat.deleteSession] - Performing permanent deletion: ${input.session_id}`);
-          await db.delete(chatSessions)
-            .where(eq(chatSessions.id, input.session_id));
-        } else {
-          // Soft delete - update status to 'deleted'
-          console.log(`[chat.deleteSession] - Performing soft deletion: ${input.session_id}`);
-          await db.update(chatSessions)
-            .set({ 
-              status: 'deleted',
-              updated_at: new Date()
-            })
-            .where(eq(chatSessions.id, input.session_id));
+        // Use a transaction to ensure consistency
+        return await db.transaction(async (tx) => {
+          if (input.permanent) {
+            // First, delete the messages associated with this session
+            await tx.delete(chatMessages)
+              .where(eq(chatMessages.session_id, input.session_id));
+            
+            // Then delete the session itself
+            const result = await tx.delete(chatSessions)
+              .where(eq(chatSessions.id, input.session_id))
+              .returning({ id: chatSessions.id });
+              
+            if (!result.length) {
+              throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to permanently delete session"
+              });
+            }
+          } else {
+            // Soft delete - update status to 'deleted'
+            const result = await tx.update(chatSessions)
+              .set({ 
+                status: 'deleted',
+                updated_at: new Date()
+              })
+              .where(eq(chatSessions.id, input.session_id))
+              .returning({ id: chatSessions.id });
+              
+            if (!result.length) {
+              throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to move session to trash"
+              });
+            }
+          }
+          
+          return { 
+            success: true,
+            permanent: input.permanent,
+            id: input.session_id
+          };
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error; // Re-throw TRPCError
         }
         
-        return { 
-          success: true,
-          permanent: input.permanent,
-          id: input.session_id
-        };
-      } catch (error) {
-        console.error(`[chat.deleteSession] - Error deleting session:`, error);
+        console.error(`Error deleting session:`, error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to delete chat session",
+          message: "Failed to delete chat session due to a server error",
           cause: error
         });
       }

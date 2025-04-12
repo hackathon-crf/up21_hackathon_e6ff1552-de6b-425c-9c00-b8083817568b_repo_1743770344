@@ -31,19 +31,13 @@ const createContext = async (req: NextRequest) => {
         cookies: {
           get(name) {
             const cookie = req.cookies.get(name);
-            // Only log the main auth token cookie, not the indexed variations
-            if (!name.includes('.')) {
-              console.log(`[API] Reading cookie: ${name}, exists: ${!!cookie}`);
-            }
             return cookie?.value;
           },
           set(name, value, options) {
             // Not needed for API routes as we don't modify response
-            console.log(`[API] Cookie set not implemented: ${name}`);
           },
           remove(name, options) {
             // Not needed for API routes as we don't modify response
-            console.log(`[API] Cookie remove not implemented: ${name}`);
           },
         },
       }

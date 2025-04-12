@@ -11,7 +11,7 @@ export const appRouter = createTRPCRouter({
   chat: chatRouter,
   ai: aiRouter, // Registered aiRouter
   
-  // Simple healthcheck procedure
+  // Simple healthcheck procedure for server health monitoring
   healthcheck: publicProcedure.query(() => {
     return {
       status: "ok",
