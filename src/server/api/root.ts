@@ -1,4 +1,4 @@
-import { createTRPCRouter } from "./trpc";
+import { createTRPCRouter, publicProcedure } from "./trpc";
 import { chatRouter } from "./routers/chat";
 import { aiRouter } from "./routers/ai"; // Added import for aiRouter
 
@@ -10,6 +10,15 @@ import { aiRouter } from "./routers/ai"; // Added import for aiRouter
 export const appRouter = createTRPCRouter({
   chat: chatRouter,
   ai: aiRouter, // Registered aiRouter
+  
+  // Simple healthcheck procedure
+  healthcheck: publicProcedure.query(() => {
+    return {
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      version: "1.0.0"
+    };
+  }),
 });
 
 // export type definition of API

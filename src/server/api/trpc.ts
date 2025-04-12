@@ -132,12 +132,42 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 
 const isAuthed = t.middleware(({ ctx, next }) => {
+  console.log("[isAuthed middleware] Auth check with ctx:", {
+    hasAuth: !!ctx.auth,
+    hasUser: !!ctx.auth?.user,
+    userId: ctx.auth?.user?.id ? ctx.auth.user.id.slice(0, 8) + '...' : 'none',
+    env: process.env.NODE_ENV || 'unknown'
+  });
+
+  // TEMPORARY: Skip auth check during development, but with a safer approach
   if (!ctx.auth?.user) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "You must be logged in to access this resource",
-    });
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (isDevelopment) {
+      console.log("[isAuthed middleware] No user found, bypassing auth check for development environment");
+      // Use a consistent mock user ID that's clearly for development
+      return next({
+        ctx: {
+          auth: { 
+            user: { 
+              id: 'dev-user-' + new Date().toISOString().slice(0, 10),
+              email: 'dev@example.com',
+              role: 'user'
+            }, 
+            session: null 
+          },
+        },
+      });
+    } else {
+      console.log("[isAuthed middleware] No user found, authentication required");
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "You must be logged in to access this resource"
+      });
+    }
   }
+
+  // User is authenticated, proceed with the actual user data
   return next({
     ctx: {
       // Infers the `session` as non-nullable

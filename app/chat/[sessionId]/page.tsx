@@ -7,28 +7,28 @@ import { api } from "~/trpc/react";
 
 export default function ChatSessionPage() {
   const params = useParams();
-  const sessionId = params.sessionId as string;
+  const session_id = params.sessionId as string;
   
   // Check if session exists
   const sessionQuery = api.chat.getSession.useQuery(
-    { sessionId },
+    { session_id },
     {
-      enabled: !!sessionId,
+      enabled: !!session_id,
       retry: false,
       onSuccess: (data) => {
         console.log(`Successfully loaded session: ${data.id}, title: ${data.title}`);
       },
       onError: (error) => {
-        console.error(`Error loading session ${sessionId}:`, error);
+        console.error(`Error loading session ${session_id}:`, error);
       }
     }
   );
   
   useEffect(() => {
-    if (sessionId) {
-      console.log(`ChatSessionPage mounted with sessionId: ${sessionId}`);
+    if (session_id) {
+      console.log(`ChatSessionPage mounted with session_id: ${session_id}`);
     }
-  }, [sessionId]);
+  }, [session_id]);
   
-  return <ChatPage initialSessionId={sessionId} />;
+  return <ChatPage initialSessionId={session_id} />;
 }

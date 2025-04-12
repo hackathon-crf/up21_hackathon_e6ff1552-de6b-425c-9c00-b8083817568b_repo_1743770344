@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { AIService, ChatMessage } from "~/lib/services/ai";
 import { db } from "~/server/db";
-import { chatSession, chatMessage } from "~/server/db/schema";
+import { chatSessions, chatMessages } from "~/server/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     
     // Parse request
     const {
-      sessionId,
+      session_id,
       messages,
       provider = "mistral",
       model,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Create or identify session
-    let currentSessionId = sessionId;
+    let currentSessionId = session_id;
     let isNewSession = false;
     
     // Get user message (should be the last one)
@@ -107,12 +107,15 @@ export async function POST(request: NextRequest) {
         : firstLine || "New Chat";
       
       // Create session in DB
-      const newSession = await db.insert(chatSession).values({
+      const newSession = await db.insert(chatSessions).values({
         id: uuidv4(),
-        userId,
+        user_id: userId,
         title,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        position: 0,
+        is_pinned: false,
+        status: 'active',
+        created_at: new Date(),
+        updated_at: new Date(),
       }).returning();
       
       if (!newSession.length) {
@@ -129,10 +132,10 @@ export async function POST(request: NextRequest) {
       console.log(`[stream] Using existing session ID: ${currentSessionId}`);
       // Verify session belongs to user
       const session = await db.select()
-        .from(chatSession)
+        .from(chatSessions)
         .where(and(
-          eq(chatSession.id, currentSessionId),
-          eq(chatSession.userId, userId)
+          eq(chatSessions.id, currentSessionId),
+          eq(chatSessions.user_id, userId)
         ))
         .limit(1);
       
@@ -145,18 +148,18 @@ export async function POST(request: NextRequest) {
       }
       
       // Update session timestamp
-      await db.update(chatSession)
-        .set({ updatedAt: new Date() })
-        .where(eq(chatSession.id, currentSessionId));
+      await db.update(chatSessions)
+        .set({ updated_at: new Date() })
+        .where(eq(chatSessions.id, currentSessionId));
       
       console.log(`[stream] Session timestamp updated for session: ${currentSessionId}`);
     }
     
     // Save user message to database
     const userMsgId = uuidv4();
-    await db.insert(chatMessage).values({
+    await db.insert(chatMessages).values({
       id: userMsgId,
-      sessionId: currentSessionId,
+      session_id: currentSessionId,
       role: "user",
       content: userMessage.content,
       timestamp: new Date()
@@ -180,10 +183,10 @@ export async function POST(request: NextRequest) {
         try {
           // Send initial setup event with metadata
           const setupMessage = { 
-            sessionId: currentSessionId,
-            messageId: uuidv4()
+            session_id: currentSessionId,
+            message_id: uuidv4()
           };
-          console.log(`[stream] Sending setup event with session ID: ${setupMessage.sessionId}`);
+          console.log(`[stream] Sending setup event with session ID: ${setupMessage.session_id}`);
           controller.enqueue(formatSSE("setup", setupMessage));
           
           let fullResponse = "";
@@ -216,9 +219,9 @@ export async function POST(request: NextRequest) {
           // Save assistant message
           const assistantMsgId = uuidv4();
           console.log(`[stream] Saving assistant response with ID: ${assistantMsgId}`);
-          await db.insert(chatMessage).values({
+          await db.insert(chatMessages).values({
             id: assistantMsgId,
-            sessionId: currentSessionId,
+            session_id: currentSessionId,
             role: "assistant",
             content: fullResponse,
             timestamp: new Date(),
@@ -232,15 +235,15 @@ export async function POST(request: NextRequest) {
           
           // Send done event
           controller.enqueue(formatSSE("done", { 
-            messageId: assistantMsgId,
-            sessionId: currentSessionId // Include session ID in done event too
+            message_id: assistantMsgId,
+            session_id: currentSessionId // Include session ID in done event too
           }));
           
           // Verify messages were saved correctly
           const messages = await db.select()
-            .from(chatMessage)
-            .where(eq(chatMessage.sessionId, currentSessionId))
-            .orderBy(desc(chatMessage.timestamp))
+            .from(chatMessages)
+            .where(eq(chatMessages.session_id, currentSessionId))
+            .orderBy(desc(chatMessages.timestamp))
             .limit(5);
           
           console.log(`[stream] Session ${currentSessionId} now has ${messages.length} messages`);
@@ -260,8 +263,8 @@ export async function POST(request: NextRequest) {
           // Delete session if we created it and encountered an error
           if (isNewSession) {
             try {
-              await db.delete(chatSession)
-                .where(eq(chatSession.id, currentSessionId));
+              await db.delete(chatSessions)
+                .where(eq(chatSessions.id, currentSessionId));
               console.log(`[stream] Cleaned up session ${currentSessionId} after error`);
             } catch (deleteError) {
               console.error("[stream] Error cleaning up session after error:", deleteError);

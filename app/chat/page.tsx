@@ -43,10 +43,165 @@ interface ChatPageProps {
   initialSessionId?: string;
 }
 
-export default function ChatPage({ initialSessionId }: ChatPageProps = {}) {
+// Wrap the main component in an error boundary
+export default function ChatPageWrapper({ initialSessionId }: ChatPageProps = {}) {
+  console.log('CHAT PAGE WRAPPER MOUNTING');
+  
+  // Use error state to catch and handle any rendering errors
+  const [hasError, setHasError] = useState(false);
+  
+  useEffect(() => {
+    try {
+      // Add a visual marker to show the wrapper loaded
+      const div = document.createElement('div');
+      div.style.position = 'fixed';
+      div.style.top = '0'; 
+      div.style.right = '0';
+      div.style.backgroundColor = 'purple';
+      div.style.color = 'white';
+      div.style.padding = '5px';
+      div.style.zIndex = '10000';
+      div.textContent = 'WRAPPER LOADED';
+      document.body.appendChild(div);
+      
+      // Set global error handler
+      window.onerror = (message, source, lineno, colno, error) => {
+        console.error('GLOBAL ERROR:', { message, source, lineno, colno });
+        setHasError(true);
+        
+        // Add a visual error indicator
+        try {
+          const errorDiv = document.createElement('div');
+          errorDiv.style.position = 'fixed';
+          errorDiv.style.bottom = '0';
+          errorDiv.style.left = '0';
+          errorDiv.style.right = '0';
+          errorDiv.style.backgroundColor = 'red';
+          errorDiv.style.color = 'white';
+          errorDiv.style.padding = '10px';
+          errorDiv.style.zIndex = '10000';
+          errorDiv.textContent = `GLOBAL ERROR: ${message} at ${source}:${lineno}:${colno}`;
+          document.body.appendChild(errorDiv);
+        } catch (e) {
+          // Last resort
+          alert(`GLOBAL ERROR: ${message}`);
+        }
+        
+        // Try to load emergency fallback
+        import('./emergency-fallback.tsx').then(module => {
+          try {
+            module.injectEmergencyFallback();
+          } catch (e) {
+            console.error('Failed to inject fallback:', e);
+          }
+        }).catch(e => {
+          console.error('Failed to import fallback:', e);
+        });
+        
+        return true; // Prevent default error handler
+      };
+    } catch (e) {
+      console.error('Error in wrapper:', e);
+      setHasError(true);
+    }
+  }, []);
+  
+  if (hasError) {
+    return (
+      <div style={{ padding: '20px' }}>
+        <h1>Something went wrong</h1>
+        <p>There was an error rendering the chat page.</p>
+        <button onClick={() => window.location.reload()}>
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
+  
+  // Render the actual component
+  try {
+    return <ChatPage initialSessionId={initialSessionId} />;
+  } catch (e) {
+    console.error('Error rendering ChatPage:', e);
+    setHasError(true);
+    return null;
+  }
+}
+
+function ChatPage({ initialSessionId }: ChatPageProps = {}) {
+  // Basic debug
+  console.log('CHAT PAGE COMPONENT MOUNTING');
+  console.log('initialSessionId:', initialSessionId);
+  
   // Router for navigation
   const router = useRouter();
   const pathname = usePathname();
+  
+  // Add component-level error boundary with diagnostics
+  useEffect(() => {
+    try {
+      console.log('CHAT PAGE MOUNTED WITH PATH:', pathname);
+      
+      // Global error handling
+      const originalConsoleError = console.error;
+      console.error = function(...args) {
+        originalConsoleError.apply(console, args);
+        
+        // Log to document for visibility in case console is not working
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.top = '0';
+        errorDiv.style.left = '0';
+        errorDiv.style.right = '0';
+        errorDiv.style.backgroundColor = 'red';
+        errorDiv.style.color = 'white';
+        errorDiv.style.padding = '10px';
+        errorDiv.style.zIndex = '10000';
+        errorDiv.textContent = `ERROR: ${args.map(a => String(a)).join(' ')}`;
+        document.body.appendChild(errorDiv);
+      };
+      
+      // Report on any errors
+      window.onerror = function(message, source, lineno, colno, error) {
+        console.log('GLOBAL ERROR:', { message, source, lineno, colno });
+        return false;
+      };
+      
+      // Run diagnostics
+      import('./test-debug.js').then(module => {
+        console.log('Diagnostic module loaded');
+        try {
+          const result = module.runDiagnostics();
+          console.log('Diagnostics result:', result);
+          
+          // Create a mock API client for emergency backup
+          (window as any).__mockTRPC = module.createMockClient();
+          (window as any).__mockSuperJSON = module.mockSuperJSON();
+          
+          console.log('Mock clients created for emergency');
+        } catch (e) {
+          console.error('Error running diagnostics:', e);
+        }
+      }).catch(err => {
+        console.error('Failed to load diagnostics module:', err);
+      });
+      
+      // Visual indicator of successful mount
+      const statusDiv = document.createElement('div');
+      statusDiv.style.position = 'fixed';
+      statusDiv.style.bottom = '10px';
+      statusDiv.style.right = '10px';
+      statusDiv.style.backgroundColor = 'green';
+      statusDiv.style.color = 'white';
+      statusDiv.style.padding = '5px 10px';
+      statusDiv.style.borderRadius = '5px';
+      statusDiv.style.zIndex = '10000';
+      statusDiv.textContent = `React component mounted at ${new Date().toTimeString().split(' ')[0]}`;
+      document.body.appendChild(statusDiv);
+    } catch (e) {
+      document.body.innerHTML = `<div style="color:red">FATAL ERROR: ${e.message}</div>`;
+    }
+  }, [pathname]);
   
   // Chat state
   const [sessionId, setSessionId] = useState<string | undefined>(initialSessionId);
@@ -114,16 +269,16 @@ export default function ChatPage({ initialSessionId }: ChatPageProps = {}) {
   const sendMessageMutation = api.chat.sendMessage.useMutation({
     onSuccess: (data) => {
       if (!sessionId) {
-        setSessionId(data.sessionId);
+        setSessionId(data.session_id);
         // Update URL without full reload
-        router.push(`/chat/${data.sessionId}`, { scroll: false });
+        router.push(`/chat/${data.session_id}`, { scroll: false });
       }
       
       // Update messages - remove loading state and add response
       setMessages((prev) => [
         ...prev.filter(msg => !msg.isLoading),
         {
-          id: data.assistantMessageId,
+          id: data.assistant_message_id,
           role: "assistant",
           content: data.response,
           timestamp: new Date(),
@@ -257,7 +412,7 @@ export default function ChatPage({ initialSessionId }: ChatPageProps = {}) {
       } else {
         // Use tRPC mutation for non-streaming response
         sendMessageMutation.mutate({
-          sessionId,
+          session_id: sessionId,
           content: userMessage.content,
           provider,
           model,
@@ -327,7 +482,7 @@ export default function ChatPage({ initialSessionId }: ChatPageProps = {}) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId,
+          session_id: sessionId,
           messages: messageHistory,
           provider,
           model,
