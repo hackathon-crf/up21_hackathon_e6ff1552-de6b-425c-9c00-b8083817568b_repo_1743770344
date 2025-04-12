@@ -65,9 +65,9 @@ const mockSessionBase = {
 // -----------------------------
 
 export default function LobbyPage({ params }: { params: LobbyParams }) {
-  // Properly unwrap params if needed, or use directly if your Next.js version allows
-  // const unwrappedParams = React.use(params as any) as LobbyParams; // Use if necessary
-  return <LobbyContent gameId={params.id} />
+  // Unwrap params using React.use() as required in Next.js 15
+  const unwrappedParams = React.use(params as any) as LobbyParams;
+  return <LobbyContent gameId={unwrappedParams.id} />
 }
 
 function LobbyContent({ gameId }: { gameId: string }) {

@@ -18,6 +18,11 @@ import { ScrollArea } from "~/components/ui/scroll-area"
 import { Badge } from "~/components/ui/badge"
 import { ChatHeader } from "./components/chat-header"
 import { cn } from "~/lib/utils"
+import { api } from "~/trpc/react"
+import { generateId, formatTime, formatSourceDate } from "./utils"
+import { useSettingsStore } from "~/stores/settings"
+import { usePathname, useRouter } from "next/navigation"
+import { toast } from "~/hooks/use-toast"
 
 interface Message {
   id: string
@@ -25,6 +30,7 @@ interface Message {
   content: string
   timestamp: Date
   isLoading?: boolean
+  isStreaming?: boolean
   sources?: {
     title: string
     url: string
@@ -33,8 +39,17 @@ interface Message {
   }[]
 }
 
-export default function ChatPage() {
-  // Using dark mode by default to match the rest of the site
+interface ChatPageProps {
+  initialSessionId?: string;
+}
+
+export default function ChatPage({ initialSessionId }: ChatPageProps = {}) {
+  // Router for navigation
+  const router = useRouter();
+  const pathname = usePathname();
+  
+  // Chat state
+  const [sessionId, setSessionId] = useState<string | undefined>(initialSessionId);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -43,123 +58,422 @@ export default function ChatPage() {
         "Hello! I'm your Red Cross AI assistant. How can I help with your first aid and emergency response training today?",
       timestamp: new Date(),
     },
-  ])
-  const [input, setInput] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(true)
-  const [expandedSources, setExpandedSources] = useState<string | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  ]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
+  const [expandedSources, setExpandedSources] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Get settings from store
+  const { 
+    provider, 
+    model, 
+    temperature, 
+    maxTokens,
+    streamingEnabled,
+    ragEnabled 
+  } = useSettingsStore();
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // Focus input on load
   useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+    inputRef.current?.focus();
+  }, []);
 
   // Add a smooth scroll effect when container is resized
   useEffect(() => {
     const observer = new ResizeObserver(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    })
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    });
     
     if (containerRef.current) {
-      observer.observe(containerRef.current)
+      observer.observe(containerRef.current);
     }
     
-    return () => observer.disconnect()
-  }, [])
-
-  const handleSend = () => {
-    if (input.trim()) {
-      // Hide welcome banner when user sends first message
-      if (showWelcomeBanner) {
-        setShowWelcomeBanner(false)
+    return () => observer.disconnect();
+  }, []);
+  
+  // Extract session ID from URL if not provided as prop
+  useEffect(() => {
+    if (!initialSessionId && pathname.includes('/chat/') && pathname !== '/chat/settings') {
+      const urlSessionId = pathname.split('/').pop();
+      if (urlSessionId && urlSessionId !== sessionId) {
+        setSessionId(urlSessionId);
+      }
+    }
+  }, [initialSessionId, pathname, sessionId]);
+  
+  // tRPC mutations and queries
+  const sendMessageMutation = api.chat.sendMessage.useMutation({
+    onSuccess: (data) => {
+      if (!sessionId) {
+        setSessionId(data.sessionId);
+        // Update URL without full reload
+        router.push(`/chat/${data.sessionId}`, { scroll: false });
       }
       
-      // Generate unique ID for messages
-      const generateId = () => Math.random().toString(36).substring(2, 11)
+      // Update messages - remove loading state and add response
+      setMessages((prev) => [
+        ...prev.filter(msg => !msg.isLoading),
+        {
+          id: data.assistantMessageId,
+          role: "assistant",
+          content: data.response,
+          timestamp: new Date(),
+          // Note: Sources would come from the backend in a real implementation
+          // Currently, we'll leave sources empty as we're not mocking them
+        }
+      ]);
+      
+      setIsTyping(false);
+    },
+    onError: (error) => {
+      console.error("Error sending message:", error);
+      setIsTyping(false);
+      
+      // Show error message
+      setMessages((prev) => [
+        ...prev.filter(msg => !msg.isLoading),
+        {
+          id: `error-${generateId()}`,
+          role: "assistant",
+          content: `Sorry, I encountered an error: ${error.message}`,
+          timestamp: new Date(),
+        }
+      ]);
+      
+      toast({
+        title: "Error",
+        description: `Failed to generate response: ${error.message}`,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Fetch chat history when sessionId changes
+  const messagesQuery = api.chat.getMessages.useQuery(
+    { sessionId: sessionId || '' }, // Provide empty string as fallback (query is disabled when sessionId is falsy)
+    { 
+      enabled: !!sessionId, // Only enable query when sessionId exists
+      refetchOnMount: true, // This ensures it runs when session ID is updated
+      refetchOnWindowFocus: false,
+      onSuccess: (data) => {
+        console.log(`Successfully fetched ${data.length} messages for session ${sessionId}`);
+        if (data && data.length > 0) {
+          // Only update if we have messages and it's not the initial welcome message
+          const formattedMessages = data.map(msg => ({
+            id: msg.id,
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+            timestamp: new Date(msg.timestamp),
+            sources: msg.sources ? msg.sources as any : undefined,
+          }));
+          
+          setMessages(formattedMessages);
+          console.log("Updated messages from database:", formattedMessages.length);
+          
+          // Hide welcome banner since we have history
+          setShowWelcomeBanner(false);
+        } else {
+          console.log("No messages found for this session or empty result");
+        }
+      },
+      onError: (error) => {
+        console.error("Error fetching chat history:", error);
+        toast({
+          title: "Error",
+          description: `Failed to load chat history: ${error.message}`,
+          variant: "destructive"
+        });
+      }
+    }
+  );
 
-      // Add user message
-      const userMessage: Message = {
-        id: generateId(),
+  // Effect to trigger refetch when sessionId changes
+  useEffect(() => {
+    if (sessionId) {
+      console.log(`Session ID changed or initialized: ${sessionId}, triggering message fetch`);
+      messagesQuery.refetch();
+    }
+  }, [sessionId, messagesQuery]);
+  
+  // Handle sending messages
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    
+    // Hide welcome banner
+    if (showWelcomeBanner) {
+      setShowWelcomeBanner(false);
+    }
+    
+    // Check if API key is available for selected provider
+    const apiKey = localStorage.getItem(`${provider}_api_key`);
+    if (!apiKey) {
+      toast({
+        title: "API Key Required",
+        description: `Please add your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in settings before sending messages.`,
+        variant: "destructive"
+      });
+      
+      // Redirect to settings
+      router.push('/chat/settings');
+      return;
+    }
+    
+    const userMessage: Message = {
+      id: `user-${generateId()}`,
+      role: "user",
+      content: input,
+      timestamp: new Date(),
+    };
+    
+    // Add user message to UI
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+    
+    // Add loading indicator
+    const loadingMessage: Message = {
+      id: `loading-${generateId()}`,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      isLoading: true
+    };
+    
+    setMessages(prev => [...prev, loadingMessage]);
+    setIsTyping(true);
+    
+    try {
+      if (streamingEnabled) {
+        // Use streaming endpoint
+        await handleStreamingResponse(userMessage.content);
+      } else {
+        // Use tRPC mutation for non-streaming response
+        sendMessageMutation.mutate({
+          sessionId,
+          content: userMessage.content,
+          provider,
+          model,
+          temperature,
+          maxTokens,
+          ragEnabled
+        });
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setIsTyping(false);
+      setMessages(prev => [
+        ...prev.filter(msg => !msg.isLoading),
+        {
+          id: `error-${generateId()}`,
+          role: "assistant",
+          content: "Sorry, I encountered an error while processing your request.",
+          timestamp: new Date(),
+        }
+      ]);
+      
+      toast({
+        title: "Error",
+        description: `Failed to send message: ${error instanceof Error ? error.message : "Unknown error"}`,
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Stream response using fetch API
+  const handleStreamingResponse = async (content: string) => {
+    try {
+      // Create unique ID for the response message
+      const responseId = `stream-${generateId()}`;
+      let tempSessionId = sessionId;
+      
+      // Get chat history for context
+      let messageHistory = messages
+        .filter(m => !m.isLoading && !m.isStreaming)
+        .map(m => ({
+          role: m.role,
+          content: m.content
+        }));
+      
+      // Add the current message
+      messageHistory.push({
         role: "user",
-        content: input,
-        timestamp: new Date(),
+        content
+      });
+      
+      // Initialize the response message
+      setMessages(prev => prev.map(msg => 
+        msg.isLoading ? {
+          ...msg,
+          id: responseId,
+          isLoading: false,
+          isStreaming: true,
+          content: "" // Start with empty content
+        } : msg
+      ));
+      
+      // Get the API key from localStorage for development mode
+      const apiKey = localStorage.getItem(`${provider}_api_key`);
+      
+      // Make streaming request
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          messages: messageHistory,
+          provider,
+          model,
+          temperature,
+          maxTokens,
+          // Include API key for development mode (will only be used if server env vars aren't set)
+          apiKey
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`HTTP error ${response.status}: ${errorData?.error || response.statusText}`);
+      }
+      
+      // Use proper EventSource handling for SSE
+      if (!response.body) {
+        throw new Error("Response body is null");
+      }
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamedContent = "";
+      
+      // Process the stream
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        // Decode the chunk and add to buffer
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete events in the buffer
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || ""; // Keep the last incomplete event in the buffer
+        
+        for (const event of events) {
+          if (!event.trim()) continue;
+          
+          // Parse event type and data
+          const lines = event.split("\n");
+          let eventType = "";
+          let eventData = "";
+          
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              eventType = line.slice(7);
+            } else if (line.startsWith("data: ")) {
+              eventData = line.slice(6);
+            }
+          }
+          
+          if (!eventType || !eventData) continue;
+          
+          try {
+            const parsedData = JSON.parse(eventData);
+            
+            // Handle different event types
+            switch (eventType) {
+              case "setup":
+                if (parsedData.sessionId) {
+                  console.log(`Received session ID from server: ${parsedData.sessionId}`);
+                  tempSessionId = parsedData.sessionId;
+                }
+                break;
+                
+              case "text":
+                if (parsedData.content) {
+                  streamedContent += parsedData.content;
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === responseId ? { ...msg, content: streamedContent } : msg
+                  ));
+                }
+                break;
+                
+              case "done":
+                // Message is complete
+                console.log("Stream completed successfully");
+                break;
+                
+              case "error":
+                throw new Error(parsedData.error || "Unknown error in stream");
+            }
+          } catch (parseError) {
+            console.error("Error parsing SSE data:", parseError);
+          }
+        }
+      }
+      
+      // Finalize streaming
+      setMessages(prev => prev.map(msg => 
+        msg.id === responseId ? { ...msg, isStreaming: false } : msg
+      ));
+      
+      setIsTyping(false);
+      
+      // Always update the session ID if we got one from the server
+      if (tempSessionId && tempSessionId !== sessionId) {
+        console.log(`Setting session ID: ${tempSessionId}`);
+        setSessionId(tempSessionId);
+        
+        // Update the URL if needed
+        if (!pathname.includes(tempSessionId)) {
+          router.push(`/chat/${tempSessionId}`, { scroll: false });
+        }
+        
+        // Small delay to ensure state is updated before any subsequent queries
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      setMessages((prev) => [...prev, userMessage])
-      setInput("")
-
-      // Add loading message
-      const loadingMessageId = generateId()
-      setMessages((prev) => [
-        ...prev,
+      // Refetch messages after streaming completes
+      if (tempSessionId) {
+        console.log("Refetching messages after streaming completes");
+        messagesQuery.refetch();
+      }
+      
+    } catch (error) {
+      console.error("Streaming error:", error);
+      
+      // Show error message
+      setMessages(prev => [
+        ...prev.filter(msg => !msg.isLoading && !msg.isStreaming),
         {
-          id: loadingMessageId,
+          id: `error-${generateId()}`,
           role: "assistant",
-          content: "",
-          timestamp: new Date(),
-          isLoading: true,
-        },
-      ])
-
-      // Simulate AI typing
-      setIsTyping(true)
-
-      // Simulate AI response with RAG sources after a delay
-      setTimeout(() => {
-        setIsTyping(false)
-        setMessages((prev) =>
-          prev
-            .filter((msg) => msg.id !== loadingMessageId)
-            .concat({
-              id: generateId(),
-              role: "assistant",
-              content:
-                "When treating a severe bleeding wound, apply direct pressure with a clean cloth or bandage. If blood soaks through, add another layer without removing the first. If possible, elevate the wound above the heart and use pressure points if necessary. Apply a tourniquet only as a last resort when bleeding cannot be controlled by other methods.",
-              timestamp: new Date(),
-              sources: [
-                {
-                  title: "Red Cross First Aid Manual",
-                  url: "https://redcross.org/firstaid/bleeding",
-                  date: "2023-09-15",
-                  type: "manual"
-                },
-                {
-                  title: "Emergency Response Guidelines",
-                  url: "https://redcross.org/emergency/bleeding-control",
-                  date: "2024-01-20",
-                  type: "guideline"
-                },
-                {
-                  title: "Medical Journal of Emergency Care: Wound Treatment",
-                  url: "https://med-journal.org/emergency/wounds",
-                  date: "2023-11-05",
-                  type: "publication"
-                }
-              ],
-            }),
-        )
-      }, 2000)
+          content: `Sorry, I encountered an error while generating a response: ${error instanceof Error ? error.message : "Unknown error"}`,
+          timestamp: new Date()
+        }
+      ]);
+      
+      setIsTyping(false);
+      
+      toast({
+        title: "Streaming Error",
+        description: error instanceof Error ? error.message : "Failed to stream response",
+        variant: "destructive"
+      });
     }
-  }
-
+  };
+  
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+      e.preventDefault();
+      handleSend();
     }
-  }
-
-  // Format timestamp
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
   // Get source icon based on type
@@ -175,19 +489,7 @@ export default function ChatPage() {
         return <FileText className="h-3.5 w-3.5" />;
     }
   }
-
-  // Format source date
-  const formatSourceDate = (dateString?: string) => {
-    if (!dateString) return "";
-    
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric'
-    });
-  }
-
+  
   // Toggle source expansion for a specific message
   const toggleSourceExpansion = (messageId: string) => {
     setExpandedSources((prev) => (prev === messageId ? null : messageId))

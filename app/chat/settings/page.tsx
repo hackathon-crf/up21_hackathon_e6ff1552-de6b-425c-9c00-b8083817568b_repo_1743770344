@@ -1,8 +1,9 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo } from "react";
+import { api } from "~/trpc/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Book,
@@ -13,6 +14,7 @@ import {
   Globe,
   HardDrive,
   Key,
+  Lock,
   MessageSquare,
   Plus,
   Save,
@@ -25,22 +27,39 @@ import {
   Sparkles,
   ChevronRight,
   Info,
-} from "lucide-react"
+} from "lucide-react";
 
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { Textarea } from "~/components/ui/textarea"
-import { Switch } from "~/components/ui/switch"
-import { Slider } from "~/components/ui/slider"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Badge } from "~/components/ui/badge"
-import { Separator } from "~/components/ui/separator"
-import { DashboardHeader } from "~/components/dashboard-header"
-import { useToast } from "~/hooks/use-toast"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
+import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Textarea } from "~/components/ui/textarea";
+import { Switch } from "~/components/ui/switch";
+import { Slider } from "~/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import { Badge } from "~/components/ui/badge";
+import { Separator } from "~/components/ui/separator";
+import { DashboardHeader } from "~/components/dashboard-header";
+import { useToast } from "~/hooks/use-toast";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "~/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,56 +70,112 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "~/components/ui/alert-dialog"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { motion } from "framer-motion"
+} from "~/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
+import { motion } from "framer-motion";
 
 export default function AIAssistantSettingsPage() {
-  const router = useRouter()
-  const { toast } = useToast()
+  const router = useRouter();
+  const { toast } = useToast();
 
   // Model Settings State
-  const [selectedModel, setSelectedModel] = useState("gpt-4o")
-  const [temperature, setTemperature] = useState(0.7)
-  const [maxTokens, setMaxTokens] = useState(4000)
-  const [apiKey, setApiKey] = useState("")
-  const [showApiKey, setShowApiKey] = useState(false)
+  const [selectedProvider, setSelectedProvider] = useState<string>("openai");
+  const [availableModels, setAvailableModels] = useState<
+    Array<{ id: string; name: string; contextLength?: number }>
+  >([]);
+  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o");
+  const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
+  const [temperature, setTemperature] = useState(0.7);
+  const [maxTokens, setMaxTokens] = useState(4000);
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  // Only fetch provider list automatically
+  const { data: providers } = api.ai.getProviders.useQuery();
+
+  // State for API error messages
+  const [apiErrorMessage, setApiErrorMessage] = useState<string | null>(null);
+
+  // Check if API key is provided and valid
+  const hasValidApiKey = useMemo(() => apiKey.trim().length > 0, [apiKey]);
+
+  // Check for stored API key when provider changes
+  useEffect(() => {
+    // Clear available models when provider changes
+    setAvailableModels([]);
+    setSelectedModel("");
+    
+    // Clear API error message
+    setApiErrorMessage(null);
+    
+    // Check if there's a stored API key for this provider
+    const storedApiKey = localStorage.getItem(`${selectedProvider}_api_key`);
+    if (storedApiKey) {
+      // If API key exists, set it in the state
+      setApiKey(storedApiKey);
+    } else {
+      // If no API key, clear current input
+      setApiKey("");
+    }
+  }, [selectedProvider]);
 
   // Prompt Settings State
   const [defaultPrompt, setDefaultPrompt] = useState(
     "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.",
-  )
-  const [promptPrefix, setPromptPrefix] = useState("")
+  );
+  const [promptPrefix, setPromptPrefix] = useState("");
   const [promptSuffix, setPromptSuffix] = useState(
     "Please provide reliable information based on official Red Cross guidelines.",
-  )
+  );
   const [savedPrompts, setSavedPrompts] = useState([
-    { id: 1, name: "First Aid Basics", prompt: "Explain basic first aid procedures for common injuries." },
-    { id: 2, name: "CPR Instructions", prompt: "Provide step-by-step CPR instructions for adults." },
-    { id: 3, name: "Emergency Response", prompt: "Outline emergency response protocols for disaster situations." },
-  ])
-  const [newPromptName, setNewPromptName] = useState("")
-  const [newPromptContent, setNewPromptContent] = useState("")
+    {
+      id: 1,
+      name: "First Aid Basics",
+      prompt: "Explain basic first aid procedures for common injuries.",
+    },
+    {
+      id: 2,
+      name: "CPR Instructions",
+      prompt: "Provide step-by-step CPR instructions for adults.",
+    },
+    {
+      id: 3,
+      name: "Emergency Response",
+      prompt: "Outline emergency response protocols for disaster situations.",
+    },
+  ]);
+  const [newPromptName, setNewPromptName] = useState("");
+  const [newPromptContent, setNewPromptContent] = useState("");
 
   // RAG Settings State
-  const [ragEnabled, setRagEnabled] = useState(true)
-  const [chunkSize, setChunkSize] = useState(1000)
-  const [similarityThreshold, setSimilarityThreshold] = useState(0.75)
+  const [ragEnabled, setRagEnabled] = useState(true);
+  const [chunkSize, setChunkSize] = useState(1000);
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.75);
   const [dataSources, setDataSources] = useState([
     { id: 1, name: "Red Cross First Aid Manual", type: "pdf", enabled: true },
-    { id: 2, name: "Emergency Response Guidelines", type: "pdf", enabled: true },
+    {
+      id: 2,
+      name: "Emergency Response Guidelines",
+      type: "pdf",
+      enabled: true,
+    },
     { id: 3, name: "CPR & AED Training Materials", type: "pdf", enabled: true },
-  ])
-  const [newDataSource, setNewDataSource] = useState("")
-  const [newDataSourceType, setNewDataSourceType] = useState("pdf")
+  ]);
+  const [newDataSource, setNewDataSource] = useState("");
+  const [newDataSourceType, setNewDataSourceType] = useState("pdf");
 
   // Other Settings State
-  const [darkMode, setDarkMode] = useState(false)
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [autoSaveHistory, setAutoSaveHistory] = useState(true)
-  const [historyRetentionDays, setHistoryRetentionDays] = useState(30)
-  const [streamingEnabled, setStreamingEnabled] = useState(true)
-  const [citationsEnabled, setCitationsEnabled] = useState(true)
+  const [darkMode, setDarkMode] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [autoSaveHistory, setAutoSaveHistory] = useState(true);
+  const [historyRetentionDays, setHistoryRetentionDays] = useState(30);
+  const [streamingEnabled, setStreamingEnabled] = useState(true);
+  const [citationsEnabled, setCitationsEnabled] = useState(true);
 
   // Handle save settings
   const handleSaveSettings = () => {
@@ -108,8 +183,8 @@ export default function AIAssistantSettingsPage() {
     toast({
       title: "Settings saved",
       description: "Your AI Assistant settings have been updated successfully.",
-    })
-  }
+    });
+  };
 
   // Handle adding a new saved prompt
   const handleAddSavedPrompt = () => {
@@ -118,35 +193,35 @@ export default function AIAssistantSettingsPage() {
         title: "Error",
         description: "Please provide both a name and content for the prompt.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     const newPrompt = {
       id: savedPrompts.length + 1,
       name: newPromptName,
       prompt: newPromptContent,
-    }
+    };
 
-    setSavedPrompts([...savedPrompts, newPrompt])
-    setNewPromptName("")
-    setNewPromptContent("")
+    setSavedPrompts([...savedPrompts, newPrompt]);
+    setNewPromptName("");
+    setNewPromptContent("");
 
     toast({
       title: "Prompt saved",
       description: "Your prompt template has been saved successfully.",
-    })
-  }
+    });
+  };
 
   // Handle deleting a saved prompt
   const handleDeleteSavedPrompt = (id: number) => {
-    setSavedPrompts(savedPrompts.filter((prompt) => prompt.id !== id))
+    setSavedPrompts(savedPrompts.filter((prompt) => prompt.id !== id));
 
     toast({
       title: "Prompt deleted",
       description: "The prompt template has been removed.",
-    })
-  }
+    });
+  };
 
   // Handle adding a new data source
   const handleAddDataSource = () => {
@@ -155,8 +230,8 @@ export default function AIAssistantSettingsPage() {
         title: "Error",
         description: "Please provide a name for the data source.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     const newSource = {
@@ -164,64 +239,70 @@ export default function AIAssistantSettingsPage() {
       name: newDataSource,
       type: newDataSourceType,
       enabled: true,
-    }
+    };
 
-    setDataSources([...dataSources, newSource])
-    setNewDataSource("")
+    setDataSources([...dataSources, newSource]);
+    setNewDataSource("");
 
     toast({
       title: "Data source added",
       description: "The new data source has been added successfully.",
-    })
-  }
+    });
+  };
 
   // Handle toggling a data source
   const handleToggleDataSource = (id: number) => {
-    setDataSources(dataSources.map((source) => (source.id === id ? { ...source, enabled: !source.enabled } : source)))
-  }
+    setDataSources(
+      dataSources.map((source) =>
+        source.id === id ? { ...source, enabled: !source.enabled } : source,
+      ),
+    );
+  };
 
   // Handle deleting a data source
   const handleDeleteDataSource = (id: number) => {
-    setDataSources(dataSources.filter((source) => source.id !== id))
+    setDataSources(dataSources.filter((source) => source.id !== id));
 
     toast({
       title: "Data source removed",
       description: "The data source has been removed successfully.",
-    })
-  }
+    });
+  };
 
   // Handle resetting all settings to defaults
   const handleResetSettings = () => {
     // Reset model settings
-    setSelectedModel("gpt-4o")
-    setTemperature(0.7)
-    setMaxTokens(4000)
+    setSelectedModel("gpt-4o");
+    setTemperature(0.7);
+    setMaxTokens(4000);
 
     // Reset prompt settings
     setDefaultPrompt(
       "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.",
-    )
-    setPromptPrefix("")
-    setPromptSuffix("Please provide reliable information based on official Red Cross guidelines.")
+    );
+    setPromptPrefix("");
+    setPromptSuffix(
+      "Please provide reliable information based on official Red Cross guidelines.",
+    );
 
     // Reset RAG settings
-    setRagEnabled(true)
-    setChunkSize(1000)
-    setSimilarityThreshold(0.75)
+    setRagEnabled(true);
+    setChunkSize(1000);
+    setSimilarityThreshold(0.75);
 
     // Reset other settings
-    setDarkMode(false)
-    setNotificationsEnabled(true)
-    setAutoSaveHistory(true)
-    setHistoryRetentionDays(30)
-    setStreamingEnabled(true)
-    setCitationsEnabled(true)
+    setDarkMode(false);
+    setNotificationsEnabled(true);
+    setAutoSaveHistory(true);
+    setHistoryRetentionDays(30);
+    setStreamingEnabled(true);
+    setCitationsEnabled(true);
 
     toast({
       title: "Settings reset",
       description: "All settings have been reset to their default values.",
-    })
-  }
+    });
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-background/80">
@@ -243,7 +324,10 @@ export default function AIAssistantSettingsPage() {
             <div className="flex gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="transition-all hover:bg-destructive/10">
+                  <Button
+                    variant="outline"
+                    className="transition-all hover:bg-destructive/10"
+                  >
                     Reset to Defaults
                   </Button>
                 </AlertDialogTrigger>
@@ -251,7 +335,8 @@ export default function AIAssistantSettingsPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Reset all settings?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will reset all AI Assistant settings to their default values. This action cannot be undone.
+                      This will reset all AI Assistant settings to their default
+                      values. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -266,7 +351,10 @@ export default function AIAssistantSettingsPage() {
                 </AlertDialogContent>
               </AlertDialog>
 
-              <Button onClick={handleSaveSettings} className="relative overflow-hidden group">
+              <Button
+                onClick={handleSaveSettings}
+                className="relative overflow-hidden group"
+              >
                 <span className="relative z-10 flex items-center">
                   <Save className="mr-2 h-4 w-4" />
                   Save Settings
@@ -278,22 +366,34 @@ export default function AIAssistantSettingsPage() {
 
           <Tabs defaultValue="model" className="space-y-4">
             <TabsList className="grid grid-cols-2 md:grid-cols-4 p-1 bg-muted/50 backdrop-blur-sm">
-              <TabsTrigger value="model" className="flex items-center gap-2 data-[state=active]:bg-background">
+              <TabsTrigger
+                value="model"
+                className="flex items-center gap-2 data-[state=active]:bg-background"
+              >
                 <Brain className="h-4 w-4" />
                 <span className="hidden md:inline">Model Settings</span>
                 <span className="md:hidden">Model</span>
               </TabsTrigger>
-              <TabsTrigger value="prompt" className="flex items-center gap-2 data-[state=active]:bg-background">
+              <TabsTrigger
+                value="prompt"
+                className="flex items-center gap-2 data-[state=active]:bg-background"
+              >
                 <MessageSquare className="h-4 w-4" />
                 <span className="hidden md:inline">Prompt Settings</span>
                 <span className="md:hidden">Prompt</span>
               </TabsTrigger>
-              <TabsTrigger value="rag" className="flex items-center gap-2 data-[state=active]:bg-background">
+              <TabsTrigger
+                value="rag"
+                className="flex items-center gap-2 data-[state=active]:bg-background"
+              >
                 <Database className="h-4 w-4" />
                 <span className="hidden md:inline">RAG Settings</span>
                 <span className="md:hidden">RAG</span>
               </TabsTrigger>
-              <TabsTrigger value="other" className="flex items-center gap-2 data-[state=active]:bg-background">
+              <TabsTrigger
+                value="other"
+                className="flex items-center gap-2 data-[state=active]:bg-background"
+              >
                 <Settings className="h-4 w-4" />
                 <span className="hidden md:inline">Other Settings</span>
                 <span className="md:hidden">Other</span>
@@ -309,53 +409,354 @@ export default function AIAssistantSettingsPage() {
                     AI Model Configuration
                   </CardTitle>
                   <CardDescription>
-                    Select the AI model and adjust parameters to control the assistant's behavior
+                    Select the AI model and adjust parameters to control the
+                    assistant's behavior
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 p-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="model-select" className="text-base font-medium">
-                      AI Model
-                    </Label>
-                    <Select value={selectedModel} onValueChange={setSelectedModel}>
-                      <SelectTrigger id="model-select" className="border-2 h-11">
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gpt-4o">
-                          <div className="flex items-center gap-2">
-                            <span>GPT-4o</span>
-                            <Badge className="ml-2 bg-primary/20 text-primary hover:bg-primary/30">Recommended</Badge>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="gpt-4">GPT-4</SelectItem>
-                        <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                        <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                        <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
-                        <SelectItem value="llama-3">Llama 3</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      The AI model determines the quality, capabilities, and cost of responses
-                    </p>
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="provider-select"
+                        className="text-base font-medium"
+                      >
+                        Model Provider
+                      </Label>
+                      <Select
+                        value={selectedProvider}
+                        onValueChange={(value) => {
+                          // Always allow provider selection first
+                          setSelectedProvider(value);
+                          // Clear API key when changing providers
+                          setApiKey("");
+                        }}
+                      >
+                        <SelectTrigger
+                          id="provider-select"
+                          className="border-2 h-11"
+                        >
+                          <SelectValue placeholder="Select a provider" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {providers?.map((provider) => (
+                            <SelectItem key={provider.id} value={provider.id}>
+                              {provider.name}
+                            </SelectItem>
+                          )) || (
+                            <>
+                              <SelectItem value="openai">OpenAI</SelectItem>
+                              <SelectItem value="mistral">Mistral</SelectItem>
+                              <SelectItem value="anthropic">Anthropic</SelectItem>
+                              <SelectItem value="gemini">Gemini</SelectItem>
+                              <SelectItem value="openrouter">OpenRouter</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Choose your AI provider. Each offers different models
+                        with varying capabilities and pricing.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="api-key"
+                        className="flex items-center gap-2 text-base font-medium"
+                      >
+                        <Key className="h-4 w-4" />
+                        {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key
+                      </Label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="api-key"
+                            type={showApiKey ? "text" : "password"}
+                            placeholder={`Enter your ${selectedProvider} API key`}
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            className="border-2 h-11 pr-12"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                          >
+                            {showApiKey ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">
+                              {showApiKey ? "Hide API key" : "Show API key"}
+                            </span>
+                          </Button>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="w-full sm:w-auto border-2 h-11 hover:bg-muted/50"
+                          onClick={async () => {
+                            if (!apiKey.trim()) {
+                              toast({
+                                title: "Error",
+                                description: "Please enter an API key first",
+                                variant: "destructive"
+                              });
+                              return;
+                            }
+
+                            // Show loading state
+                            toast({
+                              title: "Verifying API key",
+                              description: `Checking your ${selectedProvider} API key...`
+                            });
+                            
+                            // Set loading state
+                            setIsLoadingModels(true);
+                            setApiErrorMessage(null);
+
+                            try {
+                              // Define provider endpoints
+                              const endpoints = {
+                                openai: "https://api.openai.com/v1/models",
+                                mistral: "https://api.mistral.ai/v1/models",
+                                anthropic: "https://api.anthropic.com/v1/models",
+                                gemini: "https://generativelanguage.googleapis.com/v1beta/models",
+                                openrouter: "https://openrouter.ai/api/v1/models"
+                              };
+                              
+                              // Get the endpoint for the selected provider
+                              const endpoint = endpoints[selectedProvider as keyof typeof endpoints];
+                              console.log(`[DEBUG] Verifying with endpoint: ${endpoint}`);
+                              
+                              // Set up for API call
+                              let finalEndpoint = endpoint;
+                              let headers: Record<string, string> = {
+                                'Content-Type': 'application/json'
+                              };
+                              
+                              // Configure endpoint and headers based on provider
+                              if (selectedProvider === 'gemini') {
+                                // For Gemini, API key is a query parameter
+                                const url = new URL(endpoint);
+                                url.searchParams.append('key', apiKey);
+                                finalEndpoint = url.toString();
+                                // Use the modified URL instead of the original endpoint
+                                headers = {}; // No Authorization header needed
+                              } else {
+                                // For other providers, use Authorization header
+                                headers['Authorization'] = `Bearer ${apiKey}`;
+                              }
+                              
+                              // Make actual API call
+                              const response = await fetch(finalEndpoint, {
+                                method: 'GET',
+                                headers
+                              });
+                              
+                              if (!response.ok) {
+                                const errorText = await response.text();
+                                console.error(`API error (${response.status}): ${errorText}`);
+                                throw new Error(`API verification failed: ${response.status} ${response.statusText}`);
+                              }
+                              
+                              // Parse successful response
+                              const data = await response.json();
+                              console.log('[DEBUG] API response:', data);
+                              
+                              // Save valid API key
+                              localStorage.setItem(`${selectedProvider}_api_key`, apiKey);
+                              
+                              // Parse models based on provider format
+                              let parsedModels: Array<{id: string, name: string, contextLength: number}> = [];
+                              
+                              try {
+                                switch(selectedProvider) {
+                                  case 'openai':
+                                    parsedModels = data.data.map((model: any) => ({
+                                      id: model.id,
+                                      name: model.id.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                                      contextLength: model.context_window || 4096
+                                    }));
+                                    break;
+                                  case 'mistral':
+                                    parsedModels = data.data.map((model: any) => ({
+                                      id: model.id,
+                                      name: model.id.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                                      contextLength: model.context_window || 8192
+                                    }));
+                                    break;
+                                  case 'anthropic':
+                                    parsedModels = (data.models || []).map((model: any) => ({
+                                      id: model.id,
+                                      name: model.name || model.id,
+                                      contextLength: model.context_window || 100000
+                                    }));
+                                    break;
+                                  case 'gemini':
+                                    parsedModels = (data.models || []).map((model: any) => ({
+                                      id: model.name.split('/').pop() || model.name,
+                                      name: model.displayName || model.name,
+                                      contextLength: model.inputTokenLimit || 32000
+                                    }));
+                                    break;
+                                  case 'openrouter':
+                                    parsedModels = (data.data || []).map((model: any) => ({
+                                      id: model.id,
+                                      name: model.name || model.id,
+                                      contextLength: model.context_length || 4096
+                                    }));
+                                    break;
+                                  default:
+                                    console.warn(`[DEBUG] Unknown provider: ${selectedProvider}`);
+                                }
+                              } catch (parseError) {
+                                console.error(`Error parsing ${selectedProvider} response:`, parseError);
+                                throw new Error(`Failed to parse models from response: ${parseError instanceof Error ? parseError.message : 'Error parsing response'}`);
+                              }
+                              
+                              // Log the parsed models count
+                              console.log(`[DEBUG] Successfully parsed ${parsedModels.length} models from ${selectedProvider} API response`);
+                                
+                              // Update the UI with models from the API response
+                              setAvailableModels(parsedModels);
+                              setIsLoadingModels(false);
+                              
+                              // Select the first model if available
+                              if (parsedModels.length > 0 && parsedModels[0] && typeof parsedModels[0].id === 'string') {
+                                setSelectedModel(parsedModels[0].id);
+                                console.log(`[DEBUG] Selected model: ${parsedModels[0].id}`);
+                              }
+                              
+                              // Show success message
+                              toast({
+                                title: "API key verified",
+                                description: `Your ${selectedProvider} API key verified successfully. ${parsedModels.length} models available.`,
+                                variant: "default"
+                              });
+                            } catch (error) {
+                              // Clear loading state
+                              setIsLoadingModels(false);
+                              
+                              // Handle the error
+                              console.error("API verification error:", error);
+                              
+                              // Show error message to user
+                              toast({
+                                title: "Verification failed",
+                                description: `Could not verify the API key: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                          disabled={!apiKey.trim()}
+                        >
+                          Verify
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Your {selectedProvider} API key is required to use {selectedProvider} models. 
+                        Keys are stored locally in your browser.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="model-select"
+                        className="text-base font-medium"
+                      >
+                        AI Model
+                      </Label>
+                      <Select
+                        value={selectedModel}
+                        onValueChange={setSelectedModel}
+                        disabled={
+                          isLoadingModels || availableModels.length === 0
+                        }
+                      >
+                        <SelectTrigger
+                          id="model-select"
+                          className="border-2 h-11"
+                        >
+                          {isLoadingModels ? (
+                            <span className="text-muted-foreground">
+                              Loading models...
+                            </span>
+                          ) : (
+                            <SelectValue placeholder="Select a model" />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {isLoadingModels ? (
+                            <SelectItem value="loading" disabled>
+                              Loading models...
+                            </SelectItem>
+                          ) : apiErrorMessage ? (
+                            <SelectItem value="error" disabled>
+                              <div className="text-destructive">
+                                Error: {apiErrorMessage}
+                              </div>
+                            </SelectItem>
+                          ) : availableModels.length > 0 ? (
+                            availableModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                <div className="flex items-center gap-2">
+                                  <span>{model.name}</span>
+                                  {model.id === "gpt-4o" && (
+                                    <Badge className="ml-2 bg-primary/20 text-primary hover:bg-primary/30">
+                                      Recommended
+                                    </Badge>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-models" disabled>
+                              API verification required to load models
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {apiErrorMessage ? (
+                        <p className="text-sm text-destructive font-medium mt-1">
+                          Error: {apiErrorMessage}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          The AI model determines the quality, capabilities, and
+                          cost of responses
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="temperature-slider" className="text-base font-medium">
+                      <Label
+                        htmlFor="temperature-slider"
+                        className="text-base font-medium"
+                      >
                         Temperature: {temperature}
                       </Label>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                            >
                               <Info className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
                             <p>
-                              Controls randomness: Lower values (0.1-0.5) for more focused, deterministic responses.
-                              Higher values (0.7-1.0) for more creative, varied responses.
+                              Controls randomness: Lower values (0.1-0.5) for
+                              more focused, deterministic responses. Higher
+                              values (0.7-1.0) for more creative, varied
+                              responses.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -367,7 +768,11 @@ export default function AIAssistantSettingsPage() {
                       max={2}
                       step={0.1}
                       value={[temperature]}
-                      onValueChange={(value) => setTemperature(value[0])}
+                      onValueChange={(value) => {
+                        if (value[0] !== undefined) {
+                          setTemperature(value[0]);
+                        }
+                      }}
                       className="py-2"
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
@@ -378,7 +783,10 @@ export default function AIAssistantSettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="max-tokens" className="text-base font-medium">
+                    <Label
+                      htmlFor="max-tokens"
+                      className="text-base font-medium"
+                    >
                       Maximum Output Length
                     </Label>
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -388,13 +796,18 @@ export default function AIAssistantSettingsPage() {
                         min={100}
                         max={32000}
                         value={maxTokens}
-                        onChange={(e) => setMaxTokens(Number.parseInt(e.target.value) || 4000)}
+                        onChange={(e) => {
+                          const value = Number.parseInt(e.target.value);
+                          setMaxTokens(isNaN(value) ? 4000 : value);
+                        }}
                         className="w-full border-2 h-11"
                       />
                       <Select
                         value={maxTokens.toString()}
-                        onValueChange={(value) => setMaxTokens(Number.parseInt(value))}
-                        className="w-full sm:w-[180px]"
+                        onValueChange={(value) => {
+                          const parsed = Number.parseInt(value);
+                          setMaxTokens(isNaN(parsed) ? maxTokens : parsed);
+                        }}
                       >
                         <SelectTrigger className="border-2 h-11">
                           <SelectValue placeholder="Preset lengths" />
@@ -403,54 +816,23 @@ export default function AIAssistantSettingsPage() {
                           <SelectItem value="1000">Short (1,000)</SelectItem>
                           <SelectItem value="4000">Medium (4,000)</SelectItem>
                           <SelectItem value="8000">Long (8,000)</SelectItem>
-                          <SelectItem value="16000">Very Long (16,000)</SelectItem>
+                          <SelectItem value="16000">
+                            Very Long (16,000)
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Maximum number of tokens (words/characters) in the AI's response
-                    </p>
-                  </div>
-
-                  <Separator className="my-2" />
-
-                  <div className="space-y-2">
-                    <Label htmlFor="api-key" className="flex items-center gap-2 text-base font-medium">
-                      <Key className="h-4 w-4" />
-                      API Key Management
-                    </Label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="relative flex-1">
-                        <Input
-                          id="api-key"
-                          type={showApiKey ? "text" : "password"}
-                          placeholder="Enter your API key"
-                          value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
-                          className="border-2 h-11 pr-12"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
-                          onClick={() => setShowApiKey(!showApiKey)}
-                        >
-                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          <span className="sr-only">{showApiKey ? "Hide API key" : "Show API key"}</span>
-                        </Button>
-                      </div>
-                      <Button variant="outline" className="w-full sm:w-auto border-2 h-11 hover:bg-muted/50">
-                        Verify
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Your API key is stored securely and used to authenticate requests to the AI provider
+                      Maximum number of tokens (words/characters) in the AI's
+                      response
                     </p>
                   </div>
 
                   <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="advanced" className="border-2 rounded-md">
+                    <AccordionItem
+                      value="advanced"
+                      className="border-2 rounded-md"
+                    >
                       <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 rounded-t-md">
                         Advanced Model Settings
                       </AccordionTrigger>
@@ -461,13 +843,18 @@ export default function AIAssistantSettingsPage() {
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                  >
                                     <Info className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p className="max-w-xs">
-                                    Controls diversity via nucleus sampling: Only consider tokens with the top P
+                                    Controls diversity via nucleus sampling:
+                                    Only consider tokens with the top P
                                     probability mass.
                                   </p>
                                 </TooltipContent>
@@ -486,17 +873,24 @@ export default function AIAssistantSettingsPage() {
 
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="frequency-penalty-slider">Frequency Penalty: 0.0</Label>
+                            <Label htmlFor="frequency-penalty-slider">
+                              Frequency Penalty: 0.0
+                            </Label>
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                  >
                                     <Info className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p className="max-w-xs">
-                                    Reduces repetition by penalizing tokens that have already appeared in the text.
+                                    Reduces repetition by penalizing tokens that
+                                    have already appeared in the text.
                                   </p>
                                 </TooltipContent>
                               </Tooltip>
@@ -514,17 +908,24 @@ export default function AIAssistantSettingsPage() {
 
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="presence-penalty-slider">Presence Penalty: 0.0</Label>
+                            <Label htmlFor="presence-penalty-slider">
+                              Presence Penalty: 0.0
+                            </Label>
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                  >
                                     <Info className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p className="max-w-xs">
-                                    Encourages the model to talk about new topics by penalizing tokens that have
+                                    Encourages the model to talk about new
+                                    topics by penalizing tokens that have
                                     appeared at all.
                                   </p>
                                 </TooltipContent>
@@ -555,11 +956,17 @@ export default function AIAssistantSettingsPage() {
                     <MessageSquare className="h-5 w-5 text-primary" />
                     Prompt Configuration
                   </CardTitle>
-                  <CardDescription>Customize how the AI assistant interprets and responds to queries</CardDescription>
+                  <CardDescription>
+                    Customize how the AI assistant interprets and responds to
+                    queries
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 p-6">
                   <div className="space-y-2">
-                    <Label htmlFor="system-prompt" className="text-base font-medium">
+                    <Label
+                      htmlFor="system-prompt"
+                      className="text-base font-medium"
+                    >
                       Default System Prompt
                     </Label>
                     <Textarea
@@ -570,13 +977,17 @@ export default function AIAssistantSettingsPage() {
                       className="min-h-[100px] border-2 resize-y"
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      The system prompt defines the AI's personality, knowledge base, and behavior
+                      The system prompt defines the AI's personality, knowledge
+                      base, and behavior
                     </p>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="prompt-prefix" className="text-base font-medium">
+                      <Label
+                        htmlFor="prompt-prefix"
+                        className="text-base font-medium"
+                      >
                         Prompt Prefix
                       </Label>
                       <Input
@@ -586,10 +997,15 @@ export default function AIAssistantSettingsPage() {
                         onChange={(e) => setPromptPrefix(e.target.value)}
                         className="border-2 h-11"
                       />
-                      <p className="text-sm text-muted-foreground mt-1">Added before each user message</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Added before each user message
+                      </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="prompt-suffix" className="text-base font-medium">
+                      <Label
+                        htmlFor="prompt-suffix"
+                        className="text-base font-medium"
+                      >
                         Prompt Suffix
                       </Label>
                       <Input
@@ -599,7 +1015,9 @@ export default function AIAssistantSettingsPage() {
                         onChange={(e) => setPromptSuffix(e.target.value)}
                         className="border-2 h-11"
                       />
-                      <p className="text-sm text-muted-foreground mt-1">Added after each user message</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Added after each user message
+                      </p>
                     </div>
                   </div>
 
@@ -607,7 +1025,9 @@ export default function AIAssistantSettingsPage() {
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium">Saved Prompt Templates</h3>
+                      <h3 className="text-lg font-medium">
+                        Saved Prompt Templates
+                      </h3>
                       <Badge variant="outline" className="border-2">
                         {savedPrompts.length} Templates
                       </Badge>
@@ -624,7 +1044,9 @@ export default function AIAssistantSettingsPage() {
                         >
                           <div className="space-y-1">
                             <h4 className="font-medium">{prompt.name}</h4>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{prompt.prompt}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {prompt.prompt}
+                            </p>
                           </div>
                           <div className="flex gap-2">
                             <Button
@@ -632,11 +1054,11 @@ export default function AIAssistantSettingsPage() {
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                               onClick={() => {
-                                setDefaultPrompt(prompt.prompt)
+                                setDefaultPrompt(prompt.prompt);
                                 toast({
                                   title: "Prompt applied",
                                   description: `"${prompt.name}" has been set as the default prompt.`,
-                                })
+                                });
                               }}
                             >
                               <Check className="h-4 w-4" />
@@ -674,7 +1096,9 @@ export default function AIAssistantSettingsPage() {
                         <Button
                           onClick={handleAddSavedPrompt}
                           className="w-full relative overflow-hidden group"
-                          disabled={!newPromptName.trim() || !newPromptContent.trim()}
+                          disabled={
+                            !newPromptName.trim() || !newPromptContent.trim()
+                          }
                         >
                           <span className="relative z-10 flex items-center">
                             <Plus className="mr-2 h-4 w-4" />
@@ -698,17 +1122,22 @@ export default function AIAssistantSettingsPage() {
                     Retrieval-Augmented Generation (RAG)
                   </CardTitle>
                   <CardDescription>
-                    Configure how the AI retrieves and uses information from your knowledge base
+                    Configure how the AI retrieves and uses information from
+                    your knowledge base
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 p-6">
                   <div className="flex items-center justify-between space-y-0 pb-2">
                     <div className="space-y-0.5">
-                      <Label htmlFor="rag-toggle" className="text-base font-medium">
+                      <Label
+                        htmlFor="rag-toggle"
+                        className="text-base font-medium"
+                      >
                         Enable RAG
                       </Label>
                       <p className="text-sm text-muted-foreground">
-                        Allow the AI to retrieve information from your knowledge base
+                        Allow the AI to retrieve information from your knowledge
+                        base
                       </p>
                     </div>
                     <Switch
@@ -719,23 +1148,35 @@ export default function AIAssistantSettingsPage() {
                     />
                   </div>
 
-                  <div className={ragEnabled ? "" : "opacity-50 pointer-events-none"}>
+                  <div
+                    className={
+                      ragEnabled ? "" : "opacity-50 pointer-events-none"
+                    }
+                  >
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label htmlFor="chunk-size" className="text-base font-medium">
+                          <Label
+                            htmlFor="chunk-size"
+                            className="text-base font-medium"
+                          >
                             Chunk Size: {chunkSize}
                           </Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                >
                                   <Info className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="max-w-xs">
-                                  The size of text chunks for processing documents. Smaller chunks are more precise but
+                                  The size of text chunks for processing
+                                  documents. Smaller chunks are more precise but
                                   may lose context.
                                 </p>
                               </TooltipContent>
@@ -748,7 +1189,11 @@ export default function AIAssistantSettingsPage() {
                           max={2000}
                           step={100}
                           value={[chunkSize]}
-                          onValueChange={(value) => setChunkSize(value[0])}
+                          onValueChange={(value) => {
+                            if (value[0] !== undefined) {
+                              setChunkSize(value[0]);
+                            }
+                          }}
                           className="py-2"
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
@@ -760,20 +1205,29 @@ export default function AIAssistantSettingsPage() {
 
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label htmlFor="similarity-threshold" className="text-base font-medium">
+                          <Label
+                            htmlFor="similarity-threshold"
+                            className="text-base font-medium"
+                          >
                             Similarity Threshold: {similarityThreshold}
                           </Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                >
                                   <Info className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="max-w-xs">
-                                  Minimum similarity score required for retrieved content to be included. Higher values
-                                  mean more relevant but potentially fewer results.
+                                  Minimum similarity score required for
+                                  retrieved content to be included. Higher
+                                  values mean more relevant but potentially
+                                  fewer results.
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -785,7 +1239,11 @@ export default function AIAssistantSettingsPage() {
                           max={1.0}
                           step={0.05}
                           value={[similarityThreshold]}
-                          onValueChange={(value) => setSimilarityThreshold(value[0])}
+                          onValueChange={(value) => {
+                            if (value[0] !== undefined) {
+                              setSimilarityThreshold(value[0]);
+                            }
+                          }}
                           className="py-2"
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
@@ -825,21 +1283,26 @@ export default function AIAssistantSettingsPage() {
                                 <div>
                                   <p className="font-medium">{source.name}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    {source.type.toUpperCase()} • {source.enabled ? "Active" : "Inactive"}
+                                    {source.type.toUpperCase()} •{" "}
+                                    {source.enabled ? "Active" : "Inactive"}
                                   </p>
                                 </div>
                               </div>
                               <div className="flex gap-2">
                                 <Switch
                                   checked={source.enabled}
-                                  onCheckedChange={() => handleToggleDataSource(source.id)}
+                                  onCheckedChange={() =>
+                                    handleToggleDataSource(source.id)
+                                  }
                                   className="data-[state=checked]:bg-primary"
                                 />
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleDeleteDataSource(source.id)}
+                                  onClick={() =>
+                                    handleDeleteDataSource(source.id)
+                                  }
                                 >
                                   <Trash2 className="h-4 w-4" />
                                   <span className="sr-only">Delete Source</span>
@@ -858,19 +1321,27 @@ export default function AIAssistantSettingsPage() {
                               onChange={(e) => setNewDataSource(e.target.value)}
                               className="flex-1 border-2 h-11"
                             />
-                            <Select value={newDataSourceType} onValueChange={setNewDataSourceType}>
+                            <Select
+                              value={newDataSourceType}
+                              onValueChange={setNewDataSourceType}
+                            >
                               <SelectTrigger className="w-[120px] border-2 h-11">
                                 <SelectValue placeholder="Type" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="pdf">PDF</SelectItem>
                                 <SelectItem value="web">Web</SelectItem>
-                                <SelectItem value="database">Database</SelectItem>
+                                <SelectItem value="database">
+                                  Database
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="flex gap-2 mt-2">
-                            <Button variant="outline" className="flex-1 border-2 h-11 hover:bg-muted/50">
+                            <Button
+                              variant="outline"
+                              className="flex-1 border-2 h-11 hover:bg-muted/50"
+                            >
                               <Upload className="mr-2 h-4 w-4" />
                               Upload File
                             </Button>
@@ -890,32 +1361,51 @@ export default function AIAssistantSettingsPage() {
                       </div>
 
                       <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value="advanced-rag" className="border-2 rounded-md">
+                        <AccordionItem
+                          value="advanced-rag"
+                          className="border-2 rounded-md"
+                        >
                           <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 rounded-t-md">
                             Advanced RAG Settings
                           </AccordionTrigger>
                           <AccordionContent className="space-y-4 px-4 py-3">
                             <div className="space-y-2">
-                              <Label htmlFor="embedding-model" className="text-base font-medium">
+                              <Label
+                                htmlFor="embedding-model"
+                                className="text-base font-medium"
+                              >
                                 Embedding Model
                               </Label>
                               <Select defaultValue="text-embedding-3-large">
-                                <SelectTrigger id="embedding-model" className="border-2 h-11">
+                                <SelectTrigger
+                                  id="embedding-model"
+                                  className="border-2 h-11"
+                                >
                                   <SelectValue placeholder="Select embedding model" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="text-embedding-3-large">text-embedding-3-large</SelectItem>
-                                  <SelectItem value="text-embedding-3-small">text-embedding-3-small</SelectItem>
-                                  <SelectItem value="text-embedding-ada-002">text-embedding-ada-002</SelectItem>
+                                  <SelectItem value="text-embedding-3-large">
+                                    text-embedding-3-large
+                                  </SelectItem>
+                                  <SelectItem value="text-embedding-3-small">
+                                    text-embedding-3-small
+                                  </SelectItem>
+                                  <SelectItem value="text-embedding-ada-002">
+                                    text-embedding-ada-002
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                               <p className="text-sm text-muted-foreground mt-1">
-                                Model used to convert text into vector embeddings for similarity search
+                                Model used to convert text into vector
+                                embeddings for similarity search
                               </p>
                             </div>
 
                             <div className="space-y-2">
-                              <Label htmlFor="retrieval-count" className="text-base font-medium">
+                              <Label
+                                htmlFor="retrieval-count"
+                                className="text-base font-medium"
+                              >
                                 Maximum Retrievals
                               </Label>
                               <Input
@@ -933,11 +1423,15 @@ export default function AIAssistantSettingsPage() {
 
                             <div className="flex items-center justify-between space-y-0 pb-2">
                               <div className="space-y-0.5">
-                                <Label htmlFor="rerank-toggle" className="text-base font-medium">
+                                <Label
+                                  htmlFor="rerank-toggle"
+                                  className="text-base font-medium"
+                                >
                                   Enable Re-ranking
                                 </Label>
                                 <p className="text-sm text-muted-foreground">
-                                  Apply a secondary ranking to improve retrieval relevance
+                                  Apply a secondary ranking to improve retrieval
+                                  relevance
                                 </p>
                               </div>
                               <Switch
@@ -963,17 +1457,25 @@ export default function AIAssistantSettingsPage() {
                     <Settings className="h-5 w-5 text-primary" />
                     General Settings
                   </CardTitle>
-                  <CardDescription>Configure general preferences and behavior of the AI assistant</CardDescription>
+                  <CardDescription>
+                    Configure general preferences and behavior of the AI
+                    assistant
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 p-6">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between space-y-0 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
                         <div className="space-y-0.5">
-                          <Label htmlFor="dark-mode-toggle" className="text-base font-medium">
+                          <Label
+                            htmlFor="dark-mode-toggle"
+                            className="text-base font-medium"
+                          >
                             Dark Mode
                           </Label>
-                          <p className="text-sm text-muted-foreground">Switch between light and dark theme</p>
+                          <p className="text-sm text-muted-foreground">
+                            Switch between light and dark theme
+                          </p>
                         </div>
                         <Switch
                           id="dark-mode-toggle"
@@ -985,10 +1487,15 @@ export default function AIAssistantSettingsPage() {
 
                       <div className="flex items-center justify-between space-y-0 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
                         <div className="space-y-0.5">
-                          <Label htmlFor="notifications-toggle" className="text-base font-medium">
+                          <Label
+                            htmlFor="notifications-toggle"
+                            className="text-base font-medium"
+                          >
                             Notifications
                           </Label>
-                          <p className="text-sm text-muted-foreground">Enable notifications for AI responses</p>
+                          <p className="text-sm text-muted-foreground">
+                            Enable notifications for AI responses
+                          </p>
                         </div>
                         <Switch
                           id="notifications-toggle"
@@ -1000,10 +1507,15 @@ export default function AIAssistantSettingsPage() {
 
                       <div className="flex items-center justify-between space-y-0 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
                         <div className="space-y-0.5">
-                          <Label htmlFor="streaming-toggle" className="text-base font-medium">
+                          <Label
+                            htmlFor="streaming-toggle"
+                            className="text-base font-medium"
+                          >
                             Streaming Responses
                           </Label>
-                          <p className="text-sm text-muted-foreground">Show AI responses as they are generated</p>
+                          <p className="text-sm text-muted-foreground">
+                            Show AI responses as they are generated
+                          </p>
                         </div>
                         <Switch
                           id="streaming-toggle"
@@ -1017,10 +1529,15 @@ export default function AIAssistantSettingsPage() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between space-y-0 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
                         <div className="space-y-0.5">
-                          <Label htmlFor="autosave-toggle" className="text-base font-medium">
+                          <Label
+                            htmlFor="autosave-toggle"
+                            className="text-base font-medium"
+                          >
                             Auto-save History
                           </Label>
-                          <p className="text-sm text-muted-foreground">Automatically save chat history</p>
+                          <p className="text-sm text-muted-foreground">
+                            Automatically save chat history
+                          </p>
                         </div>
                         <Switch
                           id="autosave-toggle"
@@ -1032,10 +1549,15 @@ export default function AIAssistantSettingsPage() {
 
                       <div className="flex items-center justify-between space-y-0 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
                         <div className="space-y-0.5">
-                          <Label htmlFor="citations-toggle" className="text-base font-medium">
+                          <Label
+                            htmlFor="citations-toggle"
+                            className="text-base font-medium"
+                          >
                             Show Citations
                           </Label>
-                          <p className="text-sm text-muted-foreground">Display source citations in AI responses</p>
+                          <p className="text-sm text-muted-foreground">
+                            Display source citations in AI responses
+                          </p>
                         </div>
                         <Switch
                           id="citations-toggle"
@@ -1046,7 +1568,10 @@ export default function AIAssistantSettingsPage() {
                       </div>
 
                       <div className="space-y-2 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
-                        <Label htmlFor="history-retention" className="text-base font-medium">
+                        <Label
+                          htmlFor="history-retention"
+                          className="text-base font-medium"
+                        >
                           History Retention (Days)
                         </Label>
                         <Input
@@ -1055,10 +1580,15 @@ export default function AIAssistantSettingsPage() {
                           min={1}
                           max={365}
                           value={historyRetentionDays}
-                          onChange={(e) => setHistoryRetentionDays(Number.parseInt(e.target.value) || 30)}
+                          onChange={(e) => {
+                            const value = Number.parseInt(e.target.value);
+                            setHistoryRetentionDays(isNaN(value) ? 30 : value);
+                          }}
                           className="border-2 h-11"
                         />
-                        <p className="text-sm text-muted-foreground mt-1">Number of days to keep chat history</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Number of days to keep chat history
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1070,11 +1600,17 @@ export default function AIAssistantSettingsPage() {
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
-                        <Label htmlFor="font-size" className="text-base font-medium">
+                        <Label
+                          htmlFor="font-size"
+                          className="text-base font-medium"
+                        >
                           Font Size
                         </Label>
                         <Select defaultValue="medium">
-                          <SelectTrigger id="font-size" className="border-2 h-11">
+                          <SelectTrigger
+                            id="font-size"
+                            className="border-2 h-11"
+                          >
                             <SelectValue placeholder="Select font size" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1086,16 +1622,26 @@ export default function AIAssistantSettingsPage() {
                       </div>
 
                       <div className="space-y-2 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
-                        <Label htmlFor="code-theme" className="text-base font-medium">
+                        <Label
+                          htmlFor="code-theme"
+                          className="text-base font-medium"
+                        >
                           Code Syntax Highlighting
                         </Label>
                         <Select defaultValue="github-dark">
-                          <SelectTrigger id="code-theme" className="border-2 h-11">
+                          <SelectTrigger
+                            id="code-theme"
+                            className="border-2 h-11"
+                          >
                             <SelectValue placeholder="Select code theme" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="github-dark">GitHub Dark</SelectItem>
-                            <SelectItem value="github-light">GitHub Light</SelectItem>
+                            <SelectItem value="github-dark">
+                              GitHub Dark
+                            </SelectItem>
+                            <SelectItem value="github-light">
+                              GitHub Light
+                            </SelectItem>
                             <SelectItem value="dracula">Dracula</SelectItem>
                             <SelectItem value="nord">Nord</SelectItem>
                           </SelectContent>
@@ -1104,11 +1650,17 @@ export default function AIAssistantSettingsPage() {
                     </div>
 
                     <div className="space-y-2 p-3 border-2 rounded-md hover:bg-muted/30 transition-colors">
-                      <Label htmlFor="message-display" className="text-base font-medium">
+                      <Label
+                        htmlFor="message-display"
+                        className="text-base font-medium"
+                      >
                         Message Display
                       </Label>
                       <Select defaultValue="bubbles">
-                        <SelectTrigger id="message-display" className="border-2 h-11">
+                        <SelectTrigger
+                          id="message-display"
+                          className="border-2 h-11"
+                        >
                           <SelectValue placeholder="Select message display style" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1126,11 +1678,17 @@ export default function AIAssistantSettingsPage() {
                     <h3 className="text-lg font-medium">Export & Import</h3>
 
                     <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1 border-2 h-11 hover:bg-muted/50">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-2 h-11 hover:bg-muted/50"
+                      >
                         <Upload className="mr-2 h-4 w-4" />
                         Import Settings
                       </Button>
-                      <Button variant="outline" className="flex-1 border-2 h-11 hover:bg-muted/50">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-2 h-11 hover:bg-muted/50"
+                      >
                         <Download className="mr-2 h-4 w-4" />
                         Export Settings
                       </Button>
@@ -1145,10 +1703,13 @@ export default function AIAssistantSettingsPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent className="border-2">
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogTitle>
+                            Are you absolutely sure?
+                          </AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete all your chat history, saved prompts, and custom settings. This
-                            action cannot be undone.
+                            This will permanently delete all your chat history,
+                            saved prompts, and custom settings. This action
+                            cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -1180,7 +1741,10 @@ export default function AIAssistantSettingsPage() {
                       <p className="text-sm text-muted-foreground mb-4">
                         Learn about the AI models and their capabilities
                       </p>
-                      <Button variant="outline" className="w-full border-2 hover:bg-muted/50">
+                      <Button
+                        variant="outline"
+                        className="w-full border-2 hover:bg-muted/50"
+                      >
                         View Documentation
                       </Button>
                     </div>
@@ -1190,9 +1754,13 @@ export default function AIAssistantSettingsPage() {
                         <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Best practices for setting up retrieval-augmented generation
+                        Best practices for setting up retrieval-augmented
+                        generation
                       </p>
-                      <Button variant="outline" className="w-full border-2 hover:bg-muted/50">
+                      <Button
+                        variant="outline"
+                        className="w-full border-2 hover:bg-muted/50"
+                      >
                         Read Guide
                       </Button>
                     </div>
@@ -1204,5 +1772,5 @@ export default function AIAssistantSettingsPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

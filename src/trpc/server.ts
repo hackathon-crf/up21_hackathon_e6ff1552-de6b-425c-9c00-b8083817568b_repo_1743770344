@@ -1,32 +1,52 @@
-import "server-only";
-
-import { createHydrationHelpers } from "@trpc/react-query/rsc";
 import { headers } from "next/headers";
-import { cache } from "react";
+import { createServerClient } from "@supabase/ssr";
+import { env } from "~/env";
 
-import { type AppRouter, createCaller } from "~/server/api/root";
-import { createTRPCContext } from "~/server/api/trpc";
-import { createQueryClient } from "./query-client";
+import {
+  createTRPCContext,
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
+import { appRouter } from "~/server/api/root";
+import { createCallerFactory } from "@trpc/server";
 
-/**
- * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
- * handling a tRPC call from a React Server Component.
- */
-const createContext = cache(async () => {
-	const heads = new Headers(await headers());
-	heads.set("x-trpc-source", "rsc");
+// Export the router's type signature
+export type { AppRouter } from "~/server/api/root";
 
-	// For RSC, we use createTRPCContext without pre-fetched auth
-	// This will use the cookies() API within the context
-	return createTRPCContext({
-		headers: heads,
-	});
-});
+// Export reusable router elements
+export { createTRPCRouter, publicProcedure, protectedProcedure };
 
-const getQueryClient = cache(createQueryClient);
-const caller = createCaller(createContext);
+// Export the context creation function
+export { createTRPCContext };
 
-export const { trpc: api, HydrateClient } = createHydrationHelpers<AppRouter>(
-	caller,
-	getQueryClient,
-);
+// Factory function to create the tRPC caller
+const createCaller = createCallerFactory(appRouter);
+
+export const getServerAuthSession = async () => {
+  const supabase = createServerClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name) {
+          return headers().get("cookie")?.split("; ").find(c => c.startsWith(`${name}=`))?.split("=")[1];
+        },
+      },
+    },
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  return {
+    user,
+    session,
+  };
+};
+
+export const createCaller = async () => {
+  const auth = await getServerAuthSession();
+  const ctx = await createTRPCContext({ headers: headers(), auth });
+  return createCaller(ctx);
+};

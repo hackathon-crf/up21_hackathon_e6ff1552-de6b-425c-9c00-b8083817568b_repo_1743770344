@@ -1,30 +1,41 @@
-"use client"
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Award, Download, Heart, Medal, Share2, Shield, Users } from "lucide-react"
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Award,
+  Heart,
+  Medal,
+  Share2,
+  Shield,
+  Users,
+} from "lucide-react";
 
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
-import { Progress } from "~/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { Badge } from "~/components/ui/badge"
-import { PlayerAvatar } from "../components/player-avatar"
-import { GameNotificationsProvider, useGameNotifications } from "../components/game-notifications-provider"
-import { cn } from "~/lib/utils"
+import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import { Progress } from "~/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Badge } from "~/components/ui/badge";
+import { PlayerAvatar } from "../../components/player-avatar";
+import { useToast } from "~/hooks/use-toast";
+import { cn } from "~/lib/utils";
 
 export default function ResultsPage({ params }: { params: { id: string } }) {
-  return (
-    <GameNotificationsProvider>
-      <ResultsContent params={params} />
-    </GameNotificationsProvider>
-  )
+  return <ResultsContent params={params} />;
 }
 
 function ResultsContent({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const { showNotification } = useGameNotifications()
-  const [showShareOptions, setShowShareOptions] = useState(false)
+  const router = useRouter();
+  const toast = useToast();
+  const [showShareOptions, setShowShareOptions] = useState(false);
 
   // Mock data for session results
   const results = {
@@ -95,45 +106,66 @@ function ResultsContent({ params }: { params: { id: string } }) {
       },
       {
         question: "How deep should chest compressions be for an adult?",
-        userAnswer: "At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
-        correctAnswer: "At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
+        userAnswer:
+          "At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
+        correctAnswer:
+          "At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
         isCorrect: true,
-        explanation: "Proper compression depth ensures adequate blood circulation without causing injury.",
+        explanation:
+          "Proper compression depth ensures adequate blood circulation without causing injury.",
       },
       {
-        question: "When using an AED, what should you do before applying the pads?",
+        question:
+          "When using an AED, what should you do before applying the pads?",
         userAnswer: "Ensure the patient is breathing",
         correctAnswer: "Ensure the patient's chest is dry and exposed",
         isCorrect: false,
-        explanation: "Moisture can interfere with the electrical current and clothing can prevent proper pad contact.",
+        explanation:
+          "Moisture can interfere with the electrical current and clothing can prevent proper pad contact.",
       },
     ],
     achievements: [
-      { name: "First Blood", description: "First to answer a question correctly", icon: "Award" },
-      { name: "Streak Master", description: "Achieved a 3x answer streak", icon: "Flame" },
-      { name: "Speed Demon", description: "Answered 5 questions in under 10 seconds each", icon: "Zap" },
+      {
+        name: "First Blood",
+        description: "First to answer a question correctly",
+        icon: "Award",
+      },
+      {
+        name: "Streak Master",
+        description: "Achieved a 3x answer streak",
+        icon: "Flame",
+      },
+      {
+        name: "Speed Demon",
+        description: "Answered 5 questions in under 10 seconds each",
+        icon: "Zap",
+      },
     ],
-  }
+  };
 
   const handleShareResults = () => {
-    setShowShareOptions(!showShareOptions)
+    setShowShareOptions(!showShareOptions);
 
-    showNotification("info", "Share your results", "Copy the link or share directly to social media", 3000)
-  }
-
-  const handleDownloadCertificate = () => {
-    showNotification("success", "Certificate generated", "Your certificate has been downloaded", 3000)
-  }
+    toast.info({
+      title: "Share your results",
+      description: "Copy the link or share directly to social media",
+      duration: 3000,
+    });
+  };
 
   const handlePlayAgain = () => {
-    showNotification("info", "Starting new game", "Redirecting to multiplayer lobby...", 2000)
+    toast.info({
+      title: "Starting new game",
+      description: "Redirecting to multiplayer lobby...",
+      duration: 2000,
+    });
 
     setTimeout(() => {
       if (router) {
-        router.push("/multiplayer")
+        router.push("/multiplayer");
       }
-    }, 1000)
-  }
+    }, 1000);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
@@ -146,8 +178,12 @@ function ResultsContent({ params }: { params: { id: string } }) {
             </Link>
           </Button>
           <div className="sm:ml-4 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold">{results.sessionTitle} Results</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">{results.mode} • Completed just now</p>
+            <h1 className="text-xl sm:text-2xl font-bold">
+              {results.sessionTitle} Results
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              {results.mode} • Completed just now
+            </p>
           </div>
         </div>
       </div>
@@ -165,7 +201,13 @@ function ResultsContent({ params }: { params: { id: string } }) {
                     <div className="text-4xl font-bold">{results.score}%</div>
                   </div>
                   <svg className="h-full w-full" viewBox="0 0 100 100">
-                    <circle className="stroke-muted fill-none" strokeWidth="10" cx="50" cy="50" r="40" />
+                    <circle
+                      className="stroke-muted fill-none"
+                      strokeWidth="10"
+                      cx="50"
+                      cy="50"
+                      r="40"
+                    />
                     <circle
                       className="stroke-primary fill-none"
                       strokeWidth="10"
@@ -180,7 +222,8 @@ function ResultsContent({ params }: { params: { id: string } }) {
                   </svg>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {results.correctAnswers} of {results.totalQuestions} questions correct
+                  {results.correctAnswers} of {results.totalQuestions} questions
+                  correct
                 </p>
               </CardContent>
             </Card>
@@ -193,7 +236,9 @@ function ResultsContent({ params }: { params: { id: string } }) {
                 <div className="flex flex-col items-center justify-center h-36">
                   <Award className="h-12 w-12 text-primary mb-2" />
                   <div className="text-4xl font-bold">#{results.rank}</div>
-                  <p className="text-sm text-muted-foreground">of {results.totalParticipants} participants</p>
+                  <p className="text-sm text-muted-foreground">
+                    of {results.totalParticipants} participants
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -205,7 +250,9 @@ function ResultsContent({ params }: { params: { id: string } }) {
               <CardContent className="p-4">
                 <div className="flex flex-col items-center justify-center h-36">
                   <div className="text-4xl font-bold">{results.timeTaken}</div>
-                  <p className="text-sm text-muted-foreground">minutes:seconds</p>
+                  <p className="text-sm text-muted-foreground">
+                    minutes:seconds
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -223,7 +270,9 @@ function ResultsContent({ params }: { params: { id: string } }) {
               <Card>
                 <CardHeader>
                   <CardTitle>Leaderboard</CardTitle>
-                  <CardDescription>See how you ranked against other participants</CardDescription>
+                  <CardDescription>
+                    See how you ranked against other participants
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -232,7 +281,9 @@ function ResultsContent({ params }: { params: { id: string } }) {
                         key={participant.id}
                         className={cn(
                           "flex items-center justify-between p-4 rounded-lg transition-all",
-                          participant.isCurrentUser ? "bg-primary/10 border border-primary/20" : "bg-muted/50",
+                          participant.isCurrentUser
+                            ? "bg-primary/10 border border-primary/20"
+                            : "bg-muted/50",
                           participant.rank <= 3
                             ? "border-l-4 " +
                                 (participant.rank === 1
@@ -247,7 +298,12 @@ function ResultsContent({ params }: { params: { id: string } }) {
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                             {participant.rank}
                           </div>
-                          <PlayerAvatar player={participant} showStatus={false} showBadge={false} size="sm" />
+                          <PlayerAvatar
+                            player={participant}
+                            showStatus={false}
+                            showBadge={false}
+                            size="sm"
+                          />
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-medium">{participant.name}</p>
@@ -258,9 +314,14 @@ function ResultsContent({ params }: { params: { id: string } }) {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <p className="text-xs text-muted-foreground">{participant.score} points</p>
+                              <p className="text-xs text-muted-foreground">
+                                {participant.score} points
+                              </p>
                               {participant.streak > 1 && (
-                                <Badge variant="outline" className="text-xs text-orange-500 border-orange-500">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs text-orange-500 border-orange-500"
+                                >
                                   {participant.streak}x streak
                                 </Badge>
                               )}
@@ -284,13 +345,13 @@ function ResultsContent({ params }: { params: { id: string } }) {
                   </div>
                 </CardContent>
                 <CardFooter className="flex flex-col sm:flex-row gap-3 justify-between">
-                  <Button variant="outline" onClick={handleShareResults} className="w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    onClick={handleShareResults}
+                    className="w-full sm:w-auto"
+                  >
                     <Share2 className="mr-2 h-4 w-4" />
                     Share Results
-                  </Button>
-                  <Button onClick={handleDownloadCertificate} className="w-full sm:w-auto">
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Certificate
                   </Button>
                 </CardFooter>
               </Card>
@@ -300,7 +361,9 @@ function ResultsContent({ params }: { params: { id: string } }) {
               <Card>
                 <CardHeader>
                   <CardTitle>Performance by Category</CardTitle>
-                  <CardDescription>See how well you performed in each category</CardDescription>
+                  <CardDescription>
+                    See how well you performed in each category
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
@@ -321,7 +384,10 @@ function ResultsContent({ params }: { params: { id: string } }) {
                             {category.score}/{category.total}
                           </span>
                         </div>
-                        <Progress value={(category.score / category.total) * 100} className="h-2" />
+                        <Progress
+                          value={(category.score / category.total) * 100}
+                          className="h-2"
+                        />
                         <p className="text-xs text-muted-foreground">
                           {category.score >= 90
                             ? "Excellent! You've mastered this category."
@@ -340,7 +406,9 @@ function ResultsContent({ params }: { params: { id: string } }) {
               <Card>
                 <CardHeader>
                   <CardTitle>Your Answers</CardTitle>
-                  <CardDescription>Review your answers and see the correct solutions</CardDescription>
+                  <CardDescription>
+                    Review your answers and see the correct solutions
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
@@ -352,16 +420,21 @@ function ResultsContent({ params }: { params: { id: string } }) {
                         <div
                           className={cn(
                             "mt-2 flex items-center text-sm",
-                            answer.isCorrect ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400",
+                            answer.isCorrect
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400",
                           )}
                         >
                           <div
                             className={cn(
                               "mr-2 h-2 w-2 rounded-full",
-                              answer.isCorrect ? "bg-green-600 dark:bg-green-400" : "bg-red-600 dark:bg-red-400",
+                              answer.isCorrect
+                                ? "bg-green-600 dark:bg-green-400"
+                                : "bg-red-600 dark:bg-red-400",
                             )}
                           ></div>
-                          Your answer: {answer.userAnswer} ({answer.isCorrect ? "Correct" : "Incorrect"})
+                          Your answer: {answer.userAnswer} (
+                          {answer.isCorrect ? "Correct" : "Incorrect"})
                         </div>
                         {!answer.isCorrect && (
                           <div className="mt-1 text-sm text-muted-foreground">
@@ -369,7 +442,8 @@ function ResultsContent({ params }: { params: { id: string } }) {
                           </div>
                         )}
                         <div className="mt-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                          <span className="font-medium">Explanation:</span> {answer.explanation}
+                          <span className="font-medium">Explanation:</span>{" "}
+                          {answer.explanation}
                         </div>
                       </div>
                     ))}
@@ -385,26 +459,37 @@ function ResultsContent({ params }: { params: { id: string } }) {
               <Card>
                 <CardHeader>
                   <CardTitle>Achievements Unlocked</CardTitle>
-                  <CardDescription>Special accomplishments from this session</CardDescription>
+                  <CardDescription>
+                    Special accomplishments from this session
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {results.achievements.map((achievement, index) => (
-                      <Card key={index} className="bg-primary/5 border-primary/20">
+                      <Card
+                        key={index}
+                        className="bg-primary/5 border-primary/20"
+                      >
                         <CardHeader className="p-4 pb-2">
                           <div className="flex justify-center">
                             {achievement.icon === "Award" ? (
                               <Award className="h-12 w-12 text-primary" />
                             ) : achievement.icon === "Flame" ? (
-                              <div className="h-12 w-12 flex items-center justify-center text-2xl">🔥</div>
+                              <div className="h-12 w-12 flex items-center justify-center text-2xl">
+                                🔥
+                              </div>
                             ) : (
-                              <div className="h-12 w-12 flex items-center justify-center text-2xl">⚡</div>
+                              <div className="h-12 w-12 flex items-center justify-center text-2xl">
+                                ⚡
+                              </div>
                             )}
                           </div>
                         </CardHeader>
                         <CardContent className="p-4 pt-2 text-center">
                           <h3 className="font-bold">{achievement.name}</h3>
-                          <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {achievement.description}
+                          </p>
                         </CardContent>
                       </Card>
                     ))}
@@ -425,5 +510,5 @@ function ResultsContent({ params }: { params: { id: string } }) {
         </div>
       </main>
     </div>
-  )
+  );
 }

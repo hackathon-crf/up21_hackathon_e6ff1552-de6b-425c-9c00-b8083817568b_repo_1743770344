@@ -20,7 +20,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
 *   **ORM/Query Builder:** Drizzle ORM (Typesafe SQL) ✅ *Installed*
 *   **Backend Services (Supabase):** Managed PostgreSQL, Authentication, Realtime (WebSockets), Storage (Optional), Edge Functions (Optional).
 *   **UI:** React components (e.g., using Shadcn/ui + Tailwind CSS). ✅ *Tailwind installed*
-*   **State Management:** 
+*   **State Management:**
     * TanStack Query (for server state) ✅ *Installed via @tanstack/react-query*
     * Zustand (for client-side UI state) ✅ *Installed*
 *   **Validation:** Zod (Schema validation). ✅ *Installed*
@@ -71,12 +71,12 @@ This plan details the migration from the current Python-based stack (Streamlit f
     *   Install Zod. ✅ *Completed*
 2.  **Detailed Analysis:** ✅ *Completed*
     *   **FastAPI Endpoints:** ✅ *Analyzed*
-        * **Main Routers/Prefixes:** 
+        * **Main Routers/Prefixes:**
             * `/api/app` - Basic app functionality
             * `/api/chat` - Chat and message processing
             * `/api/rag` - Retrieval-Augmented Generation
             * `/api/flashcards` - Flashcard management
-        * **Specific Endpoints:** 
+        * **Specific Endpoints:**
             * `/api/chat/message/` (POST) - Process messages with optional RAG
             * `/api/chat/history/save/` (POST) - Save chat history
             * `/api/chat/feedback/` (POST) - Submit ratings and comments
@@ -87,20 +87,20 @@ This plan details the migration from the current Python-based stack (Streamlit f
             * `/api/rag/retrieve-answer/` (POST) - Get RAG-enhanced answers
             * `/api/flashcards/analyze/` (POST) - Find difficult cards
             * `/api/flashcards/generate/` (POST) - Generate AI flashcards
-        * **Request/Response Models:** 
+        * **Request/Response Models:**
             * `MessageRequest` - Contains `message: str` and optional `rag_config: RAGConfig`
             * `ChatHistoryEntry` - Has `role: str`, `content: str`, `timestamp: Optional[str]`
             * `FeedbackRequest` - Contains `message_id: str`, `rating: int`, `comments: Optional[str]`
             * `UserPreferences` - Dict structures for prompt, model, context, rag settings
             * `FlashcardData` - Complete card model (details below in Schema section)
-            * `AnalyzeFlashcardsRequest` - Contains `cards: List[FlashcardData]` 
+            * `AnalyzeFlashcardsRequest` - Contains `cards: List[FlashcardData]`
             * `GenerateFlashcardsRequest` - Has difficult cards and generation parameters
             * `RAGConfig` - Contains `enabled: bool`, `collections: List[str]`, `top_k: int`
         * **Error Handling:** Basic try/except patterns with logging and fallback responses
         * **Authentication:** Not implemented in the Python version
     *   **Streamlit UI Components:** ✅ *Analyzed*
         * **Overall Structure:** Tabbed interface with sidebar navigation
-        * **Main Components:** 
+        * **Main Components:**
             * **Chat Interface:** Message history display, input field, send button, settings panel
             * **Flashcard Study:** Card display with question/answer toggle, rating buttons (1-4 scale)
             * **Flashcard Creation:** Form with question, answer, optional title, image URL, tags
@@ -108,7 +108,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
             * **Flashcard Stats:** Study progress, streak tracking, performance metrics
             * **AI Assistant:** Difficulty analysis, customizable generation with strategy options
             * **Settings:** Application configuration with tabs for different setting categories
-        * **State Management:** 
+        * **State Management:**
             * `st.session_state.flashcards` - List of all user's flashcards
             * `st.session_state.flashcard_stats` - Study statistics and metrics
             * `st.session_state.current_flashcard` - Currently active card in study mode
@@ -121,7 +121,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
     *   **SM-2 Algorithm Logic:** ✅ *Analyzed*
         * **Core Parameters:**
             * Initial ease factor: 2.5 (configurable)
-            * Initial interval: 1 day (configurable) 
+            * Initial interval: 1 day (configurable)
             * Repetition counter: Increments on successful reviews, resets on "Again"
             * Rating scale: 1-4 (Again, Hard, Good, Easy)
         * **Algorithm Implementation:**
@@ -129,7 +129,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
             * Rating 2 ("Hard"): Reduce ease factor by 0.15, calculate next interval with reduced ease
             * Rating 3 ("Good"): Keep ease factor, calculate standard interval progression
             * Rating 4 ("Easy"): Increase ease factor by 0.15, calculate interval with bonus
-        * **Interval Calculation:** 
+        * **Interval Calculation:**
             * First successful review: Returns fixed interval (typically 1 day)
             * Second successful review: Returns fixed interval (typically 6 days)
             * Subsequent reviews: Interval = current_interval * ease_factor
@@ -139,7 +139,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
         * **Next Review Date:** Current date + calculated interval in days
     *   **AI Prompt Creation & Response Parsing:** ✅ *Analyzed*
         * **`create_generation_prompt` Function:**
-            * **Input Parameters:** 
+            * **Input Parameters:**
                 * `cards_content: List[Dict[str, Any]]` - Difficult cards to base generation on
                 * `strategy: str` - "related", "breakdown", or "alternative"
                 * `difficulty: str` - "easy", "medium", or "hard"
@@ -415,7 +415,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
         * `boolean` for flags
         * `jsonb` for flexible structured data (tags, metrics)
         * Placeholder for `vector` type when pgvector extension is enabled
-    *   **Schema Implementation:** 
+    *   **Schema Implementation:**
         * Implemented in `src/server/db/schema.ts` using Drizzle ORM
         * Proper TypeScript typing for all schema elements
         * Relations defined for type-safe joins and queries
@@ -469,7 +469,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
 3.  **AI Flashcard Generation (`ai.ts` or `flashcards.ts` router):**
     *   `analyzeDifficulty`: Input Zod schema (list of card IDs or reuse `getFlashcards` results). Replicate Python logic using DB data (low ease\_factor, high repetitions).
     *   `generateAiFlashcards`: Input Zod schema (list of difficult card objects, num\_to\_generate, difficulty\_level, generation\_strategy).
-        *   Use `mistralai` Node.js package: `const mistral = new MistralClient(process.env.MISTRAL_API_KEY);`.
+        *   Use `mistralai` Node.js package: `const mistral = new Mistral(process.env.MISTRAL_API_KEY);`.
         *   Replicate prompt creation logic (`create_generation_prompt`) in TypeScript.
         *   Call `mistral.chatStream(...)` or `mistral.chat(...)`.
         *   Replicate response parsing logic (`parse_ai_response`) in TypeScript.
@@ -508,7 +508,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
   ```css
   /* In your main CSS file (e.g., globals.css) */
   @import "tailwindcss";
-  
+
   /* You can add your custom CSS and configuration here: */
   @layer base {
     :root {
@@ -517,7 +517,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
       --color-secondary: #10b981;
     }
   }
-  
+
   /* Customize Tailwind via CSS */
   @layer components {
     .btn-primary {
