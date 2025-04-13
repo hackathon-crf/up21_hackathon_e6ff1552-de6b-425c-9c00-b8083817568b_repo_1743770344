@@ -153,28 +153,7 @@ export const chatRouter = createTRPCRouter({
       console.log(`[chat.getSession] - Looking up session: ${input.session_id} for user: ${userId}`);
       
       try {
-        // For the mock-session-1 and mock-session-2 IDs, return mock data
-        if (input.session_id === 'mock-session-1') {
-          return {
-            id: "mock-session-1",
-            user_id: userId,
-            title: "First Chat Session",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-        }
-        
-        if (input.session_id === 'mock-session-2') {
-          return {
-            id: "mock-session-2",
-            user_id: userId,
-            title: "Second Chat Session",
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            updated_at: new Date(Date.now() - 86400000).toISOString()
-          };
-        }
-        
-        // For any real UUID, try to find the actual session in database
+        // Try to find the actual session in database
         console.log(`[chat.getSession] - Trying to find session by ID: ${input.session_id}`);
         
         // Use a safer approach to query the database
@@ -192,7 +171,6 @@ export const chatRouter = createTRPCRouter({
           }
         } catch (dbError) {
           console.error(`[chat.getSession] - Database error:`, dbError);
-          // Continue to fallback instead of throwing
         }
         
         // If not found or DB error, throw NOT_FOUND
@@ -276,90 +254,14 @@ export const chatRouter = createTRPCRouter({
           // Execute the query
           const dbSessions = await query;
           
-          if (dbSessions && dbSessions.length > 0) {
-            console.log(`[chat.getSessions] - Successfully fetched ${dbSessions.length} sessions from database`);
-            return dbSessions;
-          } else {
-            console.log(`[chat.getSessions] - No sessions found in database, using mock data`);
-          }
+          console.log(`[chat.getSessions] - Fetched ${dbSessions.length} sessions from database`);
+          return dbSessions; // Return database sessions, even if empty
+          
         } catch (dbError) {
           console.error(`[chat.getSessions] - Database error:`, dbError);
-          console.log(`[chat.getSessions] - Falling back to mock data due to database error`);
+          console.log(`[chat.getSessions] - Returning empty array due to database error`);
+          return []; // Return empty array instead of mock sessions when database fails
         }
-        
-        // Fallback: Create some mock sessions that match the database schema
-        // Use the exact same column names as defined in the database (snake_case)
-        const mockSessions = [
-          {
-            id: "mock-session-1",
-            user_id: userId,
-            title: "First Chat Session",
-            position: 1,
-            is_pinned: false,
-            status: "active", 
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          },
-          {
-            id: "mock-session-2",
-            user_id: userId,
-            title: "Second Chat Session",
-            position: 0,
-            is_pinned: true,
-            status: "active",
-            created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-            updated_at: new Date(Date.now() - 86400000).toISOString()
-          },
-          {
-            id: "mock-session-3",
-            user_id: userId,
-            title: "Archived Chat Session",
-            position: 2,
-            is_pinned: false,
-            status: "archived",
-            created_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-            updated_at: new Date(Date.now() - 172800000).toISOString()
-          }
-        ];
-        
-        // Filter mock sessions based on input
-        let filteredMockSessions = mockSessions;
-        
-        if (!input.includeDeleted) {
-          filteredMockSessions = filteredMockSessions.filter(s => 
-            input.status === 'active' ? s.status === 'active' : 
-            input.status === 'archived' ? s.status === 'archived' : 
-            input.status === 'deleted' ? s.status === 'deleted' : true
-          );
-        }
-        
-        // Sort mock sessions based on input
-        filteredMockSessions.sort((a, b) => {
-          if (input.sortBy === 'updated_at') {
-            return input.sortOrder === 'desc' 
-              ? new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-              : new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
-          } else if (input.sortBy === 'created_at') {
-            return input.sortOrder === 'desc'
-              ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-              : new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          } else if (input.sortBy === 'position') {
-            // Sort by pinned first, then by position
-            if (a.is_pinned !== b.is_pinned) {
-              return a.is_pinned ? -1 : 1;
-            }
-            return input.sortOrder === 'desc'
-              ? b.position - a.position
-              : a.position - b.position;
-          }
-          return 0;
-        });
-        
-        // Apply limit
-        filteredMockSessions = filteredMockSessions.slice(0, input.limit);
-        
-        console.log(`[chat.getSessions] - Successfully returned ${filteredMockSessions.length} filtered mock sessions`);
-        return filteredMockSessions;
       } catch (error) {
         console.error(`[chat.getSessions] - Error handling sessions for user ${userId}:`, error);
         throw new TRPCError({

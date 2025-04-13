@@ -49,14 +49,38 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Label } from "~/components/ui/label";
 import { DatePicker } from "~/components/ui/date-picker";
 
+// Create a wrapper for DatePicker to handle null to undefined conversion
+const DatePickerAdapter = ({ 
+  date, 
+  setDate, 
+  ...props 
+}: { 
+  date: Date | null, 
+  setDate: (date: Date | null) => void
+} & Omit<React.ComponentProps<typeof DatePicker>, 'date' | 'setDate'>
+) => {
+  // Create a wrapper function that converts undefined to null
+  const handleDateChange = (newDate: Date | undefined) => {
+    setDate(newDate || null);
+  };
+
+  return (
+    <DatePicker
+      date={date === null ? undefined : date}
+      setDate={handleDateChange}
+      {...props}
+    />
+  );
+};
+
 // Update FilterOptions type to include specific dates
 type FilterOptions = {
   pinned: boolean;
   archived: boolean;
   unread: boolean;
   date: 'today' | 'week' | 'month' | 'all' | 'custom';
-  startDate: Date | undefined;
-  endDate: Date | undefined;
+  startDate: Date | null;
+  endDate: Date | null;
 };
 
 export function ChatSidebar() {
@@ -71,7 +95,7 @@ export function ChatSidebar() {
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [showSortPopover, setShowSortPopover] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [sortField, setSortField] = useState<'updated_at' | 'title' | 'created_at'>('updated_at');
+  const [sortField, setSortField] = useState<'updated_at' | 'created_at' | 'position'>('updated_at');
   
   // Filter options
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
@@ -79,8 +103,8 @@ export function ChatSidebar() {
     archived: false,
     unread: false,
     date: 'all',
-    startDate: undefined,
-    endDate: undefined
+    startDate: null,
+    endDate: null
   });
   
   const currentSessionId = pathname.includes('/chat/') && pathname !== '/chat/settings' 
@@ -127,7 +151,7 @@ export function ChatSidebar() {
         );
         
         if (openMenus.length > 0) {
-          activeMenuEl = openMenus[0];
+          activeMenuEl = openMenus[0] || null;
           lastMousePosition = { x: clientX, y: clientY };
         }
       } else {
@@ -181,37 +205,7 @@ export function ChatSidebar() {
     status: activeTab === "archived" ? 'archived' : 'active',
     includeDeleted: false,
     sortBy: sortField,
-    sortOrder: sortOrder,
-    // New server-side filter parameters
-    isPinned: filterOptions.pinned ? true : undefined,
-    dateFrom: filterOptions.date === 'custom' ? filterOptions.startDate : 
-              filterOptions.date === 'today' ? (() => {
-                const date = new Date();
-                date.setHours(0, 0, 0, 0);
-                return date;
-              })() : 
-              filterOptions.date === 'week' ? (() => {
-                const date = new Date();
-                date.setDate(date.getDate() - 7);
-                return date;
-              })() : 
-              filterOptions.date === 'month' ? (() => {
-                const date = new Date();
-                date.setMonth(date.getMonth() - 1);
-                return date;
-              })() : undefined,
-    dateTo: filterOptions.date === 'custom' ? filterOptions.endDate : undefined,
-    // Only pass searchQuery if not doing fuzzy search
-    searchQuery: searchQuery.trim() !== '' && searchQuery.length > 3 ? searchQuery : undefined
-  }, {
-    onError: (error) => {
-      console.error("Error fetching sessions:", error.message);
-      toast({
-        title: "Failed to load chat sessions",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
+    sortOrder: sortOrder
   });
   
   const { 
@@ -241,9 +235,14 @@ export function ChatSidebar() {
       return searchResults.map(result => result.item);
     }
     
+    // Filter by pinned status when "pinned" tab is selected
+    if (activeTab === "pinned") {
+      return allSessions.filter(session => session.is_pinned);
+    }
+    
     // Otherwise, use the server-filtered results directly
     return allSessions;
-  }, [allSessions, searchQuery, fuseInstance]);
+  }, [allSessions, searchQuery, fuseInstance, activeTab]);
   
   // Create new chat session
   const [creating, setCreating] = useState(false);
@@ -356,8 +355,8 @@ export function ChatSidebar() {
       archived: false,
       unread: false,
       date: 'all',
-      startDate: undefined,
-      endDate: undefined
+      startDate: null,
+      endDate: null
     });
     setShowFilterPopover(false);
   };
@@ -466,7 +465,7 @@ export function ChatSidebar() {
   // Count active filters to show indicator
   const activeFilterCount = Object.entries(filterOptions).filter(([key, value]) => {
     if (key === 'startDate' || key === 'endDate') {
-      return value !== undefined;  // Only count dates if they're defined
+      return value !== null;  // Only count dates if they're defined
     }
     return typeof value === 'boolean' ? value : value !== 'all';
   }).length;
@@ -574,7 +573,7 @@ export function ChatSidebar() {
                       <div className="pt-2 space-y-3">
                         <div className="space-y-1">
                           <h6 className="text-xs font-medium">From</h6>
-                          <DatePicker 
+                          <DatePickerAdapter 
                             date={filterOptions.startDate}
                             setDate={(date) => handleFilterChange('startDate', date)}
                             placeholder="Start date"
@@ -584,7 +583,7 @@ export function ChatSidebar() {
                         
                         <div className="space-y-1">
                           <h6 className="text-xs font-medium">To</h6>
-                          <DatePicker 
+                          <DatePickerAdapter 
                             date={filterOptions.endDate}
                             setDate={(date) => handleFilterChange('endDate', date)}
                             placeholder="End date" 
@@ -635,8 +634,8 @@ export function ChatSidebar() {
                   <div className="grid gap-1">
                     {[
                       { label: "Last updated", value: "updated_at" },
-                      { label: "Title", value: "title" },
                       { label: "Date created", value: "created_at" },
+                      { label: "Position", value: "position" },
                     ].map((option) => (
                       <Button 
                         key={option.value} 
@@ -646,7 +645,7 @@ export function ChatSidebar() {
                           "justify-start font-normal",
                           sortField === option.value && "bg-zinc-800"
                         )}
-                        onClick={() => setSortField(option.value)}
+                        onClick={() => setSortField(option.value as 'updated_at' | 'created_at' | 'position')}
                       >
                         {option.label}
                         {sortField === option.value && (
@@ -671,7 +670,7 @@ export function ChatSidebar() {
                           "justify-start font-normal",
                           sortOrder === option.value && "bg-zinc-800"
                         )}
-                        onClick={() => setSortOrder(option.value)}
+                        onClick={() => setSortOrder(option.value as 'asc' | 'desc')}
                       >
                         {option.label}
                         {sortOrder === option.value && (
@@ -775,7 +774,7 @@ export function ChatSidebar() {
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      <span>{getRelativeTime(session.updated_at)}</span>
+                      <span>{session.updated_at ? getRelativeTime(session.updated_at) : "Unknown"}</span>
                     </div>
                   </div>
                   

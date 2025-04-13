@@ -44,3 +44,9 @@ yarn-error.log*
 
 # idea files
 .idea
+
+# Miscellaneous
+.aider.chat.history.md
+.aider.input.history
+.claude/
+.mcp.json
