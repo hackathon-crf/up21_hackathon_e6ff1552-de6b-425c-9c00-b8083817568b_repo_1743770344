@@ -100,15 +100,7 @@ function ChatPage({ initialSessionId }: ChatPageProps = {}) {
   
   // Chat state
   const [sessionId, setSessionId] = useState<string | undefined>(initialSessionId);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hello! I'm your Red Cross AI assistant. How can I help with your first aid and emergency response training today?",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
@@ -124,6 +116,8 @@ function ChatPage({ initialSessionId }: ChatPageProps = {}) {
     temperature, 
     maxTokens,
     streamingEnabled,
+    streamingSystemPrompt,
+    chatRouterSystemPrompt,
     ragEnabled 
   } = useSettingsStore();
 
@@ -397,6 +391,8 @@ function ChatPage({ initialSessionId }: ChatPageProps = {}) {
           model,
           temperature,
           maxTokens,
+          // Pass the system prompt from settings
+          streamingSystemPrompt,
           // Include API key for development mode (will only be used if server env vars aren't set)
           apiKey
         })

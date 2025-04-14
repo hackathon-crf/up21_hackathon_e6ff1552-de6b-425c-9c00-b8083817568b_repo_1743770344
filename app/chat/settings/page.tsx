@@ -5,6 +5,7 @@ import { api } from "~/trpc/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSettingsStore } from "../../../stores/settings";
+import { useModels } from "~/hooks/use-models";
 import type { PromptTemplate } from "../../../stores/settings";
 import {
   ArrowLeft,
@@ -29,6 +30,7 @@ import {
   Sparkles,
   ChevronRight,
   Info,
+  RefreshCw,
 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -92,9 +94,11 @@ export default function AIAssistantSettingsPage() {
     temperature,
     maxTokens,
     defaultPrompt,
+    streamingSystemPrompt,
+    chatRouterSystemPrompt,
     promptPrefix,
     promptSuffix,
-    promptTemplates, // Get prompt templates from store
+    promptTemplates,
     ragEnabled,
     chunkSize,
     similarityThreshold,
@@ -102,24 +106,28 @@ export default function AIAssistantSettingsPage() {
     darkMode,
     citationsEnabled,
     historyRetentionDays,
-    
+    cacheTimeToLive,
+
     // Actions
     setProvider,
     setModel,
     setTemperature,
     setMaxTokens,
     setDefaultPrompt,
+    setStreamingSystemPrompt,
+    setChatRouterSystemPrompt,
     setPromptPrefix,
     setPromptSuffix,
-    addPromptTemplate, // Action to add prompt template
-    deletePromptTemplate, // Action to delete prompt template
+    addPromptTemplate,
+    deletePromptTemplate,
     setRagEnabled,
     setChunkSize,
     setSimilarityThreshold,
     setStreamingEnabled,
     setDarkMode,
     setCitationsEnabled,
-    setHistoryRetentionDays
+    setHistoryRetentionDays,
+    setCacheTimeToLive,
   } = useSettingsStore();
 
   // UI State and non-persisted state
@@ -132,10 +140,68 @@ export default function AIAssistantSettingsPage() {
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     return model || "gpt-4o";
   });
-  const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiErrorMessage, setApiErrorMessage] = useState<string | null>(null);
+
+  // Get cached API key from localStorage
+  useEffect(() => {
+    const storedKey = localStorage.getItem(`${selectedProvider}_api_key`);
+    if (storedKey) {
+      setApiKey(storedKey);
+    } else {
+      setApiKey("");
+    }
+  }, [selectedProvider]);
+
+  // Use our enhanced models hook
+  const {
+    models,
+    isLoading: isLoadingModels,
+    isRefreshingInBackground,
+    error,
+    fetchModels,
+    verifyApiKey,
+    clearCache,
+    isCacheExpired,
+    isCacheStale,
+    getLastCacheUpdate,
+    getCacheExpiryTime,
+  } = useModels(selectedProvider, {
+    // Don't auto fetch - we'll do this manually
+    autoFetch: false,
+    cacheTimeToLive: cacheTimeToLive,
+  });
+
+  // Update available models when the hook's models change
+  useEffect(() => {
+    if (models.length > 0) {
+      setAvailableModels(models);
+
+      // Auto-select first model if current selection isn't available
+      const modelExists = models.some((m) => m.id === selectedModel);
+      if (!modelExists && models[0] && typeof models[0].id === "string") {
+        setSelectedModel(models[0].id);
+        setModel(models[0].id);
+      }
+    }
+  }, [models, selectedModel, setModel]);
+
+  // Load cached models on initial load if API key exists
+  useEffect(() => {
+    if (apiKey) {
+      fetchModels(selectedProvider, apiKey)
+        .then((fetchedModels) => {
+          console.log(
+            `[settings] Loaded ${fetchedModels.length} models for ${selectedProvider}`
+          );
+        })
+        .catch((err) => {
+          console.error(`[settings] Failed to load models:`, err);
+          setApiErrorMessage(err.message || "Failed to load models");
+        });
+    }
+  }, []);
 
   const [newPromptName, setNewPromptName] = useState("");
   const [newPromptContent, setNewPromptContent] = useState("");
@@ -158,11 +224,48 @@ export default function AIAssistantSettingsPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [autoSaveHistory, setAutoSaveHistory] = useState(true);
 
+  // Cache UI state
+  const [cacheTTLDays, setCacheTTLDays] = useState(
+    () => Math.floor(cacheTimeToLive / (24 * 60 * 60 * 1000)) || 1
+  );
+
   // Only fetch provider list automatically
   const { data: providers } = api.ai.getProviders.useQuery();
 
-  // Check if API key is provided and valid
-  const hasValidApiKey = useMemo(() => apiKey.trim().length > 0, [apiKey]);
+  // Check if API key is provided
+  const hasApiKey = useMemo(() => apiKey.trim().length > 0, [apiKey]);
+
+  // Get cache status information for UI
+  const cacheInfo = useMemo(() => {
+    if (!hasApiKey) return null;
+
+    const lastUpdate = getLastCacheUpdate(selectedProvider, apiKey);
+    const expiryTime = getCacheExpiryTime(selectedProvider, apiKey);
+    const isExpired = isCacheExpired(selectedProvider, apiKey);
+    const isStale = isCacheStale(selectedProvider, apiKey);
+
+    return {
+      lastUpdate,
+      expiryTime,
+      isExpired,
+      isStale,
+      status: isExpired
+        ? "expired"
+        : isStale
+        ? "stale"
+        : lastUpdate
+        ? "valid"
+        : "none",
+    };
+  }, [
+    selectedProvider,
+    apiKey,
+    getLastCacheUpdate,
+    getCacheExpiryTime,
+    isCacheExpired,
+    isCacheStale,
+    hasApiKey,
+  ]);
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-background/80">
@@ -210,6 +313,8 @@ export default function AIAssistantSettingsPage() {
                         setDefaultPrompt(
                           "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately."
                         );
+                        setStreamingSystemPrompt("");
+                        setChatRouterSystemPrompt("");
                         setPromptPrefix("");
                         setPromptSuffix(
                           "Please provide reliable information based on official Red Cross guidelines."
@@ -221,6 +326,7 @@ export default function AIAssistantSettingsPage() {
                         setDarkMode(false);
                         setCitationsEnabled(true);
                         setHistoryRetentionDays(30);
+                        setCacheTimeToLive(24 * 60 * 60 * 1000); // 24 hours
 
                         toast({
                           title: "Settings reset",
@@ -318,6 +424,20 @@ export default function AIAssistantSettingsPage() {
                         onValueChange={(value) => {
                           setSelectedProvider(value);
                           setProvider(value);
+
+                          // Clear available models until verified
+                          setAvailableModels([]);
+                          setApiErrorMessage(null);
+
+                          // Try to load the API key for the selected provider
+                          const storedKey = localStorage.getItem(
+                            `${value}_api_key`
+                          );
+                          if (storedKey) {
+                            setApiKey(storedKey);
+                          } else {
+                            setApiKey("");
+                          }
                         }}
                       >
                         <SelectTrigger
@@ -354,7 +474,9 @@ export default function AIAssistantSettingsPage() {
                         className="flex items-center gap-2 text-base font-medium"
                       >
                         <Key className="h-4 w-4" />
-                        {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key
+                        {selectedProvider.charAt(0).toUpperCase() +
+                          selectedProvider.slice(1)}{" "}
+                        API Key
                       </Label>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <div className="relative flex-1">
@@ -391,7 +513,7 @@ export default function AIAssistantSettingsPage() {
                               toast({
                                 title: "Error",
                                 description: "Please enter an API key first",
-                                variant: "destructive"
+                                variant: "destructive",
                               });
                               return;
                             }
@@ -399,146 +521,75 @@ export default function AIAssistantSettingsPage() {
                             // Show loading state
                             toast({
                               title: "Verifying API key",
-                              description: `Checking your ${selectedProvider} API key...`
+                              description: `Checking your ${selectedProvider} API key...`,
                             });
-                            
+
                             // Set loading state
-                            setIsLoadingModels(true);
                             setApiErrorMessage(null);
 
                             try {
-                              // Define provider endpoints
-                              const endpoints = {
-                                openai: "https://api.openai.com/v1/models",
-                                mistral: "https://api.mistral.ai/v1/models",
-                                anthropic: "https://api.anthropic.com/v1/models",
-                                gemini: "https://generativelanguage.googleapis.com/v1beta/models",
-                                openrouter: "https://openrouter.ai/api/v1/models"
-                              };
-                              
-                              // Get the endpoint for the selected provider
-                              const endpoint = endpoints[selectedProvider as keyof typeof endpoints];
-                              console.log(`[DEBUG] Verifying with endpoint: ${endpoint}`);
-                              
-                              // Set up for API call
-                              let finalEndpoint = endpoint;
-                              let headers: Record<string, string> = {
-                                'Content-Type': 'application/json'
-                              };
-                              
-                              // Configure endpoint and headers based on provider
-                              if (selectedProvider === 'gemini') {
-                                // For Gemini, API key is a query parameter
-                                const url = new URL(endpoint);
-                                url.searchParams.append('key', apiKey);
-                                finalEndpoint = url.toString();
-                                // Use the modified URL instead of the original endpoint
-                                headers = {}; // No Authorization header needed
-                              } else {
-                                // For other providers, use Authorization header
-                                headers['Authorization'] = `Bearer ${apiKey}`;
-                              }
-                              
-                              // Make actual API call
-                              const response = await fetch(finalEndpoint, {
-                                method: 'GET',
-                                headers
-                              });
-                              
-                              if (!response.ok) {
-                                const errorText = await response.text();
-                                console.error(`API error (${response.status}): ${errorText}`);
-                                throw new Error(`API verification failed: ${response.status} ${response.statusText}`);
-                              }
-                              
-                              // Parse successful response
-                              const data = await response.json();
-                              console.log('[DEBUG] API response:', data);
-                              
-                              // Save valid API key
-                              localStorage.setItem(`${selectedProvider}_api_key`, apiKey);
-                              
-                              // Parse models based on provider format
-                              let parsedModels: Array<{id: string, name: string, contextLength: number}> = [];
-                              
-                              try {
-                                switch(selectedProvider) {
-                                  case 'openai':
-                                    parsedModels = data.data.map((model: any) => ({
-                                      id: model.id,
-                                      name: model.id.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-                                      contextLength: model.context_window || 4096
-                                    }));
-                                    break;
-                                  case 'mistral':
-                                    parsedModels = data.data.map((model: any) => ({
-                                      id: model.id,
-                                      name: model.id.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-                                      contextLength: model.context_window || 8192
-                                    }));
-                                    break;
-                                  case 'anthropic':
-                                    parsedModels = (data.models || []).map((model: any) => ({
-                                      id: model.id,
-                                      name: model.name || model.id,
-                                      contextLength: model.context_window || 100000
-                                    }));
-                                    break;
-                                  case 'gemini':
-                                    parsedModels = (data.models || []).map((model: any) => ({
-                                      id: model.name.split('/').pop() || model.name,
-                                      name: model.displayName || model.name,
-                                      contextLength: model.inputTokenLimit || 32000
-                                    }));
-                                    break;
-                                  case 'openrouter':
-                                    parsedModels = (data.data || []).map((model: any) => ({
-                                      id: model.id,
-                                      name: model.name || model.id,
-                                      contextLength: model.context_length || 4096
-                                    }));
-                                    break;
-                                  default:
-                                    console.warn(`[DEBUG] Unknown provider: ${selectedProvider}`);
+                              // Use the verifyApiKey function from our hook
+                              const isValid = await verifyApiKey(
+                                selectedProvider,
+                                apiKey
+                              );
+
+                              if (isValid) {
+                                // Save valid API key
+                                localStorage.setItem(
+                                  `${selectedProvider}_api_key`,
+                                  apiKey
+                                );
+
+                                // Fetch models to display
+                                const fetchedModels = await fetchModels(
+                                  selectedProvider,
+                                  apiKey
+                                );
+
+                                // Update the UI with models
+                                setAvailableModels(fetchedModels);
+
+                                // Select the first model if available
+                                if (
+                                  fetchedModels.length > 0 &&
+                                  fetchedModels[0]
+                                ) {
+                                  setSelectedModel(fetchedModels[0].id);
+                                  setModel(fetchedModels[0].id);
                                 }
-                              } catch (parseError) {
-                                console.error(`Error parsing ${selectedProvider} response:`, parseError);
-                                throw new Error(`Failed to parse models from response: ${parseError instanceof Error ? parseError.message : 'Error parsing response'}`);
+
+                                // Show success message
+                                toast({
+                                  title: "API key verified",
+                                  description: `Your ${selectedProvider} API key verified successfully. ${fetchedModels.length} models available.`,
+                                  variant: "default",
+                                });
+                              } else {
+                                throw new Error(
+                                  "Invalid API key. Please check and try again."
+                                );
                               }
-                              
-                              // Log the parsed models count
-                              console.log(`[DEBUG] Successfully parsed ${parsedModels.length} models from ${selectedProvider} API response`);
-                                
-                              // Update the UI with models from the API response
-                              setAvailableModels(parsedModels);
-                              setIsLoadingModels(false);
-                              
-                              // Select the first model if available
-                              if (parsedModels.length > 0 && parsedModels[0] && typeof parsedModels[0].id === 'string') {
-                                setSelectedModel(parsedModels[0].id);
-                                setModel(parsedModels[0].id);
-                                console.log(`[DEBUG] Selected model: ${parsedModels[0].id}`);
-                              }
-                              
-                              // Show success message
-                              toast({
-                                title: "API key verified",
-                                description: `Your ${selectedProvider} API key verified successfully. ${parsedModels.length} models available.`,
-                                variant: "default"
-                              });
                             } catch (error) {
-                              // Clear loading state
-                              setIsLoadingModels(false);
-                              
                               // Handle the error
                               console.error("API verification error:", error);
-                              
+
                               // Show error message to user
                               toast({
                                 title: "Verification failed",
-                                description: `Could not verify the API key: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                                variant: "destructive"
+                                description: `Could not verify the API key: ${
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Unknown error"
+                                }`,
+                                variant: "destructive",
                               });
+
+                              setApiErrorMessage(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Unknown error"
+                              );
                             }
                           }}
                           disabled={!apiKey.trim()}
@@ -547,9 +598,63 @@ export default function AIAssistantSettingsPage() {
                         </Button>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Your {selectedProvider} API key is required to use {selectedProvider} models. 
-                        Keys are stored locally in your browser.
+                        Your {selectedProvider} API key is required to use{" "}
+                        {selectedProvider} models. Keys are stored locally in
+                        your browser.
                       </p>
+
+                      {/* Display cache status if available */}
+                      {cacheInfo && cacheInfo.status !== "none" && (
+                        <div
+                          className={`mt-2 text-sm px-3 py-2 rounded-md border ${
+                            cacheInfo.status === "valid"
+                              ? "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300"
+                              : cacheInfo.status === "stale"
+                              ? "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300"
+                              : "bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>
+                              Model list cache:{" "}
+                              <strong>
+                                {cacheInfo.status === "valid"
+                                  ? "Valid"
+                                  : cacheInfo.status === "stale"
+                                  ? "Stale"
+                                  : "Expired"}
+                              </strong>
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 p-1"
+                              onClick={() => {
+                                if (!apiKey) return;
+                                clearCache(selectedProvider, apiKey);
+                                toast({
+                                  title: "Cache cleared",
+                                  description: `Model cache for ${selectedProvider} has been cleared.`,
+                                });
+                              }}
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Refresh</span>
+                            </Button>
+                          </div>
+                          {cacheInfo.lastUpdate && (
+                            <div className="text-xs mt-1">
+                              Last updated:{" "}
+                              {cacheInfo.lastUpdate.toLocaleString()}
+                            </div>
+                          )}
+                          {cacheInfo.expiryTime && (
+                            <div className="text-xs mt-0.5">
+                              Expires: {cacheInfo.expiryTime.toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -730,6 +835,70 @@ export default function AIAssistantSettingsPage() {
                         Advanced Model Settings
                       </AccordionTrigger>
                       <AccordionContent className="space-y-4 px-4 py-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="cache-ttl">
+                              Cache Time-to-Live (Days)
+                            </Label>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                  >
+                                    <Info className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-xs">
+                                    How long to cache model lists before
+                                    requiring a refresh. Longer values reduce
+                                    API calls but may miss new models.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id="cache-ttl"
+                              type="number"
+                              min={1}
+                              max={30}
+                              value={cacheTTLDays}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                if (!isNaN(value) && value > 0) {
+                                  setCacheTTLDays(value);
+                                  // Convert days to milliseconds
+                                  setCacheTimeToLive(
+                                    value * 24 * 60 * 60 * 1000
+                                  );
+                                }
+                              }}
+                              className="w-full border-2 h-11"
+                            />
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                // Clear all model caches
+                                clearCache();
+                                toast({
+                                  title: "Cache cleared",
+                                  description:
+                                    "All model caches have been cleared.",
+                                });
+                              }}
+                              className="border-2 h-11"
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Clear All Caches
+                            </Button>
+                          </div>
+                        </div>
+
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <Label htmlFor="top-p-slider">Top P: 0.95</Label>
@@ -1017,6 +1186,99 @@ export default function AIAssistantSettingsPage() {
                         </Button>
                       </div>
                     </div>
+
+                    <Separator className="my-2" />
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium">
+                          System Prompts Configuration
+                        </h3>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                              >
+                                <Info className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p>
+                                System prompts define how the AI behaves in
+                                different parts of the application. Changes here
+                                will affect all future conversations.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+
+                      <div className="space-y-4 border-2 rounded-md p-4 bg-card/50">
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="streaming-system-prompt"
+                            className="text-base font-medium"
+                          >
+                            Streaming API System Prompt
+                          </Label>
+                          <Textarea
+                            id="streaming-system-prompt"
+                            placeholder="System prompt used for streaming API responses"
+                            value={streamingSystemPrompt}
+                            onChange={(e) =>
+                              setStreamingSystemPrompt(e.target.value)
+                            }
+                            className="min-h-[120px] border-2 resize-y"
+                          />
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Used when generating streaming responses in the chat
+                            interface
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="chat-router-system-prompt"
+                            className="text-base font-medium"
+                          >
+                            Chat Router System Prompt
+                          </Label>
+                          <Textarea
+                            id="chat-router-system-prompt"
+                            placeholder="System prompt used in the chat router"
+                            value={chatRouterSystemPrompt}
+                            onChange={(e) =>
+                              setChatRouterSystemPrompt(e.target.value)
+                            }
+                            className="min-h-[120px] border-2 resize-y"
+                          />
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Used by the server when processing non-streaming chat
+                            requests
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={() => {
+                          toast({
+                            title: "System prompts saved",
+                            description:
+                              "Your system prompt changes have been applied to all components.",
+                          });
+                        }}
+                        className="w-full relative overflow-hidden group"
+                      >
+                        <span className="relative z-10 flex items-center">
+                          <Save className="mr-2 h-4 w-4" />
+                          Save System Prompts
+                        </span>
+                        <span className="absolute inset-0 bg-primary-foreground/10 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1217,7 +1479,9 @@ export default function AIAssistantSettingsPage() {
                                   className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                   onClick={() =>
                                     setDataSources(
-                                      dataSources.filter((s) => s.id !== source.id)
+                                      dataSources.filter(
+                                        (s) => s.id !== source.id
+                                      )
                                     )
                                   }
                                 >
@@ -1235,7 +1499,9 @@ export default function AIAssistantSettingsPage() {
                             <Input
                               placeholder="Data Source Name"
                               value={newDataSource}
-                              onChange={(e) => setNewDataSource(e.target.value)}
+                              onChange={(e) =>
+                                setNewDataSource(e.target.value)
+                              }
                               className="flex-1 border-2 h-11"
                             />
                             <Select

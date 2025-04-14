@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { AIService, ChatMessage } from "~/lib/services/ai";
+import { AIService } from "~/lib/services/ai";
+import type { ChatMessage } from "~/lib/services/ai"; // Change to type-only import
 import { db } from "~/server/db";
 import { chatSessions, chatMessages } from "~/server/db/schema";
 import { and, desc, eq } from "drizzle-orm";
@@ -8,12 +9,12 @@ import { cookies } from "next/headers";
 import { v4 as uuidv4 } from "uuid";
 
 // Helper to format messages for streaming
-function formatMessagesForAI(messages: any[]): ChatMessage[] {
-  // Add system prompt
-  const systemPrompt = "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately. Provide reliable information based on official Red Cross guidelines.";
+function formatMessagesForAI(messages: any[], systemPrompt?: string): ChatMessage[] {
+  // Use provided system prompt or fall back to default
+  const defaultSystemPrompt = "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately. Provide reliable information based on official Red Cross guidelines.";
   
   return [
-    { role: "system", content: systemPrompt },
+    { role: "system", content: systemPrompt || defaultSystemPrompt },
     ...messages.map(msg => ({
       role: msg.role as "user" | "assistant" | "system",
       content: msg.content
@@ -29,13 +30,13 @@ function formatSSE(event: string, data: any) {
 export async function POST(request: NextRequest) {
   try {
     console.log("[stream] Starting chat stream request");
-    const cookieStore = cookies();
+    const cookieStore = await cookies(); // Fix: await the cookies() call
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get: (name) => cookieStore.get(name)?.value,
+          get: (name) => cookieStore.get(name)?.value ?? "", // Fix: Add empty string fallback
           set: () => {}, // Not needed for this endpoint
           remove: () => {}, // Not needed for this endpoint
         },
@@ -63,7 +64,8 @@ export async function POST(request: NextRequest) {
       model,
       temperature = 0.7,
       maxTokens = 4000,
-      apiKey: clientApiKey
+      apiKey: clientApiKey,
+      streamingSystemPrompt // Get custom system prompt from request
     } = await request.json();
 
     // Validate request
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest) {
         updated_at: new Date(),
       }).returning();
       
-      if (!newSession.length) {
+      if (!newSession.length || !newSession[0]?.id) { // Fix: Add proper null check
         console.error("[stream] Failed to create chat session");
         return new Response(JSON.stringify({ error: "Failed to create chat session" }), {
           status: 500,
@@ -175,7 +177,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Format messages for AI
-    const formattedMessages = formatMessagesForAI(messages);
+    const formattedMessages = formatMessagesForAI(messages, streamingSystemPrompt);
     
     // Create the streaming response
     const stream = new ReadableStream({
