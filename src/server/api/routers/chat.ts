@@ -453,34 +453,67 @@ export const chatRouter = createTRPCRouter({
       session_id: z.string().uuid(),
     }))
     .query(async ({ ctx, input }) => {
+      console.log(`[chat.getMessages] - Request received for session: ${input.session_id}`);
+      
       const userId = ctx.auth.user?.id;
       if (!userId) {
+        console.log(`[chat.getMessages] - UNAUTHORIZED: No user ID found in context`);
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "You must be logged in to access chat messages"
         });
       }
       
-      // Verify the session belongs to the user - updated with proper column names
-      const session = await db.select()
-        .from(chatSessions)
-        .where(and(
-          eq(chatSessions.id, input.session_id),
-          eq(chatSessions.user_id, userId) // Using snake_case for column names
-        ))
-        .limit(1);
+      console.log(`[chat.getMessages] - Authorized for user: ${userId}`);
       
-      if (!session.length) {
+      try {
+        // Verify the session belongs to the user - updated with proper column names
+        const session = await db.select()
+          .from(chatSessions)
+          .where(and(
+            eq(chatSessions.id, input.session_id),
+            eq(chatSessions.user_id, userId) // Using snake_case for column names
+          ))
+          .limit(1);
+        
+        if (!session.length) {
+          console.log(`[chat.getMessages] - NOT_FOUND: Session ${input.session_id} not found or doesn't belong to user ${userId}`);
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Chat session not found"
+          });
+        }
+        
+        console.log(`[chat.getMessages] - Session verified for user ${userId}, fetching messages`);
+        
+        try {
+          const messages = await db.select()
+            .from(chatMessages)
+            .where(eq(chatMessages.session_id, input.session_id)) // Using snake_case
+            .orderBy(asc(chatMessages.timestamp));
+          
+          console.log(`[chat.getMessages] - Found ${messages.length} messages for session ${input.session_id}`);
+          return messages;
+        } catch (dbError) {
+          console.error(`[chat.getMessages] - Database error while fetching messages:`, dbError);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to fetch messages due to a database error",
+            cause: dbError
+          });
+        }
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error; // Re-throw TRPCError
+        }
+        
+        console.error(`[chat.getMessages] - Unhandled error:`, error);
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Chat session not found"
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to fetch chat messages",
+          cause: error
         });
       }
-      
-      return await db.select()
-        .from(chatMessages)
-        .where(eq(chatMessages.session_id, input.session_id)) // Using snake_case
-        .orderBy(asc(chatMessages.timestamp));
     }),
 
   // Update session title (original method, kept for backward compatibility)
@@ -933,5 +966,43 @@ export const chatRouter = createTRPCRouter({
       });
       
       return { success: true };
+    }),
+
+  // Test authentication and database connection
+  testConnection: protectedProcedure
+    .query(async ({ ctx }) => {
+      const userId = ctx.auth.user?.id;
+      if (!userId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Not authenticated"
+        });
+      }
+      
+      // Test database connection
+      let dbStatus = "unknown";
+      let dbError = null;
+      try {
+        // Simple test query
+        const result = await db.select({ count: sql`COUNT(*)` })
+          .from(chatSessions)
+          .limit(1);
+        
+        dbStatus = "connected";
+        console.log("[testConnection] Database connection successful:", result);
+      } catch (error) {
+        dbStatus = "error";
+        dbError = error instanceof Error ? error.message : "Unknown database error";
+        console.error("[testConnection] Database error:", error);
+      }
+      
+      // Test auth status
+      return {
+        authenticated: true,
+        userId,
+        dbStatus,
+        dbError,
+        timestamp: new Date().toISOString(),
+      };
     }),
 });

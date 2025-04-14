@@ -1,6 +1,8 @@
 "use client"
 
 import type React from "react"
+import type { TRPCClientErrorLike } from "@trpc/client"
+import type { AppRouter } from "~/server/api/root"
 
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
@@ -41,6 +43,17 @@ interface Message {
 
 interface ChatPageProps {
   initialSessionId?: string;
+}
+
+// Define types for the chat message from the database
+type ChatMessageFromDB = {
+  id: string;
+  session_id: string;
+  role: string;
+  content: string;
+  timestamp: Date;
+  metrics: unknown;
+  sources: unknown;
 }
 
 // Wrap the main component in an error boundary
@@ -196,50 +209,64 @@ function ChatPage({ initialSessionId }: ChatPageProps = {}) {
   
   // Fetch chat history when sessionId changes
   const messagesQuery = api.chat.getMessages.useQuery(
-    { sessionId: sessionId || '' }, // Provide empty string as fallback (query is disabled when sessionId is falsy)
+    { session_id: sessionId || '' }, // Provide empty string as fallback (query is disabled when sessionId is falsy)
     { 
       enabled: !!sessionId, // Only enable query when sessionId exists
       refetchOnMount: true, // This ensures it runs when session ID is updated
-      refetchOnWindowFocus: false,
-      onSuccess: (data) => {
-        console.log(`Successfully fetched ${data.length} messages for session ${sessionId}`);
-        if (data && data.length > 0) {
-          // Only update if we have messages and it's not the initial welcome message
-          const formattedMessages = data.map(msg => ({
-            id: msg.id,
-            role: msg.role as "user" | "assistant",
-            content: msg.content,
-            timestamp: new Date(msg.timestamp),
-            sources: msg.sources ? msg.sources as any : undefined,
-          }));
-          
-          setMessages(formattedMessages);
-          console.log("Updated messages from database:", formattedMessages.length);
-          
-          // Hide welcome banner since we have history
-          setShowWelcomeBanner(false);
-        } else {
-          console.log("No messages found for this session or empty result");
-        }
-      },
-      onError: (error) => {
-        console.error("Error fetching chat history:", error);
-        toast({
-          title: "Error",
-          description: `Failed to load chat history: ${error.message}`,
-          variant: "destructive"
-        });
-      }
+      refetchOnWindowFocus: false
     }
   );
 
-  // Effect to trigger refetch when sessionId changes
+  // Use effect to process the query results
   useEffect(() => {
-    if (sessionId) {
-      console.log(`Session ID changed or initialized: ${sessionId}, triggering message fetch`);
-      messagesQuery.refetch();
+    if (messagesQuery.isLoading) return;
+    
+    if (messagesQuery.isSuccess && messagesQuery.data) {
+      console.log(`Successfully fetched ${messagesQuery.data.length} messages for session ${sessionId}`);
+      
+      if (messagesQuery.data.length > 0) {
+        // Only update if we have messages and it's not the initial welcome message
+        const formattedMessages = messagesQuery.data.map((msg: ChatMessageFromDB) => ({
+          id: msg.id,
+          role: msg.role as "user" | "assistant",
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          sources: msg.sources ? msg.sources as any : undefined,
+        }));
+        
+        setMessages(formattedMessages);
+        console.log("Updated messages from database:", formattedMessages.length);
+        
+        // Hide welcome banner since we have history
+        setShowWelcomeBanner(false);
+      } else {
+        console.log("No messages found for this session or empty result");
+      }
     }
-  }, [sessionId, messagesQuery]);
+    
+    if (messagesQuery.isError && messagesQuery.error) {
+      console.error("Error fetching chat history:", messagesQuery.error);
+      // Add more detailed error logging - safely access properties
+      console.error(`Messages query error details: ${messagesQuery.error.message}`, {
+        // Use type assertion to safely access properties
+        code: (messagesQuery.error as any).code,
+        data: (messagesQuery.error as any).data,
+        sessionId: sessionId
+      });
+      
+      // Check if it's an authorization error and handle appropriately
+      if (messagesQuery.error.message.includes("UNAUTHORIZED") || 
+          messagesQuery.error.message.includes("logged in")) {
+        console.error("Authentication issue detected when fetching messages");
+      }
+      
+      toast({
+        title: "Error",
+        description: `Failed to load chat history: ${messagesQuery.error.message}`,
+        variant: "destructive"
+      });
+    }
+  }, [messagesQuery.status, messagesQuery.data, messagesQuery.error, sessionId]);
   
   // Handle sending messages
   const handleSend = async () => {
