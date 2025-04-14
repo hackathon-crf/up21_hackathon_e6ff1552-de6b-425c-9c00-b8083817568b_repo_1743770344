@@ -22,7 +22,7 @@ import { ChatHeader } from "./components/chat-header"
 import { cn } from "~/lib/utils"
 import { api } from "~/trpc/react"
 import { generateId, formatTime, formatSourceDate } from "./utils"
-import { useSettingsStore } from "~/stores/settings"
+import { useSettingsStore } from "../../stores/settings"
 import { usePathname, useRouter } from "next/navigation"
 import { toast } from "~/hooks/use-toast"
 

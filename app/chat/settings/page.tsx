@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { api } from "~/trpc/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSettingsStore } from "../../../stores/settings";
+import type { PromptTemplate } from "../../../stores/settings";
 import {
   ArrowLeft,
   Book,
@@ -83,79 +85,62 @@ export default function AIAssistantSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Model Settings State
-  const [selectedProvider, setSelectedProvider] = useState<string>("openai");
+  // Get settings from Zustand store
+  const {
+    provider,
+    model,
+    temperature,
+    maxTokens,
+    defaultPrompt,
+    promptPrefix,
+    promptSuffix,
+    promptTemplates, // Get prompt templates from store
+    ragEnabled,
+    chunkSize,
+    similarityThreshold,
+    streamingEnabled,
+    darkMode,
+    citationsEnabled,
+    historyRetentionDays,
+    
+    // Actions
+    setProvider,
+    setModel,
+    setTemperature,
+    setMaxTokens,
+    setDefaultPrompt,
+    setPromptPrefix,
+    setPromptSuffix,
+    addPromptTemplate, // Action to add prompt template
+    deletePromptTemplate, // Action to delete prompt template
+    setRagEnabled,
+    setChunkSize,
+    setSimilarityThreshold,
+    setStreamingEnabled,
+    setDarkMode,
+    setCitationsEnabled,
+    setHistoryRetentionDays
+  } = useSettingsStore();
+
+  // UI State and non-persisted state
+  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+    return provider || "openai";
+  });
   const [availableModels, setAvailableModels] = useState<
     Array<{ id: string; name: string; contextLength?: number }>
   >([]);
-  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o");
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    return model || "gpt-4o";
+  });
   const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
-  const [temperature, setTemperature] = useState(0.7);
-  const [maxTokens, setMaxTokens] = useState(4000);
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
-
-  // Only fetch provider list automatically
-  const { data: providers } = api.ai.getProviders.useQuery();
-
-  // State for API error messages
   const [apiErrorMessage, setApiErrorMessage] = useState<string | null>(null);
 
-  // Check if API key is provided and valid
-  const hasValidApiKey = useMemo(() => apiKey.trim().length > 0, [apiKey]);
-
-  // Check for stored API key when provider changes
-  useEffect(() => {
-    // Clear available models when provider changes
-    setAvailableModels([]);
-    setSelectedModel("");
-    
-    // Clear API error message
-    setApiErrorMessage(null);
-    
-    // Check if there's a stored API key for this provider
-    const storedApiKey = localStorage.getItem(`${selectedProvider}_api_key`);
-    if (storedApiKey) {
-      // If API key exists, set it in the state
-      setApiKey(storedApiKey);
-    } else {
-      // If no API key, clear current input
-      setApiKey("");
-    }
-  }, [selectedProvider]);
-
-  // Prompt Settings State
-  const [defaultPrompt, setDefaultPrompt] = useState(
-    "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.",
-  );
-  const [promptPrefix, setPromptPrefix] = useState("");
-  const [promptSuffix, setPromptSuffix] = useState(
-    "Please provide reliable information based on official Red Cross guidelines.",
-  );
-  const [savedPrompts, setSavedPrompts] = useState([
-    {
-      id: 1,
-      name: "First Aid Basics",
-      prompt: "Explain basic first aid procedures for common injuries.",
-    },
-    {
-      id: 2,
-      name: "CPR Instructions",
-      prompt: "Provide step-by-step CPR instructions for adults.",
-    },
-    {
-      id: 3,
-      name: "Emergency Response",
-      prompt: "Outline emergency response protocols for disaster situations.",
-    },
-  ]);
   const [newPromptName, setNewPromptName] = useState("");
   const [newPromptContent, setNewPromptContent] = useState("");
 
-  // RAG Settings State
-  const [ragEnabled, setRagEnabled] = useState(true);
-  const [chunkSize, setChunkSize] = useState(1000);
-  const [similarityThreshold, setSimilarityThreshold] = useState(0.75);
+  // Data sources state (not in Zustand store)
   const [dataSources, setDataSources] = useState([
     { id: 1, name: "Red Cross First Aid Manual", type: "pdf", enabled: true },
     {
@@ -169,140 +154,15 @@ export default function AIAssistantSettingsPage() {
   const [newDataSource, setNewDataSource] = useState("");
   const [newDataSourceType, setNewDataSourceType] = useState("pdf");
 
-  // Other Settings State
-  const [darkMode, setDarkMode] = useState(false);
+  // UI state for other features not in Zustand store
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [autoSaveHistory, setAutoSaveHistory] = useState(true);
-  const [historyRetentionDays, setHistoryRetentionDays] = useState(30);
-  const [streamingEnabled, setStreamingEnabled] = useState(true);
-  const [citationsEnabled, setCitationsEnabled] = useState(true);
 
-  // Handle save settings
-  const handleSaveSettings = () => {
-    // In a real app, this would save settings to a database or local storage
-    toast({
-      title: "Settings saved",
-      description: "Your AI Assistant settings have been updated successfully.",
-    });
-  };
+  // Only fetch provider list automatically
+  const { data: providers } = api.ai.getProviders.useQuery();
 
-  // Handle adding a new saved prompt
-  const handleAddSavedPrompt = () => {
-    if (!newPromptName.trim() || !newPromptContent.trim()) {
-      toast({
-        title: "Error",
-        description: "Please provide both a name and content for the prompt.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newPrompt = {
-      id: savedPrompts.length + 1,
-      name: newPromptName,
-      prompt: newPromptContent,
-    };
-
-    setSavedPrompts([...savedPrompts, newPrompt]);
-    setNewPromptName("");
-    setNewPromptContent("");
-
-    toast({
-      title: "Prompt saved",
-      description: "Your prompt template has been saved successfully.",
-    });
-  };
-
-  // Handle deleting a saved prompt
-  const handleDeleteSavedPrompt = (id: number) => {
-    setSavedPrompts(savedPrompts.filter((prompt) => prompt.id !== id));
-
-    toast({
-      title: "Prompt deleted",
-      description: "The prompt template has been removed.",
-    });
-  };
-
-  // Handle adding a new data source
-  const handleAddDataSource = () => {
-    if (!newDataSource.trim()) {
-      toast({
-        title: "Error",
-        description: "Please provide a name for the data source.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newSource = {
-      id: dataSources.length + 1,
-      name: newDataSource,
-      type: newDataSourceType,
-      enabled: true,
-    };
-
-    setDataSources([...dataSources, newSource]);
-    setNewDataSource("");
-
-    toast({
-      title: "Data source added",
-      description: "The new data source has been added successfully.",
-    });
-  };
-
-  // Handle toggling a data source
-  const handleToggleDataSource = (id: number) => {
-    setDataSources(
-      dataSources.map((source) =>
-        source.id === id ? { ...source, enabled: !source.enabled } : source,
-      ),
-    );
-  };
-
-  // Handle deleting a data source
-  const handleDeleteDataSource = (id: number) => {
-    setDataSources(dataSources.filter((source) => source.id !== id));
-
-    toast({
-      title: "Data source removed",
-      description: "The data source has been removed successfully.",
-    });
-  };
-
-  // Handle resetting all settings to defaults
-  const handleResetSettings = () => {
-    // Reset model settings
-    setSelectedModel("gpt-4o");
-    setTemperature(0.7);
-    setMaxTokens(4000);
-
-    // Reset prompt settings
-    setDefaultPrompt(
-      "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.",
-    );
-    setPromptPrefix("");
-    setPromptSuffix(
-      "Please provide reliable information based on official Red Cross guidelines.",
-    );
-
-    // Reset RAG settings
-    setRagEnabled(true);
-    setChunkSize(1000);
-    setSimilarityThreshold(0.75);
-
-    // Reset other settings
-    setDarkMode(false);
-    setNotificationsEnabled(true);
-    setAutoSaveHistory(true);
-    setHistoryRetentionDays(30);
-    setStreamingEnabled(true);
-    setCitationsEnabled(true);
-
-    toast({
-      title: "Settings reset",
-      description: "All settings have been reset to their default values.",
-    });
-  };
+  // Check if API key is provided and valid
+  const hasValidApiKey = useMemo(() => apiKey.trim().length > 0, [apiKey]);
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-background/80">
@@ -342,7 +202,32 @@ export default function AIAssistantSettingsPage() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={handleResetSettings}
+                      onClick={() => {
+                        setProvider("openai");
+                        setModel("gpt-4o");
+                        setTemperature(0.7);
+                        setMaxTokens(4000);
+                        setDefaultPrompt(
+                          "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately."
+                        );
+                        setPromptPrefix("");
+                        setPromptSuffix(
+                          "Please provide reliable information based on official Red Cross guidelines."
+                        );
+                        setRagEnabled(true);
+                        setChunkSize(1000);
+                        setSimilarityThreshold(0.75);
+                        setStreamingEnabled(true);
+                        setDarkMode(false);
+                        setCitationsEnabled(true);
+                        setHistoryRetentionDays(30);
+
+                        toast({
+                          title: "Settings reset",
+                          description:
+                            "All settings have been reset to their default values.",
+                        });
+                      }}
                       className="bg-destructive text-destructive-foreground"
                     >
                       Reset
@@ -352,7 +237,13 @@ export default function AIAssistantSettingsPage() {
               </AlertDialog>
 
               <Button
-                onClick={handleSaveSettings}
+                onClick={() => {
+                  toast({
+                    title: "Settings saved",
+                    description:
+                      "Your AI Assistant settings have been updated successfully.",
+                  });
+                }}
                 className="relative overflow-hidden group"
               >
                 <span className="relative z-10 flex items-center">
@@ -425,10 +316,8 @@ export default function AIAssistantSettingsPage() {
                       <Select
                         value={selectedProvider}
                         onValueChange={(value) => {
-                          // Always allow provider selection first
                           setSelectedProvider(value);
-                          // Clear API key when changing providers
-                          setApiKey("");
+                          setProvider(value);
                         }}
                       >
                         <SelectTrigger
@@ -627,6 +516,7 @@ export default function AIAssistantSettingsPage() {
                               // Select the first model if available
                               if (parsedModels.length > 0 && parsedModels[0] && typeof parsedModels[0].id === 'string') {
                                 setSelectedModel(parsedModels[0].id);
+                                setModel(parsedModels[0].id);
                                 console.log(`[DEBUG] Selected model: ${parsedModels[0].id}`);
                               }
                               
@@ -671,7 +561,10 @@ export default function AIAssistantSettingsPage() {
                       </Label>
                       <Select
                         value={selectedModel}
-                        onValueChange={setSelectedModel}
+                        onValueChange={(value) => {
+                          setSelectedModel(value);
+                          setModel(value);
+                        }}
                         disabled={
                           isLoadingModels || availableModels.length === 0
                         }
@@ -1029,12 +922,12 @@ export default function AIAssistantSettingsPage() {
                         Saved Prompt Templates
                       </h3>
                       <Badge variant="outline" className="border-2">
-                        {savedPrompts.length} Templates
+                        {promptTemplates.length} Templates
                       </Badge>
                     </div>
 
                     <div className="space-y-4">
-                      {savedPrompts.map((prompt) => (
+                      {promptTemplates.map((prompt: PromptTemplate) => (
                         <motion.div
                           key={prompt.id}
                           initial={{ opacity: 0, y: 10 }}
@@ -1068,7 +961,7 @@ export default function AIAssistantSettingsPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleDeleteSavedPrompt(prompt.id)}
+                              onClick={() => deletePromptTemplate(prompt.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                               <span className="sr-only">Delete Prompt</span>
@@ -1094,7 +987,23 @@ export default function AIAssistantSettingsPage() {
                           className="min-h-[80px] border-2 resize-y"
                         />
                         <Button
-                          onClick={handleAddSavedPrompt}
+                          onClick={() => {
+                            const newPrompt = {
+                              id: Date.now(),
+                              name: newPromptName,
+                              prompt: newPromptContent,
+                            };
+
+                            addPromptTemplate(newPrompt);
+                            setNewPromptName("");
+                            setNewPromptContent("");
+
+                            toast({
+                              title: "Prompt saved",
+                              description:
+                                "Your prompt template has been saved successfully.",
+                            });
+                          }}
                           className="w-full relative overflow-hidden group"
                           disabled={
                             !newPromptName.trim() || !newPromptContent.trim()
@@ -1292,7 +1201,13 @@ export default function AIAssistantSettingsPage() {
                                 <Switch
                                   checked={source.enabled}
                                   onCheckedChange={() =>
-                                    handleToggleDataSource(source.id)
+                                    setDataSources(
+                                      dataSources.map((s) =>
+                                        s.id === source.id
+                                          ? { ...s, enabled: !s.enabled }
+                                          : s
+                                      )
+                                    )
                                   }
                                   className="data-[state=checked]:bg-primary"
                                 />
@@ -1301,7 +1216,9 @@ export default function AIAssistantSettingsPage() {
                                   size="icon"
                                   className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                   onClick={() =>
-                                    handleDeleteDataSource(source.id)
+                                    setDataSources(
+                                      dataSources.filter((s) => s.id !== source.id)
+                                    )
                                   }
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -1346,7 +1263,23 @@ export default function AIAssistantSettingsPage() {
                               Upload File
                             </Button>
                             <Button
-                              onClick={handleAddDataSource}
+                              onClick={() => {
+                                const newSource = {
+                                  id: dataSources.length + 1,
+                                  name: newDataSource,
+                                  type: newDataSourceType,
+                                  enabled: true,
+                                };
+
+                                setDataSources([...dataSources, newSource]);
+                                setNewDataSource("");
+
+                                toast({
+                                  title: "Data source added",
+                                  description:
+                                    "The new data source has been added successfully.",
+                                });
+                              }}
                               className="flex-1 relative overflow-hidden group"
                               disabled={!newDataSource.trim()}
                             >

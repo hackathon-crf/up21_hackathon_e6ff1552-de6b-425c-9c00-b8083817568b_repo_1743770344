@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+// Define the template type
+export interface PromptTemplate {
+  id: number;
+  name: string;
+  prompt: string;
+}
+
 interface SettingsState {
   // Model settings
   provider: string;
@@ -12,6 +19,7 @@ interface SettingsState {
   defaultPrompt: string;
   promptPrefix: string;
   promptSuffix: string;
+  promptTemplates: PromptTemplate[]; // Added prompt templates array
   
   // RAG settings
   ragEnabled: boolean;
@@ -32,6 +40,9 @@ interface SettingsState {
   setDefaultPrompt: (prompt: string) => void;
   setPromptPrefix: (prefix: string) => void;
   setPromptSuffix: (suffix: string) => void;
+  setPromptTemplates: (templates: PromptTemplate[]) => void; // Added setter for templates
+  addPromptTemplate: (template: Omit<PromptTemplate, "id">) => void; // Added method to add template
+  deletePromptTemplate: (id: number) => void; // Added method to delete template
   setRagEnabled: (enabled: boolean) => void;
   setChunkSize: (size: number) => void;
   setSimilarityThreshold: (threshold: number) => void;
@@ -52,6 +63,7 @@ export const useSettingsStore = create<SettingsState>()(
       defaultPrompt: "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.",
       promptPrefix: "",
       promptSuffix: "Please provide reliable information based on official Red Cross guidelines.",
+      promptTemplates: [], // Initialize prompt templates array
       ragEnabled: true,
       chunkSize: 1000,
       similarityThreshold: 0.75,
@@ -68,6 +80,18 @@ export const useSettingsStore = create<SettingsState>()(
       setDefaultPrompt: (prompt) => set({ defaultPrompt: prompt }),
       setPromptPrefix: (prefix) => set({ promptPrefix: prefix }),
       setPromptSuffix: (suffix) => set({ promptSuffix: suffix }),
+      setPromptTemplates: (templates) => set({ promptTemplates: templates }), // Added setter for templates
+      addPromptTemplate: (template) =>
+        set((state) => ({
+          promptTemplates: [
+            ...state.promptTemplates,
+            { id: state.promptTemplates.length + 1, ...template },
+          ],
+        })), // Added method to add template
+      deletePromptTemplate: (id) =>
+        set((state) => ({
+          promptTemplates: state.promptTemplates.filter((template) => template.id !== id),
+        })), // Added method to delete template
       setRagEnabled: (enabled) => set({ ragEnabled: enabled }),
       setChunkSize: (size) => set({ chunkSize: size }),
       setSimilarityThreshold: (threshold) => set({ similarityThreshold: threshold }),
