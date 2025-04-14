@@ -43,9 +43,7 @@ interface SettingsState {
   maxTokens: number;
   
   // Prompt settings
-  defaultPrompt: string;
-  streamingSystemPrompt: string;  // Added for streaming API
-  chatRouterSystemPrompt: string; // Added for chat router
+  systemPrompt: string;  // This will be the unified system prompt (renamed from defaultPrompt)
   promptPrefix: string;
   promptSuffix: string;
   promptTemplates: PromptTemplate[]; // Added prompt templates array
@@ -72,9 +70,7 @@ interface SettingsState {
   setModel: (model: string) => void;
   setTemperature: (temperature: number) => void;
   setMaxTokens: (maxTokens: number) => void;
-  setDefaultPrompt: (prompt: string) => void;
-  setStreamingSystemPrompt: (prompt: string) => void;  // Added setter for streaming system prompt
-  setChatRouterSystemPrompt: (prompt: string) => void; // Added setter for chat router system prompt
+  setSystemPrompt: (prompt: string) => void; // Renamed setter for systemPrompt
   setPromptPrefix: (prefix: string) => void;
   setPromptSuffix: (suffix: string) => void;
   setPromptTemplates: (templates: PromptTemplate[]) => void; // Added setter for templates
@@ -119,9 +115,7 @@ export const useSettingsStore = create<SettingsState>()(
       model: "mistral-small",
       temperature: 0.7,
       maxTokens: 4000,
-      defaultPrompt: "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.",
-      streamingSystemPrompt: "", // Initialize streaming system prompt
-      chatRouterSystemPrompt: "", // Initialize chat router system prompt
+      systemPrompt: "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.", // Renamed from defaultPrompt
       promptPrefix: "",
       promptSuffix: "Please provide reliable information based on official Red Cross guidelines.",
       promptTemplates: [], // Initialize prompt templates array
@@ -144,9 +138,7 @@ export const useSettingsStore = create<SettingsState>()(
       setModel: (model) => set({ model }),
       setTemperature: (temperature) => set({ temperature }),
       setMaxTokens: (maxTokens) => set({ maxTokens }),
-      setDefaultPrompt: (prompt) => set({ defaultPrompt: prompt }),
-      setStreamingSystemPrompt: (prompt) => set({ streamingSystemPrompt: prompt }), // Added setter for streaming system prompt
-      setChatRouterSystemPrompt: (prompt) => set({ chatRouterSystemPrompt: prompt }), // Added setter for chat router system prompt
+      setSystemPrompt: (prompt) => set({ systemPrompt: prompt }), // Renamed setter for systemPrompt
       setPromptPrefix: (prefix) => set({ promptPrefix: prefix }),
       setPromptSuffix: (suffix) => set({ promptSuffix: suffix }),
       setPromptTemplates: (templates) => set({ promptTemplates: templates }),
@@ -291,9 +283,7 @@ export const useSettingsStore = create<SettingsState>()(
         model: state.model,
         temperature: state.temperature,
         maxTokens: state.maxTokens,
-        defaultPrompt: state.defaultPrompt,
-        streamingSystemPrompt: state.streamingSystemPrompt, // Persist streaming system prompt
-        chatRouterSystemPrompt: state.chatRouterSystemPrompt, // Persist chat router system prompt
+        systemPrompt: state.systemPrompt, // Renamed from defaultPrompt
         promptPrefix: state.promptPrefix,
         promptSuffix: state.promptSuffix,
         promptTemplates: state.promptTemplates,

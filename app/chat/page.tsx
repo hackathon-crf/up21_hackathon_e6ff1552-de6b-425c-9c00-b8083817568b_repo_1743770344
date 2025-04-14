@@ -116,8 +116,7 @@ function ChatPage({ initialSessionId }: ChatPageProps = {}) {
     temperature, 
     maxTokens,
     streamingEnabled,
-    streamingSystemPrompt,
-    chatRouterSystemPrompt,
+    systemPrompt, // Renamed from defaultPrompt
     ragEnabled 
   } = useSettingsStore();
 
@@ -392,7 +391,7 @@ function ChatPage({ initialSessionId }: ChatPageProps = {}) {
           temperature,
           maxTokens,
           // Pass the system prompt from settings
-          streamingSystemPrompt,
+          systemPrompt,
           // Include API key for development mode (will only be used if server env vars aren't set)
           apiKey
         })

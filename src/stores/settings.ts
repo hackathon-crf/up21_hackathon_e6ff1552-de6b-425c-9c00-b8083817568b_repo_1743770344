@@ -16,9 +16,7 @@ interface SettingsState {
   maxTokens: number;
   
   // Prompt settings
-  defaultPrompt: string;
-  streamingSystemPrompt: string;
-  chatRouterSystemPrompt: string;
+  systemPrompt: string;  // Renamed from defaultPrompt
   promptPrefix: string;
   promptSuffix: string;
   promptTemplates: PromptTemplate[]; // Added prompt templates array
@@ -45,9 +43,7 @@ interface SettingsState {
   setModel: (model: string) => void;
   setTemperature: (temperature: number) => void;
   setMaxTokens: (maxTokens: number) => void;
-  setDefaultPrompt: (prompt: string) => void;
-  setStreamingSystemPrompt: (prompt: string) => void;
-  setChatRouterSystemPrompt: (prompt: string) => void;
+  setSystemPrompt: (prompt: string) => void;  // Renamed from setDefaultPrompt
   setPromptPrefix: (prefix: string) => void;
   setPromptSuffix: (suffix: string) => void;
   setPromptTemplates: (templates: PromptTemplate[]) => void; // Added setter for templates
@@ -71,7 +67,7 @@ export const useSettingsStore = create<SettingsState>()(
       model: "mistral-small",
       temperature: 0.7,
       maxTokens: 4000,
-      defaultPrompt: "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.",
+      systemPrompt: "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.", // Renamed from defaultPrompt
       streamingSystemPrompt: "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately. Provide reliable information based on official Red Cross guidelines.",
       chatRouterSystemPrompt: "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately. Provide reliable information based on official Red Cross guidelines.",
       promptPrefix: "",
@@ -96,7 +92,7 @@ export const useSettingsStore = create<SettingsState>()(
       setModel: (model) => set({ model }),
       setTemperature: (temperature) => set({ temperature }),
       setMaxTokens: (maxTokens) => set({ maxTokens }),
-      setDefaultPrompt: (prompt) => set({ defaultPrompt: prompt }),
+      setSystemPrompt: (prompt) => set({ systemPrompt: prompt }), // Renamed from setDefaultPrompt
       setStreamingSystemPrompt: (prompt) => set({ streamingSystemPrompt: prompt }),
       setChatRouterSystemPrompt: (prompt) => set({ chatRouterSystemPrompt: prompt }),
       setPromptPrefix: (prefix) => set({ promptPrefix: prefix }),

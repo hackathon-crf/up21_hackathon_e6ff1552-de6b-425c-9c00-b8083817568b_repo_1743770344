@@ -93,7 +93,7 @@ export default function AIAssistantSettingsPage() {
     model,
     temperature,
     maxTokens,
-    defaultPrompt,
+    systemPrompt, // Renamed from defaultPrompt
     streamingSystemPrompt,
     chatRouterSystemPrompt,
     promptPrefix,
@@ -113,7 +113,7 @@ export default function AIAssistantSettingsPage() {
     setModel,
     setTemperature,
     setMaxTokens,
-    setDefaultPrompt,
+    setSystemPrompt, // Renamed from setDefaultPrompt
     setStreamingSystemPrompt,
     setChatRouterSystemPrompt,
     setPromptPrefix,
@@ -310,7 +310,7 @@ export default function AIAssistantSettingsPage() {
                         setModel("gpt-4o");
                         setTemperature(0.7);
                         setMaxTokens(4000);
-                        setDefaultPrompt(
+                        setSystemPrompt(
                           "You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately."
                         );
                         setStreamingSystemPrompt("");
@@ -1029,19 +1029,32 @@ export default function AIAssistantSettingsPage() {
                       htmlFor="system-prompt"
                       className="text-base font-medium"
                     >
-                      Default System Prompt
+                      System Prompt
                     </Label>
                     <Textarea
                       id="system-prompt"
-                      placeholder="Enter the default system prompt for the AI assistant"
-                      value={defaultPrompt}
-                      onChange={(e) => setDefaultPrompt(e.target.value)}
-                      className="min-h-[100px] border-2 resize-y"
+                      placeholder="Enter the system prompt that defines your AI assistant's behavior"
+                      value={systemPrompt}
+                      onChange={(e) => setSystemPrompt(e.target.value)}
+                      className="min-h-[150px] border-2 resize-y"
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      The system prompt defines the AI's personality, knowledge
-                      base, and behavior
+                      The system prompt defines the AI's personality, knowledge base, and behavior.
+                      This prompt will be used for all interactions with the AI assistant.
                     </p>
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-md mt-2 dark:bg-amber-900/20 dark:border-amber-800">
+                      <div className="flex gap-2">
+                        <Info className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-amber-800 dark:text-amber-300">System Prompt Tips</h4>
+                          <ul className="list-disc list-inside text-sm text-amber-700 dark:text-amber-400 space-y-1 mt-1">
+                            <li>Be specific about the AI's role, knowledge domain, and tone</li>
+                            <li>Include any specific guidelines or constraints for responses</li>
+                            <li>Specify the format you want responses in if applicable</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
@@ -1116,7 +1129,7 @@ export default function AIAssistantSettingsPage() {
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                               onClick={() => {
-                                setDefaultPrompt(prompt.prompt);
+                                setSystemPrompt(prompt.prompt);
                                 toast({
                                   title: "Prompt applied",
                                   description: `"${prompt.name}" has been set as the default prompt.`,
