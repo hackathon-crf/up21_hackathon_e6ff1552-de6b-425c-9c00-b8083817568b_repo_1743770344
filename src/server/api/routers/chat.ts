@@ -4,13 +4,14 @@ import { db } from "../../db";
 import { chatSessions, chatMessages, feedback } from "../../db/schema";
 import { and, desc, eq, asc, inArray, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { AIService, ChatMessage } from "~/lib/services/ai";
+import { AIService } from "~/lib/services/ai";
+import type { ChatMessage } from "~/lib/services/ai";
 import { TRPCError } from "@trpc/server";
 
 // Helper to extract title from first message
 function generateTitleFromMessage(content: string): string {
   // Take first line or first 30 chars as title
-  const firstLine = content.split('\n')[0];
+  const firstLine = content.split('\n')[0] || '';
   const title = firstLine.length > 30 
     ? firstLine.substring(0, 30) + '...'
     : firstLine;
@@ -58,9 +59,9 @@ export const chatRouter = createTRPCRouter({
                 .from(chatSessions)
                 .where(eq(chatSessions.user_id, userId));
                 
-              if (highestPositionResult[0]?.maxPosition !== null) {
-                position = (highestPositionResult[0]?.maxPosition || 0) + 1;
-              }
+              // Safely handle the result which might be NULL from SQL
+              const maxPos = highestPositionResult[0]?.maxPosition;
+              position = typeof maxPos === 'number' ? maxPos + 1 : 1;
               console.log(`[chat.createSession] - Calculated position for new session: ${position}`);
             } catch (posErr) {
               console.error("[chat.createSession] - Error getting highest position:", posErr);
@@ -85,7 +86,7 @@ export const chatRouter = createTRPCRouter({
             .returning();
             
           if (newSession && newSession.length > 0) {
-            console.log(`[chat.createSession] - Successfully created session in database: ${newSession[0].id}`);
+            console.log(`[chat.createSession] - Successfully created session in database: ${newSession[0]?.id}`);
             return newSession[0];
           }
         } catch (dbError) {
@@ -136,6 +137,75 @@ export const chatRouter = createTRPCRouter({
       }
     }),
 
+  // Get message counts for sessions
+  getSessionMessageCounts: protectedProcedure
+    .input(z.object({
+      sessionIds: z.array(z.string().uuid()),
+    }))
+    .query(async ({ ctx, input }) => {
+      console.log("[DEBUG] getSessionMessageCounts called with sessionIds:", input.sessionIds);
+      
+      const userId = ctx.auth.user?.id;
+      if (!userId) {
+        console.error("[DEBUG] getSessionMessageCounts: No user ID found in context");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "You must be logged in to access chat message counts"
+        });
+      }
+      
+      console.log("[DEBUG] getSessionMessageCounts: Authorized for user:", userId);
+      
+      try {
+        // First, verify the sessions belong to the user
+        const userSessions = await db.select()
+          .from(chatSessions)
+          .where(and(
+            inArray(chatSessions.id, input.sessionIds),
+            eq(chatSessions.user_id, userId)
+          ));
+        
+        const userSessionIds = userSessions.map(s => s.id);
+        console.log("[DEBUG] getSessionMessageCounts: Found user sessions:", userSessionIds.length);
+        
+        // Debug to see if we have messages in the database at all
+        const allMessages = await db.select()
+          .from(chatMessages)
+          .limit(5);
+        
+        console.log("[DEBUG] getSessionMessageCounts: Sample of all messages in DB:", 
+          allMessages.length > 0 ? 
+            `Found ${allMessages.length} messages, first message session_id: ${allMessages[0]?.session_id || 'undefined'}` : 
+            "No messages found in database");
+        
+        // Count messages for verified sessions
+        const countsArray = [];
+        for (const sessionId of userSessionIds) {
+          // Get all messages for this session
+          const messages = await db.select()
+            .from(chatMessages)
+            .where(eq(chatMessages.session_id, sessionId));
+          
+          console.log(`[DEBUG] getSessionMessageCounts: Session ${sessionId} has ${messages.length} messages`);
+          
+          countsArray.push({
+            session_id: sessionId,
+            count: messages.length
+          });
+        }
+        
+        console.log("[DEBUG] getSessionMessageCounts: Returning counts:", countsArray);
+        return countsArray;
+      } catch (error) {
+        console.error("[DEBUG] getSessionMessageCounts: Error:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to count messages",
+          cause: error
+        });
+      }
+    }),
+    
   // Get a specific session
   getSession: protectedProcedure
     .input(z.object({
@@ -158,12 +228,15 @@ export const chatRouter = createTRPCRouter({
         
         // Use a safer approach to query the database
         try {
-          const session = await db.query.chatSessions.findFirst({
-            where: and(
+          const session = await db.select()
+            .from(chatSessions)
+            .where(and(
               eq(chatSessions.id, input.session_id),
               eq(chatSessions.user_id, userId)
-            )
-          });
+            ))
+            .limit(1)
+            .execute()
+            .then(results => results[0]);
           
           if (session) {
             console.log(`[chat.getSession] - Found session: ${session.id}`);
@@ -221,38 +294,52 @@ export const chatRouter = createTRPCRouter({
           console.log(`[chat.getSessions] - Attempting to fetch from database with filters: 
             status=${input.status}, sortBy=${input.sortBy}, sortOrder=${input.sortOrder}`);
           
-          // Build the query
-          let query = db.select()
-            .from(chatSessions)
-            .where(eq(chatSessions.user_id, userId));
+          // Build the query differently to avoid chaining issues
+          let baseQueryConditions = [eq(chatSessions.user_id, userId)];
             
           // Add status filter if not including deleted
           if (!input.includeDeleted) {
-            if (input.status === 'active') {
-              query = query.where(eq(chatSessions.status, 'active'));
-            } else if (input.status === 'archived') {
-              query = query.where(eq(chatSessions.status, 'archived'));
-            } else if (input.status === 'deleted') {
-              query = query.where(eq(chatSessions.status, 'deleted'));
+            if (input.status === 'active' || input.status === 'archived' || input.status === 'deleted') {
+              baseQueryConditions.push(eq(chatSessions.status, input.status));
             }
           }
           
-          // Add ordering
+          // Execute the query with all conditions applied at once
+          let dbSessions = await db.select()
+            .from(chatSessions)
+            .where(and(...baseQueryConditions));
+          
+          // Apply sorting in memory since we can't use method chaining
           if (input.sortBy === 'updated_at') {
-            query = query.orderBy(input.sortOrder === 'desc' ? desc(chatSessions.updated_at) : asc(chatSessions.updated_at));
+            dbSessions = dbSessions.sort((a, b) => {
+              // Handle potential null dates safely
+              const aDate = a.updated_at instanceof Date ? a.updated_at : new Date(a.updated_at || 0);
+              const bDate = b.updated_at instanceof Date ? b.updated_at : new Date(b.updated_at || 0);
+              return input.sortOrder === 'desc' ? bDate.getTime() - aDate.getTime() : aDate.getTime() - bDate.getTime();
+            });
           } else if (input.sortBy === 'created_at') {
-            query = query.orderBy(input.sortOrder === 'desc' ? desc(chatSessions.created_at) : asc(chatSessions.created_at));
-          } else if (input.sortBy === 'position') {
+            dbSessions = dbSessions.sort((a, b) => {
+              // Handle potential null dates safely
+              const aDate = a.created_at instanceof Date ? a.created_at : new Date(a.created_at || 0);
+              const bDate = b.created_at instanceof Date ? b.created_at : new Date(b.created_at || 0);
+              return input.sortOrder === 'desc' ? bDate.getTime() - aDate.getTime() : aDate.getTime() - bDate.getTime();
+            });
+          } else {
             // For position, first sort by is_pinned (pinned first), then by position
-            query = query.orderBy(desc(chatSessions.is_pinned), 
-              input.sortOrder === 'desc' ? desc(chatSessions.position) : asc(chatSessions.position));
+            dbSessions = dbSessions.sort((a, b) => {
+              // First sort by is_pinned (true comes before false)
+              if (a.is_pinned && !b.is_pinned) return -1;
+              if (!a.is_pinned && b.is_pinned) return 1;
+              
+              // Then sort by position
+              return input.sortOrder === 'desc' ? 
+                b.position - a.position : 
+                a.position - b.position;
+            });
           }
           
-          // Add limit
-          query = query.limit(input.limit);
-          
-          // Execute the query
-          const dbSessions = await query;
+          // Apply limit in memory
+          dbSessions = dbSessions.slice(0, input.limit);
           
           console.log(`[chat.getSessions] - Fetched ${dbSessions.length} sessions from database`);
           return dbSessions; // Return database sessions, even if empty
@@ -505,7 +592,7 @@ export const chatRouter = createTRPCRouter({
           .returning();
         
         if (updated.length > 0) {
-          console.log(`[chat.updateSession] - Successfully updated session: ${updated[0].id}`);
+          console.log(`[chat.updateSession] - Successfully updated session: ${updated[0]?.id || 'unknown'}`);
           return updated[0];
         } else {
           throw new Error("Update did not return the updated session");
@@ -639,15 +726,15 @@ export const chatRouter = createTRPCRouter({
           updated_at: new Date(),
         }).returning();
         
-        if (!newSession.length) {
+        if (newSession && newSession.length > 0 && newSession[0]?.id) {
+          session_id = newSession[0].id;
+          isNewSession = true;
+        } else {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to create chat session"
+            message: "Failed to create chat session: no ID returned"
           });
         }
-        
-        session_id = newSession[0].id;
-        isNewSession = true;
         
       } else {
         // Verify session belongs to user
@@ -814,10 +901,18 @@ export const chatRouter = createTRPCRouter({
       }
       
       // Verify session belongs to user
+      const sessionId = message[0]?.session_id;
+      if (!sessionId) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR", 
+          message: "Message is missing session ID"
+        });
+      }
+      
       const session = await db.select()
         .from(chatSessions)
         .where(and(
-          eq(chatSessions.id, message[0].session_id),
+          eq(chatSessions.id, sessionId),
           eq(chatSessions.user_id, userId)
         ))
         .limit(1);

@@ -204,7 +204,7 @@ export function ChatSidebar() {
   const sessionsData = api.chat.getSessions.useQuery({
     status: activeTab === "archived" ? 'archived' : 'active',
     includeDeleted: false,
-    sortBy: sortField,
+    sortBy: activeTab === "pinned" ? 'position' : sortField,
     sortOrder: sortOrder
   });
   
@@ -213,6 +213,40 @@ export function ChatSidebar() {
     isLoading, 
     refetch
   } = sessionsData;
+
+  // Get message counts for sessions
+  const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+  
+  // Fetch message counts whenever sessions change
+  const sessionIds = React.useMemo(() => 
+    allSessions ? allSessions.map(session => session.id) : [], [allSessions]);
+
+  // For debugging
+  useEffect(() => {
+    console.log("[DEBUG] Session IDs:", sessionIds);
+  }, [sessionIds]);
+
+  // First fetch the message counts
+  const { data: messageCountsData, isLoading: isLoadingCounts } = api.chat.getSessionMessageCounts.useQuery(
+    { sessionIds },
+    { 
+      enabled: sessionIds.length > 0,
+    }
+  );
+  
+  // Then update the state when the data changes
+  useEffect(() => {
+    if (messageCountsData) {
+      console.log("[DEBUG] Message counts received:", messageCountsData);
+      // Convert array of counts to a record object for easy lookup
+      const countsMap: Record<string, number> = {};
+      messageCountsData.forEach(item => {
+        countsMap[item.session_id] = item.count;
+      });
+      console.log("[DEBUG] Message counts map:", countsMap);
+      setMessageCounts(countsMap);
+    }
+  }, [messageCountsData]);
 
   // Create Fuse instance for fuzzy search when allSessions changes
   const fuseInstance = React.useMemo(() => {
@@ -789,7 +823,9 @@ export function ChatSidebar() {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <MessageSquare className="h-3.5 w-3.5" />
-                      <span>{(session.id.length % 20) + 1}</span>
+                      <span title={`Session ID: ${session.id}`}>
+                        {messageCounts[session.id] !== undefined ? messageCounts[session.id] : '?'}
+                      </span>
                     </div>
                     
                     {/* Action buttons */}
