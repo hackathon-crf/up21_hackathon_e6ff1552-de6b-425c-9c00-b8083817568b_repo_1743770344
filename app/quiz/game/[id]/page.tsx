@@ -1,298 +1,320 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Clock, Users } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Clock, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
-import { Progress } from "~/components/ui/progress"
-import { useToast } from "~/hooks/use-toast"
+import { Button } from "~/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "~/components/ui/card";
+import { Progress } from "~/components/ui/progress";
+import { useToast } from "~/hooks/use-toast";
 
 export default function GameGamePage({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(30)
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
-  const [score, setScore] = useState(0)
-  const [streakCount, setStreakCount] = useState(0)
+	const router = useRouter();
+	const { toast } = useToast();
+	const [currentQuestion, setCurrentQuestion] = useState(0);
+	const [timeLeft, setTimeLeft] = useState(30);
+	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+	const [score, setScore] = useState(0);
+	const [streakCount, setStreakCount] = useState(0);
 
-  // Mock data for the game
-  const game = {
-    title: "CPR & AED Challenge",
-    questions: [
-      {
-        question: "What is the correct compression rate for adult CPR?",
-        options: [
-          "60-80 compressions per minute",
-          "100-120 compressions per minute",
-          "140-160 compressions per minute",
-          "As fast as possible",
-        ],
-        correctAnswer: 1,
-      },
-      {
-        question: "How deep should chest compressions be for an adult?",
-        options: [
-          "1-2 inches (2.5-5 cm)",
-          "At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
-          "3-4 inches (7.5-10 cm)",
-          "As deep as possible",
-        ],
-        correctAnswer: 1,
-      },
-      {
-        question: "When using an AED, what should you do before applying the pads?",
-        options: [
-          "Ensure the patient is wet",
-          "Ensure the patient is breathing",
-          "Ensure the patient's chest is dry and exposed",
-          "Ensure the patient is conscious",
-        ],
-        correctAnswer: 2,
-      },
-    ],
-  }
+	// Mock data for the game
+	const game = {
+		title: "CPR & AED Challenge",
+		questions: [
+			{
+				question: "What is the correct compression rate for adult CPR?",
+				options: [
+					"60-80 compressions per minute",
+					"100-120 compressions per minute",
+					"140-160 compressions per minute",
+					"As fast as possible",
+				],
+				correctAnswer: 1,
+			},
+			{
+				question: "How deep should chest compressions be for an adult?",
+				options: [
+					"1-2 inches (2.5-5 cm)",
+					"At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
+					"3-4 inches (7.5-10 cm)",
+					"As deep as possible",
+				],
+				correctAnswer: 1,
+			},
+			{
+				question:
+					"When using an AED, what should you do before applying the pads?",
+				options: [
+					"Ensure the patient is wet",
+					"Ensure the patient is breathing",
+					"Ensure the patient's chest is dry and exposed",
+					"Ensure the patient is conscious",
+				],
+				correctAnswer: 2,
+			},
+		],
+	};
 
-  // Display a welcome toast when the game starts
-  useEffect(() => {
-    toast({
-      title: `Starting: ${game.title}`,
-      description: `Get ready! You'll be answering ${game.questions.length} questions.`,
-      variant: "info",
-    })
-  }, [])
+	// Display a welcome toast when the game starts
+	useEffect(() => {
+		toast({
+			title: `Starting: ${game.title}`,
+			description: `Get ready! You'll be answering ${game.questions.length} questions.`,
+			variant: "info",
+		});
+	}, []);
 
-  const totalQuestions = game.questions.length
-  const progress = ((currentQuestion + 1) / totalQuestions) * 100
+	const totalQuestions = game.questions.length;
+	const progress = ((currentQuestion + 1) / totalQuestions) * 100;
 
-  useEffect(() => {
-    if (timeLeft > 0 && selectedAnswer === null) {
-      const timer = setTimeout(() => {
-        setTimeLeft(timeLeft - 1)
-      }, 1000)
-      
-      // Show time warning toast when 5 seconds remain
-      if (timeLeft === 5) {
-        toast({
-          title: "Time is running out!",
-          description: "Only 5 seconds remaining to answer.",
-          variant: "warning",
-        })
-      }
-      
-      return () => clearTimeout(timer)
-    } else if (timeLeft === 0 && selectedAnswer === null) {
-      // Time's up, auto-select wrong answer
-      setSelectedAnswer(-1)
-      setStreakCount(0)
-      
-      // Show time's up toast
-      toast({
-        title: "Time's up!",
-        description: "You ran out of time for this question.",
-        variant: "destructive",
-      })
+	useEffect(() => {
+		if (timeLeft > 0 && selectedAnswer === null) {
+			const timer = setTimeout(() => {
+				setTimeLeft(timeLeft - 1);
+			}, 1000);
 
-      // Move to next question after delay
-      const timer = setTimeout(() => {
-        handleNextQuestion()
-      }, 2000)
-      return () => clearTimeout(timer)
-    }
-  }, [timeLeft, selectedAnswer])
+			// Show time warning toast when 5 seconds remain
+			if (timeLeft === 5) {
+				toast({
+					title: "Time is running out!",
+					description: "Only 5 seconds remaining to answer.",
+					variant: "warning",
+				});
+			}
 
-  const handleSelectAnswer = (index: number) => {
-    if (selectedAnswer === null) {
-      setSelectedAnswer(index)
-      
-      const isCorrect = index === game.questions[currentQuestion].correctAnswer
-      
-      if (isCorrect) {
-        // Increase score and streak
-        setScore(prev => prev + 100 + (timeLeft * 5))
-        setStreakCount(prev => prev + 1)
-        
-        // Show success toast with different messages based on streak
-        if (streakCount >= 2) {
-          toast({
-            title: `${streakCount + 1} in a row! 🔥`,
-            description: "You're on fire! Keep the streak going!",
-            variant: "success",
-          })
-        } else {
-          toast({
-            title: "Correct answer! ✅",
-            description: `+${100 + (timeLeft * 5)} points added to your score.`,
-            variant: "success",
-          })
-        }
-      } else {
-        // Reset streak on wrong answer
-        setStreakCount(0)
-        
-        toast({
-          title: "Wrong answer ❌",
-          description: "The correct answer is highlighted in green.",
-          variant: "destructive",
-        })
-      }
+			return () => clearTimeout(timer);
+		}
+		if (timeLeft === 0 && selectedAnswer === null) {
+			// Time's up, auto-select wrong answer
+			setSelectedAnswer(-1);
+			setStreakCount(0);
 
-      // Move to next question after delay
-      setTimeout(() => {
-        handleNextQuestion()
-      }, 1500)
-    }
-  }
+			// Show time's up toast
+			toast({
+				title: "Time's up!",
+				description: "You ran out of time for this question.",
+				variant: "destructive",
+			});
 
-  const handleNextQuestion = () => {
-    if (currentQuestion < totalQuestions - 1) {
-      setCurrentQuestion(currentQuestion + 1)
-      setSelectedAnswer(null)
-      setTimeLeft(30)
-      
-      // Show progress toast at halfway point
-      if (currentQuestion === Math.floor(totalQuestions / 2) - 1) {
-        toast({
-          title: "Halfway there!",
-          description: `You've completed ${Math.floor(totalQuestions / 2)} of ${totalQuestions} questions.`,
-          variant: "info",
-        })
-      }
-    } else {
-      // Game completed, show completion toast and navigate to results
-      toast.promise(
-        // Simulate saving results
-        new Promise((resolve) => setTimeout(resolve, 1500)),
-        {
-          loading: {
-            title: "Saving your results",
-            description: "Please wait while we calculate your score..."
-          },
-          success: {
-            title: "Game completed!",
-            description: `Great job! Final score: ${score} points.`
-          },
-          error: {
-            title: "Error saving results",
-            description: "There was an issue saving your game results."
-          }
-        }
-      ).then(() => {
-        // In a real app, this would redirect to actual results page with the score
-        router.push(`/game/results/${params.id}?score=${score}`)
-      })
-    }
-  }
+			// Move to next question after delay
+			const timer = setTimeout(() => {
+				handleNextQuestion();
+			}, 2000);
+			return () => clearTimeout(timer);
+		}
+	}, [timeLeft, selectedAnswer]);
 
-  const getButtonVariant = (index: number) => {
-    if (selectedAnswer === null) return "outline"
+	const handleSelectAnswer = (index: number) => {
+		if (selectedAnswer === null) {
+			setSelectedAnswer(index);
 
-    if (index === game.questions[currentQuestion].correctAnswer) {
-      return "success"
-    }
+			const isCorrect = index === game.questions[currentQuestion].correctAnswer;
 
-    if (selectedAnswer === index) {
-      return "destructive"
-    }
+			if (isCorrect) {
+				// Increase score and streak
+				setScore((prev) => prev + 100 + timeLeft * 5);
+				setStreakCount((prev) => prev + 1);
 
-    return "outline"
-  }
+				// Show success toast with different messages based on streak
+				if (streakCount >= 2) {
+					toast({
+						title: `${streakCount + 1} in a row! 🔥`,
+						description: "You're on fire! Keep the streak going!",
+						variant: "success",
+					});
+				} else {
+					toast({
+						title: "Correct answer! ✅",
+						description: `+${100 + timeLeft * 5} points added to your score.`,
+						variant: "success",
+					});
+				}
+			} else {
+				// Reset streak on wrong answer
+				setStreakCount(0);
 
-  return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-primary/10 to-accent/10">
-      <div className="p-3 sm:p-4 border-b bg-background">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between max-w-3xl mx-auto">
-          <h1 className="text-lg sm:text-xl font-bold mb-2 sm:mb-0">{game.title}</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs sm:text-sm">5 participants</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className={`text-xs sm:text-sm ${timeLeft <= 5 ? "text-red-500 font-bold animate-pulse" : ""}`}>
-                {timeLeft}s
-              </span>
-            </div>
-            <div className="font-semibold">
-              Score: {score}
-            </div>
-          </div>
-        </div>
-      </div>
+				toast({
+					title: "Wrong answer ❌",
+					description: "The correct answer is highlighted in green.",
+					variant: "destructive",
+				});
+			}
 
-      <main className="flex-1 p-6 flex flex-col items-center justify-center">
-        <div className="w-full max-w-3xl space-y-6">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>
-                Question {currentQuestion + 1} of {totalQuestions}
-              </span>
-              <span className={`font-medium ${timeLeft <= 5 ? "text-red-500 font-bold animate-pulse" : ""}`}>
-                {timeLeft} seconds left
-              </span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
+			// Move to next question after delay
+			setTimeout(() => {
+				handleNextQuestion();
+			}, 1500);
+		}
+	};
 
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle className="text-xl">{game.questions[currentQuestion].question}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {game.questions[currentQuestion].options.map((option, index) => (
-                  <Button
-                    key={index}
-                    variant={getButtonVariant(index) as any}
-                    className="w-full justify-start text-left h-auto py-3 sm:py-4 px-4 sm:px-6"
-                    onClick={() => handleSelectAnswer(index)}
-                    disabled={selectedAnswer !== null}
-                  >
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full border">
-                        {String.fromCharCode(65 + index)}
-                      </div>
-                      <span className="text-sm sm:text-base">{option}</span>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <div className="text-sm text-muted-foreground">
-                {streakCount > 1 ? (
-                  <span className="font-semibold text-amber-500">🔥 {streakCount} correct in a row!</span>
-                ) : (
-                  "Select the correct answer"
-                )}
-              </div>
-              {selectedAnswer !== null && (
-                <Button onClick={handleNextQuestion}>
-                  {currentQuestion < totalQuestions - 1 ? "Next Question" : "Finish Game"}
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
+	const handleNextQuestion = () => {
+		if (currentQuestion < totalQuestions - 1) {
+			setCurrentQuestion(currentQuestion + 1);
+			setSelectedAnswer(null);
+			setTimeLeft(30);
 
-          <div className="grid grid-cols-5 gap-2">
-            {Array.from({ length: totalQuestions }).map((_, index) => (
-              <div
-                key={index}
-                className={`h-2 rounded-full ${
-                  index < currentQuestion
-                    ? "bg-primary"
-                    : index === currentQuestion
-                      ? "bg-primary animate-pulse"
-                      : "bg-muted"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </main>
-    </div>
-  )
+			// Show progress toast at halfway point
+			if (currentQuestion === Math.floor(totalQuestions / 2) - 1) {
+				toast({
+					title: "Halfway there!",
+					description: `You've completed ${Math.floor(totalQuestions / 2)} of ${totalQuestions} questions.`,
+					variant: "info",
+				});
+			}
+		} else {
+			// Game completed, show completion toast and navigate to results
+			toast
+				.promise(
+					// Simulate saving results
+					new Promise((resolve) => setTimeout(resolve, 1500)),
+					{
+						loading: {
+							title: "Saving your results",
+							description: "Please wait while we calculate your score...",
+						},
+						success: {
+							title: "Game completed!",
+							description: `Great job! Final score: ${score} points.`,
+						},
+						error: {
+							title: "Error saving results",
+							description: "There was an issue saving your game results.",
+						},
+					},
+				)
+				.then(() => {
+					// In a real app, this would redirect to actual results page with the score
+					router.push(`/game/results/${params.id}?score=${score}`);
+				});
+		}
+	};
+
+	const getButtonVariant = (index: number) => {
+		if (selectedAnswer === null) return "outline";
+
+		if (index === game.questions[currentQuestion].correctAnswer) {
+			return "success";
+		}
+
+		if (selectedAnswer === index) {
+			return "destructive";
+		}
+
+		return "outline";
+	};
+
+	return (
+		<div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/10 to-accent/10">
+			<div className="border-b bg-background p-3 sm:p-4">
+				<div className="mx-auto flex max-w-3xl flex-col justify-between sm:flex-row sm:items-center">
+					<h1 className="mb-2 font-bold text-lg sm:mb-0 sm:text-xl">
+						{game.title}
+					</h1>
+					<div className="flex items-center gap-4">
+						<div className="flex items-center gap-2">
+							<Users className="h-4 w-4 text-muted-foreground" />
+							<span className="text-xs sm:text-sm">5 participants</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<Clock className="h-4 w-4 text-muted-foreground" />
+							<span
+								className={`text-xs sm:text-sm ${timeLeft <= 5 ? "animate-pulse font-bold text-red-500" : ""}`}
+							>
+								{timeLeft}s
+							</span>
+						</div>
+						<div className="font-semibold">Score: {score}</div>
+					</div>
+				</div>
+			</div>
+
+			<main className="flex flex-1 flex-col items-center justify-center p-6">
+				<div className="w-full max-w-3xl space-y-6">
+					<div className="space-y-2">
+						<div className="flex justify-between text-sm">
+							<span>
+								Question {currentQuestion + 1} of {totalQuestions}
+							</span>
+							<span
+								className={`font-medium ${timeLeft <= 5 ? "animate-pulse font-bold text-red-500" : ""}`}
+							>
+								{timeLeft} seconds left
+							</span>
+						</div>
+						<Progress value={progress} className="h-2" />
+					</div>
+
+					<Card className="w-full">
+						<CardHeader>
+							<CardTitle className="text-xl">
+								{game.questions[currentQuestion].question}
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+								{game.questions[currentQuestion].options.map(
+									(option, index) => (
+										<Button
+											key={index}
+											variant={getButtonVariant(index) as any}
+											className="h-auto w-full justify-start px-4 py-3 text-left sm:px-6 sm:py-4"
+											onClick={() => handleSelectAnswer(index)}
+											disabled={selectedAnswer !== null}
+										>
+											<div className="flex items-center gap-3 sm:gap-4">
+												<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-8 sm:w-8">
+													{String.fromCharCode(65 + index)}
+												</div>
+												<span className="text-sm sm:text-base">{option}</span>
+											</div>
+										</Button>
+									),
+								)}
+							</div>
+						</CardContent>
+						<CardFooter className="flex justify-between">
+							<div className="text-muted-foreground text-sm">
+								{streakCount > 1 ? (
+									<span className="font-semibold text-amber-500">
+										🔥 {streakCount} correct in a row!
+									</span>
+								) : (
+									"Select the correct answer"
+								)}
+							</div>
+							{selectedAnswer !== null && (
+								<Button onClick={handleNextQuestion}>
+									{currentQuestion < totalQuestions - 1
+										? "Next Question"
+										: "Finish Game"}
+								</Button>
+							)}
+						</CardFooter>
+					</Card>
+
+					<div className="grid grid-cols-5 gap-2">
+						{Array.from({ length: totalQuestions }).map((_, index) => (
+							<div
+								key={index}
+								className={`h-2 rounded-full ${
+									index < currentQuestion
+										? "bg-primary"
+										: index === currentQuestion
+											? "animate-pulse bg-primary"
+											: "bg-muted"
+								}`}
+							/>
+						))}
+					</div>
+				</div>
+			</main>
+		</div>
+	);
 }
