@@ -81,11 +81,6 @@ function SettingsContent({ params }: { params: { id: string } }) {
 		},
 	});
 
-	// Track changes to settings
-	useEffect(() => {
-		setHasChanges(true);
-	}, [settings]);
-
 	// Handle back button with unsaved changes
 	const handleBack = () => {
 		if (hasChanges) {
@@ -147,10 +142,13 @@ function SettingsContent({ params }: { params: { id: string } }) {
 	};
 
 	// Update settings helper
-	const updateSettings = (
-		category: keyof typeof settings,
-		field: string,
-		value: any,
+	const updateSettings = <
+		C extends keyof typeof settings,
+		F extends keyof (typeof settings)[C],
+	>(
+		category: C,
+		field: F,
+		value: (typeof settings)[C][F],
 	) => {
 		setSettings((prev) => ({
 			...prev,
@@ -159,6 +157,7 @@ function SettingsContent({ params }: { params: { id: string } }) {
 				[field]: value,
 			},
 		}));
+		setHasChanges(true); // Set hasChanges when settings are updated
 	};
 
 	return (
@@ -291,13 +290,12 @@ function SettingsContent({ params }: { params: { id: string } }) {
 											</span>
 										</div>
 										<Slider
-											id="maxPlayers"
-											min={2}
+											defaultValue={[settings.general.maxPlayers]}
 											max={16}
+											min={2}
 											step={1}
-											value={[settings.general.maxPlayers]}
 											onValueChange={(value) =>
-												updateSettings("general", "maxPlayers", value[0])
+												updateSettings("general", "maxPlayers", value[0] ?? 0)
 											}
 										/>
 										<div className="flex justify-between text-muted-foreground text-xs">
@@ -333,14 +331,16 @@ function SettingsContent({ params }: { params: { id: string } }) {
 									</div>
 
 									<div className="flex items-center justify-between">
-										<Label htmlFor="isPrivate">Private Session</Label>
-										<Switch
-											id="isPrivate"
-											checked={settings.general.isPrivate}
-											onCheckedChange={(checked) =>
-												updateSettings("general", "isPrivate", checked)
-											}
-										/>
+										<div className="flex items-center gap-2">
+											<Label htmlFor="isPrivate">Private Session</Label>
+											<Switch
+												id="isPrivate"
+												checked={settings.general.isPrivate}
+												onCheckedChange={(checked) =>
+													updateSettings("general", "isPrivate", checked)
+												}
+											/>
+										</div>
 									</div>
 
 									{settings.general.isPrivate && (
@@ -434,18 +434,21 @@ function SettingsContent({ params }: { params: { id: string } }) {
 											</span>
 										</div>
 										<Slider
-											id="questionsCount"
+											defaultValue={[settings.gameplay.questionsCount]}
+											max={50}
 											min={5}
-											max={30}
-											step={5}
-											value={[settings.gameplay.questionsCount]}
+											step={1}
 											onValueChange={(value) =>
-												updateSettings("gameplay", "questionsCount", value[0])
+												updateSettings(
+													"gameplay",
+													"questionsCount",
+													value[0] ?? 0,
+												)
 											}
 										/>
 										<div className="flex justify-between text-muted-foreground text-xs">
 											<span>5</span>
-											<span>30</span>
+											<span>50</span>
 										</div>
 									</div>
 
@@ -471,13 +474,16 @@ function SettingsContent({ params }: { params: { id: string } }) {
 											</span>
 										</div>
 										<Slider
-											id="timePerQuestion"
-											min={10}
+											defaultValue={[settings.gameplay.timePerQuestion]}
 											max={120}
+											min={10}
 											step={5}
-											value={[settings.gameplay.timePerQuestion]}
 											onValueChange={(value) =>
-												updateSettings("gameplay", "timePerQuestion", value[0])
+												updateSettings(
+													"gameplay",
+													"timePerQuestion",
+													value[0] ?? 0,
+												)
 											}
 										/>
 										<div className="flex justify-between text-muted-foreground text-xs">
@@ -539,13 +545,16 @@ function SettingsContent({ params }: { params: { id: string } }) {
 												</span>
 											</div>
 											<Slider
-												id="hintPenalty"
+												defaultValue={[settings.gameplay.hintPenalty]}
+												max={1000}
 												min={0}
-												max={500}
 												step={50}
-												value={[settings.gameplay.hintPenalty]}
 												onValueChange={(value) =>
-													updateSettings("gameplay", "hintPenalty", value[0])
+													updateSettings(
+														"gameplay",
+														"hintPenalty",
+														value[0] ?? 0,
+													)
 												}
 											/>
 											<div className="flex justify-between text-muted-foreground text-xs">
@@ -577,16 +586,15 @@ function SettingsContent({ params }: { params: { id: string } }) {
 											</span>
 										</div>
 										<Slider
-											id="streakBonus"
-											min={0}
+											defaultValue={[settings.gameplay.streakBonusMultiplier]}
 											max={3}
-											step={0.5}
-											value={[settings.gameplay.streakBonusMultiplier]}
+											min={1}
+											step={0.1}
 											onValueChange={(value) =>
 												updateSettings(
 													"gameplay",
 													"streakBonusMultiplier",
-													value[0],
+													value[0] ?? 0,
 												)
 											}
 										/>
@@ -974,7 +982,11 @@ function SettingsContent({ params }: { params: { id: string } }) {
 											step={5}
 											value={[settings.advanced.networkTimeout]}
 											onValueChange={(value) =>
-												updateSettings("advanced", "networkTimeout", value[0])
+												updateSettings(
+													"advanced",
+													"networkTimeout",
+													value[0] ?? 0,
+												)
 											}
 										/>
 										<div className="flex justify-between text-muted-foreground text-xs">
@@ -1008,16 +1020,15 @@ function SettingsContent({ params }: { params: { id: string } }) {
 											</span>
 										</div>
 										<Slider
-											id="reconnectAttempts"
-											min={1}
+											defaultValue={[settings.advanced.reconnectAttempts]}
 											max={10}
+											min={0}
 											step={1}
-											value={[settings.advanced.reconnectAttempts]}
 											onValueChange={(value) =>
 												updateSettings(
 													"advanced",
 													"reconnectAttempts",
-													value[0],
+													value[0] ?? 0,
 												)
 											}
 										/>

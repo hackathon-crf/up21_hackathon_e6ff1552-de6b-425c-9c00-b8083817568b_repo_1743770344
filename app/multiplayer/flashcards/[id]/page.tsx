@@ -53,6 +53,7 @@ export default function FlashcardsRumblePage({
 
 	const totalCards = flashcards.length;
 	const progress = ((currentCard + 1) / totalCards) * 100;
+	const isValidCard = flashcards[currentCard] !== undefined;
 
 	useEffect(() => {
 		if (timeLeft > 0 && result === null) {
@@ -85,7 +86,9 @@ export default function FlashcardsRumblePage({
 			const isCorrect = answer
 				.toLowerCase()
 				.includes(
-					flashcards[currentCard].answer.toLowerCase().substring(0, 10),
+					isValidCard
+						? flashcards[currentCard].answer.toLowerCase().substring(0, 10)
+						: "",
 				);
 
 			setResult(isCorrect ? "correct" : "incorrect");
@@ -180,7 +183,7 @@ export default function FlashcardsRumblePage({
 								</CardHeader>
 								<CardContent>
 									<div className="text-center font-medium text-xl">
-										{flashcards[currentCard].question}
+										{isValidCard ? flashcards[currentCard].question : ""}
 									</div>
 								</CardContent>
 								<CardFooter className="text-center text-muted-foreground text-sm">
@@ -198,7 +201,7 @@ export default function FlashcardsRumblePage({
 								</CardHeader>
 								<CardContent>
 									<div className="text-center font-medium text-xl">
-										{flashcards[currentCard].answer}
+										{isValidCard ? flashcards[currentCard].answer : ""}
 									</div>
 								</CardContent>
 								<CardFooter className="flex justify-center gap-4">
@@ -247,7 +250,7 @@ export default function FlashcardsRumblePage({
 							<div className="space-y-2">
 								{leaderboard.map((player, index) => (
 									<div
-										key={index}
+										key={player.name || index}
 										className="flex items-center justify-between rounded-lg bg-muted/50 p-2"
 									>
 										<div className="flex items-center gap-2">

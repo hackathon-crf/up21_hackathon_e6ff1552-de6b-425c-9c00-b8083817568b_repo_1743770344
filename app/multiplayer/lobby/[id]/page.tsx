@@ -13,7 +13,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import React from "react";
+import type React from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -111,9 +111,8 @@ const mockSessionBase = {
 // -----------------------------
 
 export default function LobbyPage({ params }: { params: LobbyParams }) {
-	// Unwrap params using React.use() as required in Next.js 15
-	const unwrappedParams = React.use(params as any) as LobbyParams;
-	return <LobbyContent gameId={unwrappedParams.id} />;
+	// Route parameters are directly available in params, no need for React.use
+	return <LobbyContent gameId={params.id} />;
 }
 
 function LobbyContent({ gameId }: { gameId: string }) {
@@ -296,6 +295,17 @@ function LobbyContent({ gameId }: { gameId: string }) {
 	const handleSetGameMode = useCallback((mode: "rapid" | "clash") => {
 		setGameMode(mode);
 	}, []); // No dependencies needed as it only calls setGameMode
+
+	// Helper function for keyboard events
+	const handleKeyDown = (
+		event: React.KeyboardEvent<HTMLButtonElement>,
+		callback: () => void,
+	) => {
+		if (event.key === "Enter" || event.key === " ") {
+			event.preventDefault(); // Prevent default space bar scroll
+			callback();
+		}
+	};
 
 	const handleToggleChatCollapsed = useCallback(() => {
 		setChatCollapsed((prev) => !prev);
@@ -534,15 +544,19 @@ function LobbyContent({ gameId }: { gameId: string }) {
 							</CardHeader>
 							<CardContent className="p-4 pt-2">
 								<div className="space-y-4">
-									{/* Rapid Response Option */}
-									<div
+									{/* Rapid Response Option - Changed div to button */}
+									<button
+										type="button" // Added type="button"
 										className={cn(
-											"cursor-pointer rounded-lg border-2 p-4 transition-all",
+											"w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all", // Added text-left and w-full for button styling
 											gameMode === "rapid"
 												? "border-primary bg-primary/5"
 												: "border-muted hover:border-muted-foreground/50",
 										)}
 										onClick={() => handleSetGameMode("rapid")}
+										onKeyDown={(e) =>
+											handleKeyDown(e, () => handleSetGameMode("rapid"))
+										}
 									>
 										<div className="flex items-center gap-3">
 											<div className="rounded-full bg-primary/10 p-2">
@@ -555,17 +569,21 @@ function LobbyContent({ gameId }: { gameId: string }) {
 												</p>
 											</div>
 										</div>
-									</div>
+									</button>
 
-									{/* Card Clash Option */}
-									<div
+									{/* Card Clash Option - Changed div to button */}
+									<button
+										type="button" // Added type="button"
 										className={cn(
-											"cursor-pointer rounded-lg border-2 p-4 transition-all",
+											"w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all", // Added text-left and w-full for button styling
 											gameMode === "clash"
 												? "border-primary bg-primary/5"
 												: "border-muted hover:border-muted-foreground/50",
 										)}
 										onClick={() => handleSetGameMode("clash")}
+										onKeyDown={(e) =>
+											handleKeyDown(e, () => handleSetGameMode("clash"))
+										}
 									>
 										<div className="flex items-center gap-3">
 											<div className="rounded-full bg-primary/10 p-2">
@@ -578,7 +596,7 @@ function LobbyContent({ gameId }: { gameId: string }) {
 												</p>
 											</div>
 										</div>
-									</div>
+									</button>
 								</div>
 							</CardContent>
 							{/* Start/Ready Button */}

@@ -54,6 +54,74 @@ interface Flashcard {
 	explanation?: string;
 }
 
+const flashcards: Flashcard[] = [
+	{
+		id: 1,
+		question: "What is the correct compression rate for adult CPR?",
+		answer: "100-120 compressions per minute",
+		category: "CPR Technique",
+		difficulty: "medium",
+		timeLimit: 60,
+		keywords: ["100", "120", "compressions", "minute"],
+		explanation:
+			"The American Heart Association recommends a compression rate of 100-120 compressions per minute for adult CPR to ensure adequate blood circulation.",
+	},
+	{
+		id: 2,
+		question: "How deep should chest compressions be for an adult?",
+		answer: "At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
+		category: "CPR Technique",
+		difficulty: "medium",
+		timeLimit: 60,
+		keywords: ["2 inches", "5 cm", "2.4 inches", "6 cm"],
+		explanation:
+			"Proper compression depth is at least 2 inches (5 cm) but not more than 2.4 inches (6 cm) for adults. This ensures adequate blood circulation without causing injury.",
+	},
+	{
+		id: 3,
+		question: "What is the first step in treating a severe bleeding wound?",
+		answer: "Apply direct pressure to the wound with a clean cloth or bandage",
+		category: "Bleeding Control",
+		difficulty: "easy",
+		timeLimit: 60,
+		keywords: ["direct pressure", "wound", "cloth", "bandage"],
+		explanation:
+			"Direct pressure is the most effective first step to control bleeding. It helps slow blood flow and allows clotting to begin.",
+	},
+	{
+		id: 4,
+		question: "What are the signs of shock?",
+		answer:
+			"Pale, cold, clammy skin; rapid, weak pulse; rapid breathing; nausea; and altered mental status",
+		category: "Emergency Response",
+		difficulty: "hard",
+		timeLimit: 60,
+		keywords: [
+			"pale",
+			"cold",
+			"clammy",
+			"rapid",
+			"weak pulse",
+			"breathing",
+			"mental status",
+		],
+		explanation:
+			"Recognizing shock early is critical. These signs indicate the body's compensatory mechanisms are trying to maintain blood flow to vital organs.",
+	},
+	{
+		id: 5,
+		question: "What is the recovery position and when should it be used?",
+		answer:
+			"A stable position where the patient lies on their side with the lower arm forward and head tilted back. Used for unconscious patients who are breathing normally and have no suspected spinal injuries.",
+		category: "Patient Positioning",
+		difficulty: "hard",
+		timeLimit: 60,
+		keywords: ["side", "unconscious", "breathing", "spinal injuries"],
+		explanation:
+			"The recovery position helps maintain an open airway and prevents aspiration if the patient vomits. It should only be used when spinal injury is not suspected.",
+	},
+];
+
 export default function CardClashPage({ params }: { params: { id: string } }) {
 	return <CardClashContent params={params} />;
 }
@@ -97,76 +165,6 @@ function CardClashContent({ params }: { params: { id: string } }) {
 
 		return () => clearInterval(countdownInterval);
 	}, []);
-
-	// Mock data for the flashcards
-	const flashcards: Flashcard[] = [
-		{
-			id: 1,
-			question: "What is the correct compression rate for adult CPR?",
-			answer: "100-120 compressions per minute",
-			category: "CPR Technique",
-			difficulty: "medium",
-			timeLimit: 60,
-			keywords: ["100", "120", "compressions", "minute"],
-			explanation:
-				"The American Heart Association recommends a compression rate of 100-120 compressions per minute for adult CPR to ensure adequate blood circulation.",
-		},
-		{
-			id: 2,
-			question: "How deep should chest compressions be for an adult?",
-			answer: "At least 2 inches (5 cm) but not more than 2.4 inches (6 cm)",
-			category: "CPR Technique",
-			difficulty: "medium",
-			timeLimit: 60,
-			keywords: ["2 inches", "5 cm", "2.4 inches", "6 cm"],
-			explanation:
-				"Proper compression depth is at least 2 inches (5 cm) but not more than 2.4 inches (6 cm) for adults. This ensures adequate blood circulation without causing injury.",
-		},
-		{
-			id: 3,
-			question: "What is the first step in treating a severe bleeding wound?",
-			answer:
-				"Apply direct pressure to the wound with a clean cloth or bandage",
-			category: "Bleeding Control",
-			difficulty: "easy",
-			timeLimit: 60,
-			keywords: ["direct pressure", "wound", "cloth", "bandage"],
-			explanation:
-				"Direct pressure is the most effective first step to control bleeding. It helps slow blood flow and allows clotting to begin.",
-		},
-		{
-			id: 4,
-			question: "What are the signs of shock?",
-			answer:
-				"Pale, cold, clammy skin; rapid, weak pulse; rapid breathing; nausea; and altered mental status",
-			category: "Emergency Response",
-			difficulty: "hard",
-			timeLimit: 60,
-			keywords: [
-				"pale",
-				"cold",
-				"clammy",
-				"rapid",
-				"weak pulse",
-				"breathing",
-				"mental status",
-			],
-			explanation:
-				"Recognizing shock early is critical. These signs indicate the body's compensatory mechanisms are trying to maintain blood flow to vital organs.",
-		},
-		{
-			id: 5,
-			question: "What is the recovery position and when should it be used?",
-			answer:
-				"A stable position where the patient lies on their side with the lower arm forward and head tilted back. Used for unconscious patients who are breathing normally and have no suspected spinal injuries.",
-			category: "Patient Positioning",
-			difficulty: "hard",
-			timeLimit: 60,
-			keywords: ["side", "unconscious", "breathing", "spinal injuries"],
-			explanation:
-				"The recovery position helps maintain an open airway and prevents aspiration if the patient vomits. It should only be used when spinal injury is not suspected.",
-		},
-	];
 
 	// Mock players data
 	const [players, setPlayers] = useState<Player[]>([
@@ -222,6 +220,7 @@ function CardClashContent({ params }: { params: { id: string } }) {
 		},
 	]);
 
+	// Use the flashcards defined outside the component
 	const totalCards = flashcards.length;
 	const currentCardData = flashcards[currentCard];
 	const progress = ((currentCard + 1) / totalCards) * 100;
@@ -248,7 +247,8 @@ function CardClashContent({ params }: { params: { id: string } }) {
 		) {
 			inputRef.current.focus();
 		}
-	}, [currentCard, flipped, result, gameStarted, showCountdown]);
+		// Remove currentCard from dependencies as it's not directly used in the effect logic
+	}, [flipped, result, gameStarted, showCountdown]);
 
 	// Simulate other players typing and answering
 	useEffect(() => {
@@ -329,6 +329,82 @@ function CardClashContent({ params }: { params: { id: string } }) {
 		};
 	}, [gameStarted, gameEnded, result, showCountdown]);
 
+	// Define callbacks before the effects that use them
+	const simulateOtherPlayersAnswers = useCallback(() => {
+		setPlayers((prevPlayers) => {
+			return prevPlayers
+				.map((player) => {
+					if (!player.isCurrentUser && player.status !== "answered") {
+						// 60% chance of getting it right for AI players
+						const gotItRight = Math.random() > 0.4;
+						const basePoints = gotItRight ? 1000 : 0;
+						const timeBonus = Math.floor(Math.random() * 300);
+						const streakBonus = player.streak > 0 ? player.streak * 100 : 0;
+						const pointsToAdd = basePoints + timeBonus + streakBonus;
+
+						return {
+							...player,
+							score: player.score + pointsToAdd,
+							streak: gotItRight ? player.streak + 1 : 0,
+							status: "answered" as
+								| "idle"
+								| "typing"
+								| "answered"
+								| "thinking"
+								| "away",
+						};
+					}
+					return player;
+				})
+				.sort((a, b) => b.score - a.score)
+				.map((player, index) => ({
+					...player,
+					rank: index + 1,
+				}));
+		});
+	}, []); // Empty dependency array means this function's identity is stable
+
+	const handleNextCard = useCallback(() => {
+		setFlipped(false);
+		setShowLeaderboard(false);
+		setAnswer("");
+		setResult(null);
+		setPointsEarned(0);
+		setShowHint(false);
+		setHintsUsed(0);
+
+		// Reset player statuses
+		setPlayers((prevPlayers) => {
+			return prevPlayers.map((player) => ({
+				...player,
+				status: "idle" as "idle" | "typing" | "answered" | "thinking" | "away",
+			}));
+		});
+
+		if (currentCard < totalCards - 1) {
+			const nextCardIndex = currentCard + 1;
+			setCurrentCard(nextCardIndex);
+			// Use the stable flashcards reference directly
+			setTimeLeft(flashcards[nextCardIndex]?.timeLimit || 60);
+		} else {
+			// Game completed, navigate to results
+			setGameEnded(true);
+
+			toast({
+				title: "Game completed!",
+				description: "Redirecting to results page...",
+			});
+
+			setTimeout(() => {
+				if (router) {
+					router.push(`/multiplayer/results/${params.id}`);
+				}
+			}, 3000);
+		}
+		// Dependencies: currentCard, totalCards, router, params.id, toast
+		// flashcards is now stable as it's defined outside the component
+	}, [currentCard, totalCards, router, params.id, toast]);
+
 	// Timer effect
 	useEffect(() => {
 		if (!gameStarted || gameEnded || result !== null || showCountdown) return;
@@ -368,42 +444,20 @@ function CardClashContent({ params }: { params: { id: string } }) {
 		result,
 		showCountdown,
 		currentCardData,
+		toast,
+		handleNextCard, // handleNextCard's identity changes when its deps change
+		simulateOtherPlayersAnswers, // simulateOtherPlayersAnswers' identity is stable
 	]);
 
-	// Simulate other players answering
-	const simulateOtherPlayersAnswers = useCallback(() => {
-		setPlayers((prevPlayers) => {
-			return prevPlayers
-				.map((player) => {
-					if (!player.isCurrentUser && player.status !== "answered") {
-						// 60% chance of getting it right for AI players
-						const gotItRight = Math.random() > 0.4;
-						const basePoints = gotItRight ? 1000 : 0;
-						const timeBonus = Math.floor(Math.random() * 300);
-						const streakBonus = player.streak > 0 ? player.streak * 100 : 0;
-						const pointsToAdd = basePoints + timeBonus + streakBonus;
-
-						return {
-							...player,
-							score: player.score + pointsToAdd,
-							streak: gotItRight ? player.streak + 1 : 0,
-							status: "answered" as
-								| "idle"
-								| "typing"
-								| "answered"
-								| "thinking"
-								| "away",
-						};
-					}
-					return player;
-				})
-				.sort((a, b) => b.score - a.score)
-				.map((player, index) => ({
-					...player,
-					rank: index + 1,
-				}));
-		});
-	}, []);
+	// Generate hint from answer
+	const generateHint = (answer: string): string => {
+		const words = answer.split(" ");
+		return words
+			.map((word) =>
+				word.length > 3 ? `${word[0]}___${word[word.length - 1]}` : "___",
+			)
+			.join(" ");
+	};
 
 	const handleFlip = () => {
 		if (!flipped && result === null) {
@@ -563,43 +617,6 @@ function CardClashContent({ params }: { params: { id: string } }) {
 		}
 	};
 
-	const handleNextCard = useCallback(() => {
-		setFlipped(false);
-		setShowLeaderboard(false);
-		setAnswer("");
-		setResult(null);
-		setPointsEarned(0);
-		setShowHint(false);
-		setHintsUsed(0);
-
-		// Reset player statuses
-		setPlayers((prevPlayers) => {
-			return prevPlayers.map((player) => ({
-				...player,
-				status: "idle" as "idle" | "typing" | "answered" | "thinking" | "away",
-			}));
-		});
-
-		if (currentCard < totalCards - 1) {
-			setCurrentCard((prev) => prev + 1);
-			setTimeLeft(flashcards[currentCard + 1]?.timeLimit || 60);
-		} else {
-			// Game completed, navigate to results
-			setGameEnded(true);
-
-			toast({
-				title: "Game completed!",
-				description: "Redirecting to results page...",
-			});
-
-			setTimeout(() => {
-				if (router) {
-					router.push(`/multiplayer/results/${params.id}`);
-				}
-			}, 3000);
-		}
-	}, [currentCard, totalCards, flashcards, router, params.id, toast]);
-
 	const handleShowHint = () => {
 		setShowHint(true);
 		setHintsUsed((prev) => prev + 1);
@@ -626,16 +643,6 @@ function CardClashContent({ params }: { params: { id: string } }) {
 	// Get current user's rank
 	const currentUserRank =
 		players.find((player) => player.isCurrentUser)?.rank || 0;
-
-	// Generate hint from answer
-	const generateHint = (answer: string): string => {
-		const words = answer.split(" ");
-		return words
-			.map((word) =>
-				word.length > 3 ? `${word[0]}___${word[word.length - 1]}` : "___",
-			)
-			.join(" ");
-	};
 
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/10 to-accent/10">

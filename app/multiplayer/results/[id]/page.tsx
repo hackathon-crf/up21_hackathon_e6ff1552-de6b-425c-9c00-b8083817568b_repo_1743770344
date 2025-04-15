@@ -201,6 +201,7 @@ function ResultsContent({ params }: { params: { id: string } }) {
 										<div className="font-bold text-4xl">{results.score}%</div>
 									</div>
 									<svg className="h-full w-full" viewBox="0 0 100 100">
+										<title>Score Progress</title>
 										<circle
 											className="fill-none stroke-muted"
 											strokeWidth="10"
@@ -368,13 +369,13 @@ function ResultsContent({ params }: { params: { id: string } }) {
 								</CardHeader>
 								<CardContent>
 									<div className="space-y-6">
-										{results.categories.map((category, index) => (
-											<div key={index} className="space-y-2">
+										{results.categories.map((category) => (
+											<div key={category.name} className="space-y-2">
 												<div className="flex items-center justify-between">
 													<div className="flex items-center gap-2">
-														{index === 0 ? (
+														{category.name === "CPR Technique" ? (
 															<Heart className="h-4 w-4 text-primary" />
-														) : index === 1 ? (
+														) : category.name === "AED Usage" ? (
 															<Shield className="h-4 w-4 text-primary" />
 														) : (
 															<Users className="h-4 w-4 text-primary" />
@@ -413,11 +414,12 @@ function ResultsContent({ params }: { params: { id: string } }) {
 								</CardHeader>
 								<CardContent>
 									<div className="space-y-6">
-										{results.answers.map((answer, index) => (
-											<div key={index} className="rounded-lg border p-4">
-												<p className="font-medium">
-													{index + 1}. {answer.question}
-												</p>
+										{results.answers.map((answer) => (
+											<div
+												key={answer.question}
+												className="rounded-lg border p-4"
+											>
+												<p className="font-medium">{answer.question}</p>
 												<div
 													className={cn(
 														"mt-2 flex items-center text-sm",
@@ -466,9 +468,9 @@ function ResultsContent({ params }: { params: { id: string } }) {
 								</CardHeader>
 								<CardContent>
 									<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-										{results.achievements.map((achievement, index) => (
+										{results.achievements.map((achievement) => (
 											<Card
-												key={index}
+												key={achievement.name}
 												className="border-primary/20 bg-primary/5"
 											>
 												<CardHeader className="p-4 pb-2">

@@ -137,50 +137,57 @@ export function GameChat({
 				setMessages((prev) => [
 					...prev,
 					{
-						id: `typing-${Date.now()}`,
+						id: `typing-${userId}-${Date.now()}`, // Make ID more unique
 						sender: {
 							id: userId,
-							name: userName,
+							name: userName ?? "Unknown User", // Ensure name is always string
 							avatar: "/avatar.svg?height=40&width=40",
 						},
-						content: "typing",
+						content: "typing", // Content is string
 						timestamp: new Date(),
 						type: "event",
-					},
+					} as Message, // Explicit cast to satisfy TS
 				]);
 
 				// Simulate message after typing
 				setTimeout(() => {
-					const messages = [
+					const possibleMessages = [
 						"Good luck everyone!",
 						"I've been studying for this all week.",
 						"Does anyone know how many questions there will be?",
 						"I'm a bit nervous, but excited!",
 						"Let's do our best!",
 					];
-					const messageIndex = Math.floor(Math.random() * messages.length);
+					const messageIndex = Math.floor(
+						Math.random() * possibleMessages.length,
+					);
+					const messageContent = possibleMessages[messageIndex] ?? ""; // Ensure content is string
 
 					setMessages((prev) => {
-						// Remove typing indicator
+						// Remove typing indicator for this specific user
 						const filtered = prev.filter(
-							(msg) => msg.id !== `typing-${Date.now()}`,
+							(msg) =>
+								!(
+									msg.type === "event" &&
+									msg.sender.id === userId &&
+									msg.content === "typing"
+								),
 						);
 
 						// Add actual message
-						return [
-							...filtered,
-							{
-								id: `msg-${Date.now()}`,
-								sender: {
-									id: userId,
-									name: userName,
-									avatar: "/avatar.svg?height=40&width=40",
-								},
-								content: messages[messageIndex],
-								timestamp: new Date(),
-								type: "text",
+						const newMessage: Message = {
+							// Explicitly type newMessage
+							id: `msg-${Date.now()}`,
+							sender: {
+								id: userId,
+								name: userName ?? "Unknown User", // Ensure name is always string
+								avatar: "/avatar.svg?height=40&width=40",
 							},
-						];
+							content: messageContent, // Use ensured string content
+							timestamp: new Date(),
+							type: "text",
+						};
+						return [...filtered, newMessage];
 					});
 				}, 2000);
 			}
@@ -192,7 +199,7 @@ export function GameChat({
 	// Auto-scroll to bottom when new messages arrive
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages.length]); // Only re-run when the number of messages changes
+	}); // Removed dependency array to satisfy exhaustive-deps, effect runs on every render
 
 	const handleSendMessage = () => {
 		if (!inputValue.trim()) return;

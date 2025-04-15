@@ -41,8 +41,13 @@ export default function SignupPage() {
 			setTimeout(() => {
 				router.push("/login");
 			}, 3000);
-		} catch (err: any) {
-			setError(err.message || "Failed to sign up");
+		} catch (err) {
+			// Type check the error before accessing properties
+			if (err instanceof Error) {
+				setError(err.message || "Failed to sign up");
+			} else {
+				setError("An unexpected error occurred during sign up.");
+			}
 			console.error("Signup error:", err);
 		}
 	};

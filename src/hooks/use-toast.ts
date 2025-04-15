@@ -7,13 +7,24 @@ import type { ToastActionElement, ToastProps } from "~/components/ui/toast";
 const TOAST_LIMIT = 5;
 const TOAST_REMOVE_DELAY = 5000;
 
-type ToasterToast = ToastProps & {
-	id: string;
-	title?: React.ReactNode;
-	description?: React.ReactNode;
-	action?: ToastActionElement;
-	variant?: "default" | "success" | "info" | "warning" | "destructive";
+// --- Adjusted ToasterToast type --- 
+type ToasterToast = Omit<ToastProps, 'title' | 'description'> & { // Omit conflicting props
+  id: string;
+  title?: React.ReactNode; // Add back with ReactNode type
+  description?: React.ReactNode; // Add back with ReactNode type
+  action?: ToastActionElement;
+  variant?: "default" | "success" | "info" | "warning" | "destructive";
 };
+// ---------------------------------
+
+// --- Add Promise Toast Types ---
+type PromiseToastProps<TData = unknown> = {
+	loading: { title: React.ReactNode; description?: React.ReactNode };
+	success: (data: TData) => { title: React.ReactNode; description?: React.ReactNode };
+	error: (error: unknown) => { title: React.ReactNode; description?: React.ReactNode };
+	duration?: number; // Optional duration for success/error toasts
+};
+// ------------------------------
 
 const actionTypes = {
 	ADD_TOAST: "ADD_TOAST",
@@ -166,6 +177,72 @@ function toast(props: Toast) {
 	};
 }
 
+// --- Add Promise Toast Function ---
+async function promise<TData>(promise: Promise<TData>, props: PromiseToastProps<TData>) {
+	const id = genId();
+
+	// Show loading toast immediately
+	dispatch({
+		type: actionTypes.ADD_TOAST,
+		toast: {
+			...props.loading,
+			id,
+			variant: "info", // Or a specific loading variant if you have one
+			open: true,
+			duration: Number.POSITIVE_INFINITY, // Keep loading toast open until promise settles
+			onOpenChange: (open) => {
+				if (!open) dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
+			},
+		},
+	});
+
+	try {
+		const data = await promise;
+		const successProps = props.success(data);
+		const duration = props.duration ?? TOAST_REMOVE_DELAY;
+
+		// Update to success toast
+		dispatch({
+			type: actionTypes.UPDATE_TOAST,
+			toast: {
+				...successProps,
+				id,
+				variant: "success",
+				duration: duration,
+			},
+		});
+
+		// Auto-dismiss success toast
+		if (duration !== Number.POSITIVE_INFINITY) {
+			setTimeout(() => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id }), duration);
+		}
+
+		return data; // Return the resolved data
+	} catch (error) {
+		const errorProps = props.error(error);
+		const duration = props.duration ?? TOAST_REMOVE_DELAY;
+
+		// Update to error toast
+		dispatch({
+			type: actionTypes.UPDATE_TOAST,
+			toast: {
+				...errorProps,
+				id,
+				variant: "destructive",
+				duration: duration,
+			},
+		});
+
+		// Auto-dismiss error toast
+		if (duration !== Number.POSITIVE_INFINITY) {
+			setTimeout(() => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id }), duration);
+		}
+
+		throw error; // Re-throw the error
+	}
+}
+// ------------------------------
+
 // Helper functions for common toast types
 function success(props: Omit<Toast, "variant">) {
 	return toast({ ...props, variant: "success" });
@@ -203,9 +280,10 @@ function useToast() {
 		info,
 		warning,
 		error,
+		promise, // <-- Add promise function here
 		dismiss: (toastId?: string) =>
 			dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
 	};
 }
 
-export { useToast, toast, success, info, warning, error };
+export { useToast, toast, success, info, warning, error, promise }; // <-- Export promise

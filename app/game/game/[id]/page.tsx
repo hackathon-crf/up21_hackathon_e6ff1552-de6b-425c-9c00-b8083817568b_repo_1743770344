@@ -2,7 +2,7 @@
 
 import { Clock, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react"; // Added useCallback
 
 import { Button } from "~/components/ui/button";
 import {
@@ -17,14 +17,14 @@ import { useToast } from "~/hooks/use-toast";
 
 export default function GameGamePage({ params }: { params: { id: string } }) {
 	const router = useRouter();
-	const { toast } = useToast();
+	const { toast, promise } = useToast(); // Destructure promise from useToast
 	const [currentQuestion, setCurrentQuestion] = useState(0);
 	const [timeLeft, setTimeLeft] = useState(30);
 	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 	const [score, setScore] = useState(0);
 	const [streakCount, setStreakCount] = useState(0);
 
-	// Mock data for the game
+	// Mock data for the game - Ensure questions exist
 	const game = {
 		title: "CPR & AED Challenge",
 		questions: [
@@ -62,6 +62,65 @@ export default function GameGamePage({ params }: { params: { id: string } }) {
 		],
 	};
 
+	// Get the current question object safely
+	const currentQuestionData = game.questions[currentQuestion];
+	const totalQuestions = game.questions.length;
+
+	// --- Moved handleNextQuestion definition earlier --- (and wrapped in useCallback)
+	const handleNextQuestion = useCallback(() => {
+		if (currentQuestion < totalQuestions - 1) {
+			setCurrentQuestion(currentQuestion + 1);
+			setSelectedAnswer(null);
+			setTimeLeft(30);
+
+			// Show progress toast at halfway point
+			if (currentQuestion === Math.floor(totalQuestions / 2) - 1) {
+				toast({
+					title: "Halfway there!",
+					description: `You've completed ${Math.floor(totalQuestions / 2)} of ${totalQuestions} questions.`,
+					variant: "info",
+				});
+			}
+		} else {
+			// Game completed, show completion toast and navigate to results
+			promise(
+				// Simulate saving results
+				new Promise((resolve) => setTimeout(resolve, 1500)),
+				{
+					loading: {
+						title: "Saving your results",
+						description: "Please wait while we calculate your score...",
+					},
+					success: (data) => ({
+						title: "Game completed!",
+						description: `Great job! Final score: ${score} points.`,
+					}),
+					// --- Corrected error handler to be a function ---
+					error: (err) => ({
+						title: "Error saving results",
+						description: "There was an issue saving your game results.",
+					}),
+					// -------------------------------------------------
+				},
+			)
+				.then(() => {
+					router.push(`/game/results/${params.id}?score=${score}`);
+				})
+				.catch((err) => {
+					console.error("Error after game completion promise:", err);
+				});
+		}
+	}, [
+		currentQuestion,
+		totalQuestions,
+		toast,
+		promise,
+		score,
+		router,
+		params.id,
+	]);
+	// ----------------------------------------------------
+
 	// Display a welcome toast when the game starts
 	useEffect(() => {
 		toast({
@@ -71,9 +130,9 @@ export default function GameGamePage({ params }: { params: { id: string } }) {
 		});
 	}, [toast]);
 
-	const totalQuestions = game.questions.length;
 	const progress = ((currentQuestion + 1) / totalQuestions) * 100;
 
+	// Timer and auto-next logic
 	useEffect(() => {
 		if (timeLeft > 0 && selectedAnswer === null) {
 			const timer = setTimeout(() => {
@@ -105,17 +164,18 @@ export default function GameGamePage({ params }: { params: { id: string } }) {
 
 			// Move to next question after delay
 			const timer = setTimeout(() => {
-				handleNextQuestion();
+				handleNextQuestion(); // Call the defined function
 			}, 2000);
 			return () => clearTimeout(timer);
 		}
-	}, [timeLeft, selectedAnswer, toast]);
+	}, [timeLeft, selectedAnswer, toast, handleNextQuestion]); // handleNextQuestion is now stable
 
 	const handleSelectAnswer = (index: number) => {
-		if (selectedAnswer === null) {
+		if (selectedAnswer === null && currentQuestionData) {
+			// Check currentQuestionData
 			setSelectedAnswer(index);
 
-			const isCorrect = index === game.questions[currentQuestion].correctAnswer;
+			const isCorrect = index === currentQuestionData.correctAnswer; // Use currentQuestionData
 
 			if (isCorrect) {
 				// Increase score and streak
@@ -154,61 +214,29 @@ export default function GameGamePage({ params }: { params: { id: string } }) {
 		}
 	};
 
-	const handleNextQuestion = () => {
-		if (currentQuestion < totalQuestions - 1) {
-			setCurrentQuestion(currentQuestion + 1);
-			setSelectedAnswer(null);
-			setTimeLeft(30);
+	// --- Corrected getButtonVariant function syntax and wrapped in useCallback ---
+	const getButtonVariant = useCallback(
+		(index: number): "default" | "destructive" | "outline" => {
+			if (selectedAnswer === null || !currentQuestionData) return "outline";
 
-			// Show progress toast at halfway point
-			if (currentQuestion === Math.floor(totalQuestions / 2) - 1) {
-				toast({
-					title: "Halfway there!",
-					description: `You've completed ${Math.floor(totalQuestions / 2)} of ${totalQuestions} questions.`,
-					variant: "info",
-				});
+			if (index === currentQuestionData.correctAnswer) {
+				return "default"; // Use "default" for correct, assuming styling handles it
 			}
-		} else {
-			// Game completed, show completion toast and navigate to results
-			toast
-				.promise(
-					// Simulate saving results
-					new Promise((resolve) => setTimeout(resolve, 1500)),
-					{
-						loading: {
-							title: "Saving your results",
-							description: "Please wait while we calculate your score...",
-						},
-						success: {
-							title: "Game completed!",
-							description: `Great job! Final score: ${score} points.`,
-						},
-						error: {
-							title: "Error saving results",
-							description: "There was an issue saving your game results.",
-						},
-					},
-				)
-				.then(() => {
-					// In a real app, this would redirect to actual results page with the score
-					router.push(`/game/results/${params.id}?score=${score}`);
-				});
-		}
-	};
 
-	const getButtonVariant = (index: number) => {
-		if (selectedAnswer === null) return "outline";
+			if (selectedAnswer === index) {
+				return "destructive";
+			}
 
-		if (index === game.questions[currentQuestion].correctAnswer) {
-			return "success";
-		}
+			return "outline";
+		},
+		[selectedAnswer, currentQuestionData],
+	); // Added dependencies
+	// -------------------------------------------------
 
-		if (selectedAnswer === index) {
-			return "destructive";
-		}
-
-		return "outline";
-	};
+	// Add a loading/error state if currentQuestionData is somehow undefined
+	if (!currentQuestionData) {
+		return <div>Loading question or question not found...</div>; // Or a better loading/error UI
+	}
 
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/10 to-accent/10">
@@ -254,34 +282,27 @@ export default function GameGamePage({ params }: { params: { id: string } }) {
 					<Card className="w-full">
 						<CardHeader>
 							<CardTitle className="text-xl">
-								{game.questions[currentQuestion].question}
+								{currentQuestionData.question} {/* Use currentQuestionData */}
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-								{game.questions[currentQuestion].options.map(
-									(option, index) => (
-										<Button
-											key={`option-${index}-${option.substring(0, 10)}`}
-											variant={
-												getButtonVariant(index) as
-													| "outline"
-													| "success"
-													| "destructive"
-											}
-											className="h-auto w-full justify-start px-4 py-3 text-left sm:px-6 sm:py-4"
-											onClick={() => handleSelectAnswer(index)}
-											disabled={selectedAnswer !== null}
-										>
-											<div className="flex items-center gap-3 sm:gap-4">
-												<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-8 sm:w-8">
-													{String.fromCharCode(65 + index)}
-												</div>
-												<span className="text-sm sm:text-base">{option}</span>
+								{currentQuestionData.options.map((option, index) => (
+									<Button
+										key={`option-${index}-${option.substring(0, 10)}`}
+										variant={getButtonVariant(index)}
+										className="h-auto w-full justify-start px-4 py-3 text-left sm:px-6 sm:py-4"
+										onClick={() => handleSelectAnswer(index)}
+										disabled={selectedAnswer !== null}
+									>
+										<div className="flex items-center gap-3 sm:gap-4">
+											<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-8 sm:w-8">
+												{String.fromCharCode(65 + index)}
 											</div>
-										</Button>
-									),
-								)}
+											<span className="text-sm sm:text-base">{option}</span>
+										</div>
+									</Button>
+								))}
 							</div>
 						</CardContent>
 						<CardFooter className="flex justify-between">

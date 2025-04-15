@@ -39,7 +39,7 @@ interface Player {
 	rank: number;
 	streak: number;
 	isCurrentUser: boolean;
-	status?: "idle" | "typing" | "answered" | "thinking" | "away";
+	status?: "idle" | "typing" | "answered" | "thinking" | "away"; // Ensure status matches this type
 }
 
 interface Question {
@@ -241,7 +241,86 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 
 	const totalQuestions = challenge.questions.length;
 	const currentQuestionData = challenge.questions[currentQuestion];
-	const progress = ((currentQuestion + 1) / totalQuestions) * 100;
+	const progress = currentQuestionData
+		? ((currentQuestion + 1) / totalQuestions) * 100
+		: 0;
+
+	// Define callbacks before useEffect hooks that use them
+	const simulateOtherPlayersAnswers = useCallback(() => {
+		setPlayers((prevPlayers) => {
+			// Ensure the returned array matches Player[] type
+			const updatedPlayers: Player[] = prevPlayers
+				.map((player) => {
+					if (!player.isCurrentUser) {
+						// 70% chance of getting it right for AI players
+						const gotItRight = Math.random() > 0.3;
+						const basePoints = gotItRight ? 1000 : 0;
+						const timeBonus = Math.floor(Math.random() * 200);
+						const streakBonus = player.streak > 0 ? player.streak * 100 : 0;
+						const pointsToAdd = basePoints + timeBonus + streakBonus;
+
+						return {
+							...player,
+							score: player.score + pointsToAdd,
+							streak: gotItRight ? player.streak + 1 : 0,
+							status: "answered" as Player["status"], // Explicit cast
+						};
+					}
+					return player;
+				})
+				.sort((a, b) => b.score - a.score)
+				.map((player, index) => ({
+					...player,
+					rank: index + 1,
+				}));
+			return updatedPlayers;
+		});
+	}, []);
+
+	const handleNextQuestion = useCallback(() => {
+		setShowFeedback(false);
+		setShowLeaderboard(false);
+		setSelectedAnswer(null);
+		setPointsEarned(0);
+
+		// Reset player statuses
+		setPlayers((prevPlayers) => {
+			// Ensure the returned array matches Player[] type
+			const updatedPlayers: Player[] = prevPlayers.map((player) => ({
+				...player,
+				status: "idle" as Player["status"], // Explicit cast
+			}));
+			return updatedPlayers;
+		});
+
+		if (currentQuestion < totalQuestions - 1) {
+			setCurrentQuestion((prev) => prev + 1);
+			const nextQuestionData = challenge.questions[currentQuestion + 1];
+			setTimeLeft(nextQuestionData?.timeLimit || 30);
+		} else {
+			// Game completed, navigate to results
+			setGameEnded(true);
+
+			toast({
+				title: "Game completed!",
+				description: "Redirecting to results page...",
+				duration: 3000,
+			});
+
+			setTimeout(() => {
+				if (router) {
+					router.push(`/multiplayer/results/${params.id}`);
+				}
+			}, 3000);
+		}
+	}, [
+		currentQuestion,
+		totalQuestions,
+		challenge.questions,
+		router,
+		params.id,
+		toast,
+	]);
 
 	// Show welcome notification when game starts
 	useEffect(() => {
@@ -261,16 +340,21 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 
 		const interval = setInterval(() => {
 			setPlayers((prevPlayers) => {
-				return prevPlayers
+				// Ensure the returned array matches Player[] type
+				const updatedPlayers: Player[] = prevPlayers
 					.map((player) => {
 						if (!player.isCurrentUser && Math.random() > 0.7) {
 							// Randomly increase other players' scores
 							const pointsToAdd = Math.floor(Math.random() * 300) + 100;
+							// Explicitly cast status to satisfy stricter type checking if needed,
+							// although "thinking" is already a valid status.
+							const newStatus: Player["status"] =
+								Math.random() > 0.7 ? "thinking" : player.status;
 							return {
 								...player,
 								score: player.score + pointsToAdd,
 								streak: Math.random() > 0.8 ? player.streak + 1 : player.streak,
-								status: Math.random() > 0.7 ? "thinking" : player.status,
+								status: newStatus,
 							};
 						}
 						return player;
@@ -280,6 +364,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 						...player,
 						rank: index + 1,
 					}));
+				return updatedPlayers;
 			});
 		}, 3000);
 
@@ -288,7 +373,15 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 
 	// Timer effect
 	useEffect(() => {
-		if (!gameStarted || gameEnded || showFeedback || showCountdown) return;
+		// Add check for currentQuestionData
+		if (
+			!gameStarted ||
+			gameEnded ||
+			showFeedback ||
+			showCountdown ||
+			!currentQuestionData
+		)
+			return;
 
 		if (timeLeft > 0 && selectedAnswer === null) {
 			const timer = setTimeout(() => {
@@ -304,7 +397,11 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 
 			toast({
 				title: "Time's up!",
-				description: `The correct answer was: ${currentQuestionData.options[currentQuestionData.correctAnswer]}`,
+				// Add nullish coalescing for safety
+				description: `The correct answer was: ${
+					currentQuestionData.options[currentQuestionData.correctAnswer] ??
+					"N/A"
+				}`,
 				duration: 3000,
 			});
 
@@ -326,40 +423,13 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 		showCountdown,
 		currentQuestionData,
 		toast,
+		handleNextQuestion, // Now defined before this hook
+		simulateOtherPlayersAnswers, // Now defined before this hook
 	]);
 
-	// Simulate other players answering
-	const simulateOtherPlayersAnswers = useCallback(() => {
-		setPlayers((prevPlayers) => {
-			return prevPlayers
-				.map((player) => {
-					if (!player.isCurrentUser) {
-						// 70% chance of getting it right for AI players
-						const gotItRight = Math.random() > 0.3;
-						const basePoints = gotItRight ? 1000 : 0;
-						const timeBonus = Math.floor(Math.random() * 200);
-						const streakBonus = player.streak > 0 ? player.streak * 100 : 0;
-						const pointsToAdd = basePoints + timeBonus + streakBonus;
-
-						return {
-							...player,
-							score: player.score + pointsToAdd,
-							streak: gotItRight ? player.streak + 1 : 0,
-							status: "answered",
-						};
-					}
-					return player;
-				})
-				.sort((a, b) => b.score - a.score)
-				.map((player, index) => ({
-					...player,
-					rank: index + 1,
-				}));
-		});
-	}, []);
-
 	const handleSelectAnswer = (index: number) => {
-		if (selectedAnswer !== null || showFeedback) return;
+		// Add check for currentQuestionData
+		if (selectedAnswer !== null || showFeedback || !currentQuestionData) return;
 
 		setSelectedAnswer(index);
 
@@ -387,13 +457,18 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 		if (isCorrect) {
 			toast({
 				title: "Correct answer!",
-				description: currentQuestionData.explanation,
+				description:
+					currentQuestionData.explanation ?? "No explanation available.", // Add nullish coalescing
 				duration: 4000,
 			});
 		} else {
 			toast({
 				title: "Incorrect answer",
-				description: `The correct answer was: ${currentQuestionData.options[currentQuestionData.correctAnswer]}. ${currentQuestionData.explanation}`,
+				// Add nullish coalescing
+				description: `The correct answer was: ${
+					currentQuestionData.options[currentQuestionData.correctAnswer] ??
+					"N/A"
+				}. ${currentQuestionData.explanation ?? ""}`,
 				duration: 4000,
 			});
 		}
@@ -463,53 +538,13 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 		}, 5000);
 	};
 
-	const handleNextQuestion = useCallback(() => {
-		setShowFeedback(false);
-		setShowLeaderboard(false);
-		setSelectedAnswer(null);
-		setPointsEarned(0);
-
-		// Reset player statuses
-		setPlayers((prevPlayers) => {
-			return prevPlayers.map((player) => ({
-				...player,
-				status: "idle",
-			}));
-		});
-
-		if (currentQuestion < totalQuestions - 1) {
-			setCurrentQuestion((prev) => prev + 1);
-			setTimeLeft(challenge.questions[currentQuestion + 1]?.timeLimit || 30);
-		} else {
-			// Game completed, navigate to results
-			setGameEnded(true);
-
-			toast({
-				title: "Game completed!",
-				description: "Redirecting to results page...",
-				duration: 3000,
-			});
-
-			setTimeout(() => {
-				if (router) {
-					router.push(`/multiplayer/results/${params.id}`);
-				}
-			}, 3000);
-		}
-	}, [
-		currentQuestion,
-		totalQuestions,
-		challenge.questions,
-		router,
-		params.id,
-		toast,
-	]);
-
 	const getButtonVariant = (index: number) => {
-		if (!showFeedback) return "outline";
+		// Add check for currentQuestionData
+		if (!showFeedback || !currentQuestionData) return "outline";
 
 		if (index === currentQuestionData.correctAnswer) {
-			return "success";
+			// Return a valid variant, e.g., 'default'. The green ring provides success feedback.
+			return "default";
 		}
 
 		if (selectedAnswer === index) {
@@ -535,6 +570,16 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 	// Get current user's rank
 	const currentUserRank =
 		players.find((player) => player.isCurrentUser)?.rank || 0;
+
+	// Add a check for currentQuestionData before rendering the main content
+	if (!currentQuestionData) {
+		return (
+			<div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
+				<p>Loading question data or question not found...</p>
+				{/* Optionally add a button to go back or retry */}
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/10 to-accent/10">
@@ -610,7 +655,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 					</div>
 
 					<Card className="relative w-full overflow-hidden">
-						{showFeedback && (
+						{showFeedback && ( // No need to check currentQuestionData here as it's checked before rendering Card
 							<div className="absolute inset-0 z-10 flex items-center justify-center bg-black/10 backdrop-blur-sm">
 								<div className="max-w-md rounded-lg bg-card p-6 text-center shadow-lg">
 									{feedbackType === "correct" && (
@@ -624,7 +669,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 												</Badge>
 											)}
 											<p className="mt-4 text-muted-foreground text-sm">
-												{currentQuestionData.explanation}
+												{currentQuestionData.explanation ?? ""}
 											</p>
 										</>
 									)}
@@ -634,14 +679,12 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 											<h2 className="mb-2 font-bold text-2xl">Incorrect</h2>
 											<p className="mb-4 text-muted-foreground">
 												The correct answer was:{" "}
-												{
-													currentQuestionData.options[
-														currentQuestionData.correctAnswer
-													]
-												}
+												{currentQuestionData.options[
+													currentQuestionData.correctAnswer
+												] ?? "N/A"}
 											</p>
 											<p className="text-muted-foreground text-sm">
-												{currentQuestionData.explanation}
+												{currentQuestionData.explanation ?? ""}
 											</p>
 										</>
 									)}
@@ -651,14 +694,12 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 											<h2 className="mb-2 font-bold text-2xl">Time's Up!</h2>
 											<p className="mb-4 text-muted-foreground">
 												The correct answer was:{" "}
-												{
-													currentQuestionData.options[
-														currentQuestionData.correctAnswer
-													]
-												}
+												{currentQuestionData.options[
+													currentQuestionData.correctAnswer
+												] ?? "N/A"}
 											</p>
 											<p className="text-muted-foreground text-sm">
-												{currentQuestionData.explanation}
+												{currentQuestionData.explanation ?? ""}
 											</p>
 										</>
 									)}
@@ -668,19 +709,25 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 
 						<CardHeader>
 							<div className="mb-2 flex items-center gap-2">
-								<Badge variant="outline">{currentQuestionData.category}</Badge>
+								<Badge variant="outline">
+									{currentQuestionData.category ?? "N/A"}
+								</Badge>
 							</div>
 							<CardTitle className="text-xl md:text-2xl">
-								{currentQuestionData.question}
+								{currentQuestionData.question ?? "Question text missing"}
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-								{currentQuestionData.options.map((option, index) => (
+								{/* Add nullish coalescing for options array */}
+								{(currentQuestionData.options ?? []).map((option, index) => (
 									<Button
-										key={index}
-										ref={(el) => (optionsRef.current[index] = el)}
-										variant={getButtonVariant(index) as any}
+										key={option} // Use option string as key instead of index
+										// Correct the ref callback signature
+										ref={(el) => {
+											optionsRef.current[index] = el;
+										}}
+										variant={getButtonVariant(index)} // Remove 'as any' cast
 										className={cn(
 											"relative h-auto overflow-hidden px-4 py-4 text-sm transition-all sm:px-6 sm:py-6 sm:text-lg",
 											showFeedback &&

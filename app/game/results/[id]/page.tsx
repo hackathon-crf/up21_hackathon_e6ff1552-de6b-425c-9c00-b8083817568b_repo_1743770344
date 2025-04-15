@@ -80,6 +80,7 @@ export default function GameResultsPage({
 										<div className="font-bold text-4xl">{results.score}%</div>
 									</div>
 									<svg className="h-full w-full" viewBox="0 0 100 100">
+										<title>Your Score Progress</title>
 										<circle
 											className="fill-none stroke-muted"
 											strokeWidth="10"
@@ -154,9 +155,9 @@ export default function GameResultsPage({
 								</CardHeader>
 								<CardContent>
 									<div className="space-y-4">
-										{results.participants.map((participant, index) => (
+										{results.participants.map((participant) => (
 											<div
-												key={index}
+												key={participant.name}
 												className={`flex items-center justify-between rounded-lg p-4 ${
 													participant.rank === 1
 														? "bg-yellow-100 dark:bg-yellow-900/30"
@@ -216,11 +217,11 @@ export default function GameResultsPage({
 								</CardHeader>
 								<CardContent>
 									<div className="space-y-6">
-										{results.categories.map((category, index) => (
-											<div key={index} className="space-y-2">
+										{results.categories.map((category) => (
+											<div key={category.name} className="space-y-2">
 												<div className="flex items-center justify-between">
 													<div className="flex items-center gap-2">
-														{index === 0 ? (
+														{category.name === "CPR Technique" ? (
 															<Heart className="h-4 w-4 text-primary" />
 														) : (
 															<Shield className="h-4 w-4 text-primary" />

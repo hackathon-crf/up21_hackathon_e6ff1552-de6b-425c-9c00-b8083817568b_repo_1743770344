@@ -207,13 +207,22 @@ const ConnectionStatusComponent = ({
 						return "text-yellow-500";
 					case "poor":
 						return "text-orange-500";
+					// No default needed here as all ConnectionQuality cases are handled
 				}
+				break; // Add break to prevent fallthrough
+			// Removed default case from here
 			case "connecting":
 				return "text-blue-500 animate-pulse";
 			case "reconnecting":
 				return "text-yellow-500 animate-pulse";
 			case "disconnected":
 				return "text-red-500";
+			default: // Moved default case to the end
+				// Handle unexpected status, though ideally this shouldn't happen
+				console.warn(
+					`[ConnectionStatus ${instanceId}] Unknown status: ${status}`,
+				);
+				return "text-gray-500"; // Default fallback color
 		}
 	}, [status, quality, instanceId]);
 
@@ -269,13 +278,21 @@ const ConnectionStatusComponent = ({
 						return `Fair connection: ${latency}ms latency. Some lag may occur.`;
 					case "poor":
 						return `Poor connection: ${latency}ms latency. Expect some lag.`;
+					// No default needed here as all ConnectionQuality cases are handled
 				}
+				break; // Add break to prevent fallthrough
+			// Removed default case from here
 			case "connecting":
 				return "Establishing connection to game server...";
 			case "reconnecting":
 				return "Connection interrupted. Attempting to reconnect...";
 			case "disconnected":
 				return "No connection to game server. Check your internet connection.";
+			default: // Moved default case to the end
+				console.warn(
+					`[ConnectionStatus ${instanceId}] Unknown status for tooltip: ${status}`,
+				);
+				return "Unknown connection status"; // Default fallback tooltip
 		}
 	}, [status, quality, latency, instanceId]);
 
