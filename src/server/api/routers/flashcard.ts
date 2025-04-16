@@ -1,5 +1,15 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, lte, or, sql } from "drizzle-orm";
+import {
+	type SQL,
+	and,
+	asc,
+	desc,
+	eq,
+	isNull,
+	lte,
+	or,
+	sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import { flashcardDecks, flashcards } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
@@ -14,27 +24,33 @@ export const flashcardRouter = createTRPCRouter({
 	 */
 	getDecks: protectedProcedure.query(async ({ ctx }) => {
 		try {
-			const userDecks = await ctx.db.query.flashcardDecks.findMany({
-				where: eq(flashcardDecks.userId, ctx.user.id),
-				orderBy: [desc(flashcardDecks.updatedAt)],
-				with: {
-					flashcards: {
-						columns: {
-							id: true,
-						},
-					},
-				},
-			});
+			// Use direct query methods instead of prepared statements
+			const userDecks = await ctx.db
+				.select()
+				.from(flashcardDecks)
+				.where(eq(flashcardDecks.userId, ctx.auth.user.id))
+				.orderBy(desc(flashcardDecks.updatedAt));
 
-			// Transform the result to include card count
-			return userDecks.map((deck) => ({
-				id: deck.id,
-				name: deck.name,
-				description: deck.description,
-				createdAt: deck.createdAt,
-				updatedAt: deck.updatedAt,
-				cardCount: deck.flashcards.length,
-			}));
+			// Get card counts for each deck
+			const decksWithCardCounts = await Promise.all(
+				userDecks.map(async (deck) => {
+					const cards = await ctx.db
+						.select({ id: flashcards.id })
+						.from(flashcards)
+						.where(eq(flashcards.deckId, deck.id));
+
+					return {
+						id: deck.id,
+						name: deck.name,
+						description: deck.description,
+						createdAt: deck.createdAt,
+						updatedAt: deck.updatedAt,
+						cardCount: cards.length,
+					};
+				}),
+			);
+
+			return decksWithCardCounts;
 		} catch (error) {
 			console.error("Error fetching flashcard decks:", error);
 			throw new TRPCError({
@@ -59,7 +75,7 @@ export const flashcardRouter = createTRPCRouter({
 				const newDeck = await ctx.db
 					.insert(flashcardDecks)
 					.values({
-						userId: ctx.user.id,
+						userId: ctx.auth.user.id,
 						name: input.name,
 						description: input.description || "",
 					})
@@ -82,12 +98,17 @@ export const flashcardRouter = createTRPCRouter({
 		.input(z.object({ id: z.string().uuid("Invalid deck ID") }))
 		.query(async ({ ctx, input }) => {
 			try {
-				const deck = await ctx.db.query.flashcardDecks.findFirst({
-					where: and(
-						eq(flashcardDecks.id, input.id),
-						eq(flashcardDecks.userId, ctx.user.id),
-					),
-				});
+				const deck = await ctx.db
+					.select()
+					.from(flashcardDecks)
+					.where(
+						and(
+							eq(flashcardDecks.id, input.id),
+							eq(flashcardDecks.userId, ctx.auth.user.id),
+						),
+					)
+					.limit(1)
+					.then((rows) => rows[0] || null);
 
 				if (!deck) {
 					throw new TRPCError({
@@ -129,13 +150,17 @@ export const flashcardRouter = createTRPCRouter({
 			}
 
 			try {
-				const existing = await ctx.db.query.flashcardDecks.findFirst({
-					where: and(
-						eq(flashcardDecks.id, id),
-						eq(flashcardDecks.userId, ctx.user.id),
-					),
-					columns: { id: true },
-				});
+				const existing = await ctx.db
+					.select({ id: flashcardDecks.id })
+					.from(flashcardDecks)
+					.where(
+						and(
+							eq(flashcardDecks.id, id),
+							eq(flashcardDecks.userId, ctx.auth.user.id),
+						),
+					)
+					.limit(1)
+					.then((rows) => rows[0] || null);
 
 				if (!existing) {
 					throw new TRPCError({
@@ -178,13 +203,17 @@ export const flashcardRouter = createTRPCRouter({
 		.input(z.object({ id: z.string().uuid("Invalid deck ID") }))
 		.mutation(async ({ ctx, input }) => {
 			try {
-				const existing = await ctx.db.query.flashcardDecks.findFirst({
-					where: and(
-						eq(flashcardDecks.id, input.id),
-						eq(flashcardDecks.userId, ctx.user.id),
-					),
-					columns: { id: true },
-				});
+				const existing = await ctx.db
+					.select({ id: flashcardDecks.id })
+					.from(flashcardDecks)
+					.where(
+						and(
+							eq(flashcardDecks.id, input.id),
+							eq(flashcardDecks.userId, ctx.auth.user.id),
+						),
+					)
+					.limit(1)
+					.then((rows) => rows[0] || null);
 
 				if (!existing) {
 					throw new TRPCError({
@@ -199,7 +228,7 @@ export const flashcardRouter = createTRPCRouter({
 					.where(
 						and(
 							eq(flashcards.deckId, input.id),
-							eq(flashcards.userId, ctx.user.id),
+							eq(flashcards.userId, ctx.auth.user.id),
 						),
 					);
 
@@ -216,7 +245,9 @@ export const flashcardRouter = createTRPCRouter({
 					});
 				}
 
-				return { success: true, deletedId: deleted[0].deletedId };
+				// Safely access the result with optional chaining
+				const deletedId = deleted[0]?.deletedId;
+				return { success: true, deletedId };
 			} catch (error) {
 				if (error instanceof TRPCError) throw error;
 				console.error("Error deleting deck:", error);
@@ -228,9 +259,6 @@ export const flashcardRouter = createTRPCRouter({
 		}),
 	/**
 	 * Create a new flashcard
-	 *
-	 * Takes validated input for the flashcard fields and creates a new flashcard
-	 * in the database associated with the current user
 	 */
 	createFlashcard: protectedProcedure
 		.input(
@@ -247,13 +275,17 @@ export const flashcardRouter = createTRPCRouter({
 			try {
 				// If deckId is provided, verify it belongs to the user
 				if (input.deckId) {
-					const deck = await ctx.db.query.flashcardDecks.findFirst({
-						where: and(
-							eq(flashcardDecks.id, input.deckId),
-							eq(flashcardDecks.userId, ctx.user.id),
-						),
-						columns: { id: true },
-					});
+					const deck = await ctx.db
+						.select({ id: flashcardDecks.id })
+						.from(flashcardDecks)
+						.where(
+							and(
+								eq(flashcardDecks.id, input.deckId),
+								eq(flashcardDecks.userId, ctx.auth.user.id),
+							),
+						)
+						.limit(1)
+						.then((rows) => rows[0] || null);
 
 					if (!deck) {
 						throw new TRPCError({
@@ -268,7 +300,7 @@ export const flashcardRouter = createTRPCRouter({
 				const newFlashcard = await ctx.db
 					.insert(flashcards)
 					.values({
-						userId: ctx.user.id,
+						userId: ctx.auth.user.id,
 						deckId: input.deckId,
 						question: input.question,
 						answer: input.answer,
@@ -293,8 +325,6 @@ export const flashcardRouter = createTRPCRouter({
 
 	/**
 	 * Get all flashcards for the current user
-	 *
-	 * Retrieves flashcards from the database filtered by the current user ID
 	 */
 	getFlashcards: protectedProcedure
 		.input(
@@ -306,32 +336,50 @@ export const flashcardRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			try {
-				let whereClause;
+				let whereClause: SQL<unknown> | undefined;
 
 				if (input?.deckId) {
 					// Filter by deck ID and user ID
 					whereClause = and(
-						eq(flashcards.userId, ctx.user.id),
+						eq(flashcards.userId, ctx.auth.user.id),
 						eq(flashcards.deckId, input.deckId),
 					);
 				} else {
 					// Just filter by user ID
-					whereClause = eq(flashcards.userId, ctx.user.id);
+					whereClause = eq(flashcards.userId, ctx.auth.user.id);
 				}
 
-				const userFlashcards = await ctx.db.query.flashcards.findMany({
-					where: whereClause,
-					orderBy: [desc(flashcards.createdAt)],
-					with: {
-						deck: {
-							columns: {
-								name: true,
-							},
-						},
-					},
-				});
+				// Use direct query instead of prepared statement with explicit column selection
+				const userFlashcards = await ctx.db
+					.select({
+						id: flashcards.id,
+						userId: flashcards.userId,
+						deckId: flashcards.deckId,
+						question: flashcards.question,
+						answer: flashcards.answer,
+						title: flashcards.title,
+						imageUrl: flashcards.imageUrl,
+						createdAt: flashcards.createdAt,
+						tags: flashcards.tags,
+						repetitions: flashcards.repetitions,
+						easeFactor: flashcards.easeFactor,
+						interval: flashcards.interval,
+						nextReview: flashcards.nextReview,
+						lastReview: flashcards.lastReview,
+						aiGenerated: flashcards.aiGenerated,
+						deckName: flashcardDecks.name,
+					})
+					.from(flashcards)
+					.leftJoin(flashcardDecks, eq(flashcards.deckId, flashcardDecks.id))
+					.where(whereClause)
+					.orderBy(desc(flashcards.createdAt));
 
-				return userFlashcards;
+				// Transform result to match the expected format with deck property
+				return userFlashcards.map((card) => ({
+					...card,
+					deck: card.deckName ? { name: card.deckName } : null,
+					deckName: undefined, // Remove the extra property
+				}));
 			} catch (error) {
 				console.error("Error fetching flashcards:", error);
 				throw new TRPCError({
@@ -343,9 +391,6 @@ export const flashcardRouter = createTRPCRouter({
 
 	/**
 	 * Update an existing flashcard
-	 *
-	 * Takes the flashcard ID and fields to update. Ensures the flashcard
-	 * belongs to the current user before updating.
 	 */
 	updateFlashcard: protectedProcedure
 		.input(
@@ -375,10 +420,14 @@ export const flashcardRouter = createTRPCRouter({
 
 			try {
 				// Find the flashcard first to ensure it belongs to the user
-				const existingFlashcard = await ctx.db.query.flashcards.findFirst({
-					where: and(eq(flashcards.id, id), eq(flashcards.userId, ctx.user.id)),
-					columns: { id: true }, // Only need the ID to confirm existence and ownership
-				});
+				const existingFlashcard = await ctx.db
+					.select({ id: flashcards.id })
+					.from(flashcards)
+					.where(
+						and(eq(flashcards.id, id), eq(flashcards.userId, ctx.auth.user.id)),
+					)
+					.limit(1)
+					.then((rows) => rows[0] || null);
 
 				if (!existingFlashcard) {
 					throw new TRPCError({
@@ -393,14 +442,11 @@ export const flashcardRouter = createTRPCRouter({
 					.update(flashcards)
 					.set({
 						...updateData,
-						// Ensure optional fields that are explicitly set to undefined are handled correctly
-						// Drizzle's .set should handle undefined values by not updating those fields
 					})
 					.where(eq(flashcards.id, id))
 					.returning();
 
 				if (updatedFlashcards.length === 0) {
-					// This case should ideally not happen if the findFirst check passed, but good for safety
 					throw new TRPCError({
 						code: "INTERNAL_SERVER_ERROR",
 						message: "Failed to update flashcard after verification.",
@@ -409,11 +455,9 @@ export const flashcardRouter = createTRPCRouter({
 
 				return updatedFlashcards[0];
 			} catch (error) {
-				// Handle known TRPC errors
 				if (error instanceof TRPCError) {
 					throw error;
 				}
-				// Handle potential database or other errors
 				console.error("Error updating flashcard:", error);
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
@@ -424,8 +468,6 @@ export const flashcardRouter = createTRPCRouter({
 
 	/**
 	 * Delete a flashcard
-	 *
-	 * Takes the flashcard ID and deletes it, ensuring it belongs to the current user.
 	 */
 	deleteFlashcard: protectedProcedure
 		.input(z.object({ id: z.string().uuid("Invalid flashcard ID") }))
@@ -434,10 +476,14 @@ export const flashcardRouter = createTRPCRouter({
 
 			try {
 				// Verify ownership and existence before deleting
-				const existingFlashcard = await ctx.db.query.flashcards.findFirst({
-					where: and(eq(flashcards.id, id), eq(flashcards.userId, ctx.user.id)),
-					columns: { id: true },
-				});
+				const existingFlashcard = await ctx.db
+					.select({ id: flashcards.id })
+					.from(flashcards)
+					.where(
+						and(eq(flashcards.id, id), eq(flashcards.userId, ctx.auth.user.id)),
+					)
+					.limit(1)
+					.then((rows) => rows[0] || null);
 
 				if (!existingFlashcard) {
 					throw new TRPCError({
@@ -460,7 +506,9 @@ export const flashcardRouter = createTRPCRouter({
 					});
 				}
 
-				return { success: true, deletedId: deletedResult[0]?.deletedId };
+				// Use optional chaining for safety
+				const deletedId = deletedResult[0]?.deletedId;
+				return { success: true, deletedId };
 			} catch (error) {
 				if (error instanceof TRPCError) {
 					throw error;
@@ -472,6 +520,7 @@ export const flashcardRouter = createTRPCRouter({
 				});
 			}
 		}),
+
 	// The updated version for getDueCards with limit and proper null handling
 	getDueCards: protectedProcedure
 		.input(
@@ -486,14 +535,20 @@ export const flashcardRouter = createTRPCRouter({
 				const now = new Date();
 				const limit = input?.limit ?? 20;
 
-				const dueCards = await ctx.db.query.flashcards.findMany({
-					where: and(
-						eq(flashcards.userId, ctx.user.id),
-						or(flashcards.nextReview.isNull(), lte(flashcards.nextReview, now)),
-					),
-					orderBy: (flashcards, { asc }) => [asc(flashcards.nextReview)],
-					limit,
-				});
+				const dueCards = await ctx.db
+					.select()
+					.from(flashcards)
+					.where(
+						and(
+							eq(flashcards.userId, ctx.auth.user.id),
+							or(
+								isNull(flashcards.nextReview),
+								lte(flashcards.nextReview, now),
+							),
+						),
+					)
+					.orderBy(asc(flashcards.nextReview))
+					.limit(limit);
 
 				return dueCards;
 			} catch (error) {
@@ -517,12 +572,17 @@ export const flashcardRouter = createTRPCRouter({
 			const { flashcardId, rating } = input;
 
 			try {
-				const card = await ctx.db.query.flashcards.findFirst({
-					where: and(
-						eq(flashcards.id, flashcardId),
-						eq(flashcards.userId, ctx.user.id),
-					),
-				});
+				const card = await ctx.db
+					.select()
+					.from(flashcards)
+					.where(
+						and(
+							eq(flashcards.id, flashcardId),
+							eq(flashcards.userId, ctx.auth.user.id),
+						),
+					)
+					.limit(1)
+					.then((rows) => rows[0] || null);
 
 				if (!card) {
 					throw new TRPCError({

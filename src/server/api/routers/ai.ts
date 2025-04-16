@@ -91,7 +91,7 @@ const getProviderModels = async (
 			const mistral = new MockMistralClient(mistralApiKey);
 			const models = await mistral.listModels();
 
-			return models.data.map((model: any) => ({
+			return models.data.map((model: MistralModel) => ({
 				id: model.id,
 				name: model.id
 					.split("-")

@@ -1,4 +1,4 @@
-import { sql, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { users } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
@@ -11,7 +11,7 @@ export const userRouter = createTRPCRouter({
 			.from(users)
 			.where(eq(users.id, ctx.auth.user.id))
 			.limit(1)
-			.then(rows => rows[0] || null);
+			.then((rows) => rows[0] || null);
 
 		return user;
 	}),
@@ -25,7 +25,7 @@ export const userRouter = createTRPCRouter({
 				.from(users)
 				.where(eq(users.id, input.userId))
 				.limit(1)
-				.then(rows => rows[0] || null);
+				.then((rows) => rows[0] || null);
 
 			return !!user;
 		}),
@@ -40,7 +40,7 @@ export const userRouter = createTRPCRouter({
 			.from(users)
 			.where(eq(users.id, user.id))
 			.limit(1)
-			.then(rows => rows[0] || null);
+			.then((rows) => rows[0] || null);
 
 		if (existingUser) {
 			// Update user if needed

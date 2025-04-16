@@ -746,7 +746,7 @@ export const chatRouter = createTRPCRouter({
 
 			try {
 				// Build update object with only provided fields
-				const updateData: Record<string, any> = {
+				const updateData: Record<string, string | boolean | number | Date> = {
 					updated_at: new Date(),
 				};
 
