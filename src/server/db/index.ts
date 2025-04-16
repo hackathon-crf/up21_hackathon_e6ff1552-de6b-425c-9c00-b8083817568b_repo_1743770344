@@ -28,6 +28,11 @@ function parseConnectionString(connectionString: string) {
 		// Extract connection parameters without decoding
 		const [, username, encodedPassword, host, port, database] = match;
 
+		// Ensure all extracted values are defined
+		if (!username || !encodedPassword || !host || !port || !database) {
+			throw new Error("Connection string is missing required components");
+		}
+
 		// Log each extracted parameter (mask password)
 		console.log("Extracted connection parameters:");
 		console.log("- Username:", username);
@@ -50,7 +55,7 @@ function parseConnectionString(connectionString: string) {
 		// Return the parsed components (without decoding the password)
 		return {
 			username,
-			password: encodedPassword, // Keep as-is, no decoding
+			password: encodedPassword as string, // Keep as-is, no decoding
 			host,
 			port: Number.parseInt(port, 10),
 			database,
@@ -78,7 +83,7 @@ try {
 		port: connectionParams.port,
 		database: connectionParams.database,
 		user: connectionParams.username,
-		pass: connectionParams.password, // Use the password as-is, without decoding
+		pass: connectionParams.password as string, // Use the password as-is, without decoding
 		max: 1,
 		ssl:
 			env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,

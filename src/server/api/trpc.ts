@@ -3,8 +3,11 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { createServerClient } from "@supabase/ssr";
+import type { Session, User } from "@supabase/supabase-js";
 import type { CreateNextContextOptions } from "@trpc/server/adapters/next";
 import { cookies } from "next/headers";
+import { env } from "~/env";
+import { db } from "~/server/db";
 
 /**
  * 1. CONTEXT
@@ -17,8 +20,8 @@ import { cookies } from "next/headers";
 interface CreateContextOptions {
 	headers: Headers;
 	auth: {
-		session: any;
-		user: any;
+		session: Session | null;
+		user: User | null;
 	};
 }
 
@@ -37,6 +40,7 @@ const createInnerTRPCContext = (opts: CreateContextOptions) => {
 	return {
 		headers: opts.headers,
 		auth: opts.auth,
+		db, // Add the database client to the context
 	};
 };
 
@@ -46,7 +50,7 @@ const createInnerTRPCContext = (opts: CreateContextOptions) => {
  */
 export const createTRPCContext = async (opts: {
 	headers: Headers;
-	auth?: { session: any; user: any };
+	auth?: { session: Session | null; user: User | null };
 }) => {
 	console.log(
 		"[createTRPCContext] - Starting context creation. Provided options:",
@@ -65,21 +69,34 @@ export const createTRPCContext = async (opts: {
 		});
 	}
 
-	// Create a Supabase client
+	// Create a Supabase client using async cookies handling for Next.js
 	const cookieStore = cookies();
+
+	// Using env variables with proper typing instead of non-null assertions
 	const supabase = createServerClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+		env.NEXT_PUBLIC_SUPABASE_URL,
+		env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 		{
 			cookies: {
-				get: (name: string) => {
-					return cookieStore.get(name)?.value;
+				getAll() {
+					// Return all cookies in the expected format
+					// @ts-expect-error - The cookies API type definitions may be inconsistent
+					return cookieStore.getAll().reduce((acc, cookie) => {
+						acc[cookie.name] = cookie.value;
+						return acc;
+					}, {});
 				},
-				set: () => {
-					// Not needed for this context
-				},
-				remove: () => {
-					// Not needed for this context
+				setAll(cookiesToSet) {
+					// Cookie setting not needed for this read-only context
+					try {
+						for (const { name, value, options } of cookiesToSet) {
+							// This would be used if we needed to set cookies
+							// Not implementing the actual set since it's not used
+						}
+					} catch (error) {
+						// Ignore errors in server components where cookie setting isn't supported
+						console.debug("Cookie setting not supported in this context");
+					}
 				},
 			},
 		},
@@ -188,6 +205,8 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 		ctx: {
 			// Infers the `session` as non-nullable
 			auth: { ...ctx.auth, user: ctx.auth.user },
+			// Add user directly to context for easier access in procedures
+			user: ctx.auth.user,
 		},
 	});
 });

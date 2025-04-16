@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { z } from "zod";
 import { users } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
@@ -6,9 +6,12 @@ import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 export const userRouter = createTRPCRouter({
 	// Get the current user's profile
 	getProfile: protectedProcedure.query(async ({ ctx }) => {
-		const user = await ctx.db.query.users.findFirst({
-			where: (users, { eq }) => eq(users.id, ctx.user.id),
-		});
+		const user = await ctx.db
+			.select()
+			.from(users)
+			.where(eq(users.id, ctx.auth.user.id))
+			.limit(1)
+			.then(rows => rows[0] || null);
 
 		return user;
 	}),
@@ -17,21 +20,27 @@ export const userRouter = createTRPCRouter({
 	userExists: publicProcedure
 		.input(z.object({ userId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const user = await ctx.db.query.users.findFirst({
-				where: (users, { eq }) => eq(users.id, input.userId),
-			});
+			const user = await ctx.db
+				.select()
+				.from(users)
+				.where(eq(users.id, input.userId))
+				.limit(1)
+				.then(rows => rows[0] || null);
 
 			return !!user;
 		}),
 
 	// Create or update a user in our database (synchronize with Supabase Auth)
 	syncUser: protectedProcedure.mutation(async ({ ctx }) => {
-		const { user } = ctx;
+		const { user } = ctx.auth;
 
 		// Check if user exists in our database
-		const existingUser = await ctx.db.query.users.findFirst({
-			where: (users, { eq }) => eq(users.id, user.id),
-		});
+		const existingUser = await ctx.db
+			.select()
+			.from(users)
+			.where(eq(users.id, user.id))
+			.limit(1)
+			.then(rows => rows[0] || null);
 
 		if (existingUser) {
 			// Update user if needed
@@ -39,7 +48,7 @@ export const userRouter = createTRPCRouter({
 				await ctx.db
 					.update(users)
 					.set({ email: user.email ?? existingUser.email })
-					.where(sql`id = ${user.id}`);
+					.where(eq(users.id, user.id));
 			}
 			return existingUser;
 		}
