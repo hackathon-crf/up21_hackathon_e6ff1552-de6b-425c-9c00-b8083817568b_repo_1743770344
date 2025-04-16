@@ -117,6 +117,9 @@ export function useModels(
 	// Reference for ongoing fetch operations to prevent duplicate requests
 	const ongoingFetchRef = useRef<Record<string, boolean>>({});
 
+	// Add state for API key verification status (using the store's isAPIKeyVerified)
+	// const [isKeyVerified, setIsKeyVerified] = useState<Record<string, boolean>>({}); // Example if not using store
+
 	const {
 		modelsCache,
 		verifiedAPIKeys,
@@ -127,7 +130,7 @@ export function useModels(
 		setCacheTimeToLive,
 		setApiKeyVerificationTTL,
 		setVerifiedAPIKey,
-		isAPIKeyVerified,
+		isAPIKeyVerified, // Use this from the store
 		clearModelsCache,
 	} = useSettingsStore();
 
@@ -210,7 +213,8 @@ export function useModels(
 		}
 	}, [provider, getModelsFromCache]);
 
-	const getProviderEndpoint = (providerName: string): string => {
+	// Wrap getProviderEndpoint in useCallback
+	const getProviderEndpoint = useCallback((providerName: string): string => {
 		const endpoints: Record<string, string> = {
 			openai: "https://api.openai.com/v1/models",
 			mistral: "https://api.mistral.ai/v1/models",
@@ -220,146 +224,200 @@ export function useModels(
 		};
 
 		return endpoints[providerName] || "";
-	};
+	}, []); // Empty dependency array as it has no external dependencies
 
-	const parseModelsResponse = (data: any, providerName: string): AIModel[] => {
-		let parsedModels: AIModel[] = [];
+	/**
+	 * Parses the raw API response into a standardized AIModel array
+	 */
+	// Wrap parseModelsResponse in useCallback
+	const parseModelsResponse = useCallback(
+		(data: unknown, providerName: string): AIModel[] => {
+			let parsedModels: AIModel[] = [];
 
-		try {
+			// Type guards remain the same
+			const isOpenAIResponse = (d: unknown): d is { data: { id: string }[] } =>
+				typeof d === "object" &&
+				d !== null &&
+				"data" in d &&
+				Array.isArray((d as { data: unknown }).data);
+
+			const isMistralResponse = (d: unknown): d is { data: { id: string }[] } =>
+				typeof d === "object" &&
+				d !== null &&
+				"data" in d &&
+				Array.isArray((d as { data: unknown }).data);
+
+			const isAnthropicResponse = (
+				d: unknown,
+			): d is { models: { id: string; name?: string }[] } =>
+				typeof d === "object" &&
+				d !== null &&
+				"models" in d &&
+				Array.isArray((d as { models: unknown }).models);
+
+			const isGeminiResponse = (
+				d: unknown,
+			): d is { models: { name: string; displayName?: string }[] } =>
+				typeof d === "object" &&
+				d !== null &&
+				"models" in d &&
+				Array.isArray((d as { models: unknown }).models);
+
+			const isOpenRouterResponse = (
+				d: unknown,
+			): d is { data: { id: string; name?: string }[] } =>
+				typeof d === "object" &&
+				d !== null &&
+				"data" in d &&
+				Array.isArray((d as { data: unknown }).data);
+
 			switch (providerName) {
+				// Cases remain the same
 				case "openai":
-					parsedModels = data.data.map((model: any) => ({
-						id: model.id,
-						name: model.id
-							.split("-")
-							.map(
-								(word: string) => word.charAt(0).toUpperCase() + word.slice(1),
-							)
-							.join(" "),
-						contextLength: model.context_window || 4096,
-					}));
+					if (isOpenAIResponse(data)) {
+						parsedModels = data.data.map((model) => ({
+							id: model.id,
+							name: model.id,
+						}));
+					} else {
+						console.error("[useModels] Invalid OpenAI response format:", data);
+					}
 					break;
 				case "mistral":
-					parsedModels = data.data.map((model: any) => ({
-						id: model.id,
-						name: model.id
-							.split("-")
-							.map(
-								(word: string) => word.charAt(0).toUpperCase() + word.slice(1),
-							)
-							.join(" "),
-						contextLength: model.context_window || 8192,
-					}));
+					if (isMistralResponse(data)) {
+						parsedModels = data.data.map((model) => ({
+							id: model.id,
+							name: model.id,
+						}));
+					} else {
+						console.error("[useModels] Invalid Mistral response format:", data);
+					}
 					break;
 				case "anthropic":
-					parsedModels = (data.models || []).map((model: any) => ({
-						id: model.id,
-						name: model.name || model.id,
-						contextLength: model.context_window || 100000,
-					}));
+					if (isAnthropicResponse(data)) {
+						parsedModels = (data.models || []).map((model) => ({
+							id: model.id,
+							name: model.name || model.id,
+							provider: "anthropic",
+						}));
+					} else {
+						console.error(
+							"[useModels] Invalid Anthropic response format:",
+							data,
+						);
+					}
 					break;
 				case "gemini":
-					parsedModels = (data.models || []).map((model: any) => ({
-						id: model.name.split("/").pop() || model.name,
-						name: model.displayName || model.name,
-						contextLength: model.inputTokenLimit || 32000,
-					}));
+					if (isGeminiResponse(data)) {
+						parsedModels = (data.models || []).map((model) => ({
+							id: model.name.split("/").pop() || model.name,
+							name: model.displayName || model.name,
+							provider: "gemini",
+						}));
+					} else {
+						console.error("[useModels] Invalid Gemini response format:", data);
+					}
 					break;
 				case "openrouter":
-					parsedModels = (data.data || []).map((model: any) => ({
-						id: model.id,
-						name: model.name || model.id,
-						contextLength: model.context_length || 4096,
-					}));
+					if (isOpenRouterResponse(data)) {
+						parsedModels = (data.data || []).map((model) => ({
+							id: model.id,
+							name: model.name || model.id,
+							provider: "openrouter",
+						}));
+					} else {
+						console.error(
+							"[useModels] Invalid OpenRouter response format:",
+							data,
+						);
+					}
 					break;
 				default:
-					throw new Error(`Unknown provider: ${providerName}`);
-			}
-		} catch (e) {
-			console.error(`Error parsing models for ${providerName}:`, e);
-			throw new Error(
-				`Failed to parse models: ${e instanceof Error ? e.message : "Unknown error"}`,
-			);
-		}
-
-		return parsedModels;
-	};
-
-	const fetchModelsFromAPI = async (
-		providerName: string,
-		apiKey: string,
-	): Promise<AIModel[]> => {
-		// Prevent duplicate API calls for the same provider-key pair
-		const keyHash = apiKey.substring(0, 8);
-		const fetchKey = `${providerName}:${keyHash}`;
-
-		if (ongoingFetchRef.current[fetchKey]) {
-			console.log(
-				`[useModels] Fetch already in progress for ${providerName}, skipping duplicate request`,
-			);
-			throw new Error(
-				"A fetch operation is already in progress for this provider",
-			);
-		}
-
-		ongoingFetchRef.current[fetchKey] = true;
-
-		try {
-			const endpoint = getProviderEndpoint(providerName);
-			if (!endpoint) {
-				throw new Error(`Unsupported provider: ${providerName}`);
+					console.warn(`[useModels] Unknown provider: ${providerName}`);
 			}
 
-			// Configure endpoint and headers based on provider
-			let finalEndpoint = endpoint;
-			const headers: Record<string, string> = {
-				"Content-Type": "application/json",
-			};
+			return parsedModels;
+		},
+		[],
+	); // Empty dependency array as it has no external dependencies
 
-			if (providerName === "gemini") {
-				// For Gemini, API key is a query parameter
-				const url = new URL(endpoint);
-				url.searchParams.append("key", apiKey);
-				finalEndpoint = url.toString();
-				// No Authorization header needed
-			} else {
-				// For other providers, use Authorization header
-				headers.Authorization = `Bearer ${apiKey}`;
-			}
+	// Wrap fetchModelsFromAPI in useCallback
+	const fetchModelsFromAPI = useCallback(
+		async (providerName: string, apiKey: string): Promise<AIModel[]> => {
+			// Prevent duplicate API calls for the same provider-key pair
+			const keyHash = apiKey.substring(0, 8);
+			const fetchKey = `${providerName}:${keyHash}`;
 
-			// Add cache control headers to prevent browser caching
-			headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-			// headers['Pragma'] = 'no-cache'; // Removed Pragma header causing CORS issue with Mistral
-
-			// Make API call with timeout
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-			const response = await fetch(finalEndpoint, {
-				method: "GET",
-				headers,
-				signal: controller.signal,
-			});
-
-			clearTimeout(timeoutId);
-
-			if (!response.ok) {
-				const errorText = await response.text();
+			if (ongoingFetchRef.current[fetchKey]) {
+				console.log(
+					`[useModels] Fetch already in progress for ${providerName}, skipping duplicate request`,
+				);
 				throw new Error(
-					`API request failed: ${response.status} ${response.statusText} - ${errorText}`,
+					"A fetch operation is already in progress for this provider",
 				);
 			}
 
-			// Parse response
-			const data = await response.json();
+			ongoingFetchRef.current[fetchKey] = true;
 
-			// Parse models based on provider
-			return parseModelsResponse(data, providerName);
-		} finally {
-			// Clear the ongoing fetch flag
-			delete ongoingFetchRef.current[fetchKey];
-		}
-	};
+			try {
+				const endpoint = getProviderEndpoint(providerName);
+				if (!endpoint) {
+					throw new Error(`Unsupported provider: ${providerName}`);
+				}
+
+				// Configure endpoint and headers based on provider
+				let finalEndpoint = endpoint;
+				const headers: Record<string, string> = {
+					"Content-Type": "application/json",
+				};
+
+				if (providerName === "gemini") {
+					// For Gemini, API key is a query parameter
+					const url = new URL(endpoint);
+					url.searchParams.append("key", apiKey);
+					finalEndpoint = url.toString();
+					// No Authorization header needed
+				} else {
+					// For other providers, use Authorization header
+					headers.Authorization = `Bearer ${apiKey}`;
+				}
+
+				// Add cache control headers to prevent browser caching
+				headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+
+				// Make API call with timeout
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+				const response = await fetch(finalEndpoint, {
+					method: "GET",
+					headers,
+					signal: controller.signal,
+				});
+
+				clearTimeout(timeoutId);
+
+				if (!response.ok) {
+					const errorText = await response.text();
+					throw new Error(
+						`API request failed: ${response.status} ${response.statusText} - ${errorText}`,
+					);
+				}
+
+				// Parse response
+				const data = await response.json();
+
+				// Parse models based on provider
+				return parseModelsResponse(data, providerName);
+			} finally {
+				// Clear the ongoing fetch flag
+				delete ongoingFetchRef.current[fetchKey];
+			}
+			// Add dependencies for functions defined outside this useCallback but used inside
+			// Assuming getProviderEndpoint and parseModelsResponse are stable or wrapped elsewhere
+		},
+		[getProviderEndpoint, parseModelsResponse],
+	);
 
 	/**
 	 * Fetch models from the API or cache with smart background refresh
@@ -367,219 +425,269 @@ export function useModels(
 	const fetchModels = useCallback(
 		async (
 			providerName: string,
-			apiKey: string,
-			options: { forceRefresh?: boolean; background?: boolean } = {},
+			apiKey: string | null | undefined,
+			forceRefresh = false,
+			background = false,
 		): Promise<AIModel[]> => {
-			const { forceRefresh = false, background = false } = options;
+			console.log(
+				`[useModels] Fetching models for ${providerName} (forceRefresh: ${forceRefresh}, background: ${background})`,
+			);
 
-			// Set loading state only for foreground operations
-			if (!background) {
-				setIsLoading(true);
-				setError(null);
-			} else {
-				setIsRefreshingInBackground(true);
+			// Ensure apiKey is a string before proceeding. Crucial check!
+			if (typeof apiKey !== "string" || !apiKey) {
+				// Added !apiKey check for empty string safety
+				console.warn(
+					`[useModels] API key is missing or invalid for ${providerName}. Cannot fetch models.`,
+				);
+				setIsLoading(false);
+				setIsRefreshingInBackground(false);
+				setError("API key is required");
+				// Ensure a promise is always returned
+				return Promise.resolve([]);
 			}
 
+			// apiKey is now guaranteed to be a non-empty string here
+			const validApiKey = apiKey;
+
+			if (background) {
+				setIsRefreshingInBackground(true);
+			} else {
+				setIsLoading(true);
+			}
+			setError(null);
+
 			try {
-				// Check if we have cached models
-				const cachedModels = getModelsFromCache(providerName, apiKey);
-				const cacheExpired = isCacheExpired(providerName, apiKey);
-				const cacheStale = isCacheStale(providerName, apiKey);
+				// 1. Check cache first (only if not forcing refresh)
+				if (!forceRefresh) {
+					// Pass the validated apiKey
+					const cachedModels = getModelsFromCache(providerName, validApiKey);
+					const cacheExpired = isCacheExpired(providerName, validApiKey);
+					const cacheStale = isCacheStale(providerName, validApiKey);
 
-				// Use cache if:
-				// 1. We have cached models AND
-				// 2. Cache is not expired OR cache is stale but this isn't a forced refresh AND
-				// 3. This isn't a forced refresh operation
-				if (
-					cachedModels &&
-					(!cacheExpired || (cacheStale && !forceRefresh)) &&
-					!forceRefresh
-				) {
-					console.log(
-						`[useModels] Using ${cacheExpired ? "stale" : "valid"} cached models for ${providerName}`,
-					);
+					if (cachedModels && !cacheExpired) {
+						console.log(`[useModels] Using cached models for ${providerName}`);
+						if (providerName === provider) {
+							setModels(cachedModels);
+						}
+						setIsLoading(false); // Stop loading if returning cached data
 
-					// Update UI with cached models
-					if (!background || models.length === 0) {
-						setModels(cachedModels);
-					}
-
-					// If cache is stale (in grace period), trigger a background refresh
-					// But only if we haven't attempted one recently
-					const now = Date.now();
-					const lastAttempt = lastAutoRefreshAttempt.current[providerName] || 0;
-					const timeSinceLastAttempt = now - lastAttempt;
-
-					// Only auto-refresh if more than 10 minutes since last attempt
-					if (
-						cacheStale &&
-						timeSinceLastAttempt > 10 * 60 * 1000 &&
-						!background
-					) {
-						console.log(
-							`[useModels] Cache is stale, triggering background refresh for ${providerName}`,
-						);
-						lastAutoRefreshAttempt.current[providerName] = now;
-
-						// Fire and forget - don't await this
-						fetchModels(providerName, apiKey, {
-							forceRefresh: true,
-							background: true,
-						}).catch((e) =>
+						if (cacheStale) {
 							console.log(
-								`[useModels] Background refresh failed: ${e.message}`,
-							),
-						);
+								`[useModels] Cache is stale for ${providerName}, triggering background refresh.`,
+							);
+							const now = Date.now();
+							const lastAttempt =
+								lastAutoRefreshAttempt.current[providerName] || 0;
+							if (now - lastAttempt > 60000) {
+								lastAutoRefreshAttempt.current[providerName] = now;
+								// Use await but don't block the return of cached data
+								// Explicitly type caught error
+								fetchModels(providerName, validApiKey, true, true).catch(
+									(e: unknown) =>
+										console.error(
+											`[useModels] Background refresh failed for ${providerName}:`,
+											e,
+										),
+								);
+							}
+						}
+						return cachedModels; // Return cached data immediately
 					}
-
-					return cachedModels;
 				}
 
-				// No valid cache or force refresh, fetch from API
+				// 2. Fetch from API
 				console.log(
 					`[useModels] Fetching fresh models for ${providerName} (${background ? "background" : "foreground"})`,
 				);
-				const fetchedModels = await fetchModelsFromAPI(providerName, apiKey);
+				// Pass the validated apiKey
+				const fetchedModels = await fetchModelsFromAPI(
+					providerName,
+					validApiKey,
+				);
 
-				// Update cache and state
-				updateModelsCache(providerName, apiKey, fetchedModels);
-
-				// Only update the UI state if this isn't a background operation
-				// or if there are no models currently displayed
-				if (!background || models.length === 0) {
+				// 3. Update cache and state
+				// Pass the validated apiKey
+				updateModelsCache(providerName, validApiKey, fetchedModels);
+				if (providerName === provider) {
 					setModels(fetchedModels);
 				}
+				// Pass the validated apiKey
+				setVerifiedAPIKey(providerName, validApiKey, true);
 
-				// Mark API key as verified
-				setVerifiedAPIKey(providerName, apiKey, true);
-
+				console.log(
+					`[useModels] Successfully fetched models for ${providerName}`,
+				);
 				return fetchedModels;
-			} catch (e) {
-				const errorMsg =
-					e instanceof Error ? e.message : "Unknown error fetching models";
+			} catch (error: unknown) {
+				console.error(
+					`[useModels] Error fetching models for ${providerName}:`,
+					error,
+				);
+				const errorMessage =
+					error instanceof Error ? error.message : "Unknown error during fetch";
+				setError(errorMessage);
 
-				// Only show errors for foreground operations
-				if (!background) {
-					console.error(
-						`[useModels] Error fetching models for ${providerName}:`,
-						e,
+				// Mark key as unverified on fetch error
+				// Pass the validated apiKey
+				setVerifiedAPIKey(providerName, validApiKey, false);
+
+				// Attempt to return stale cache data if available on error
+				// Pass the validated apiKey
+				const staleCache = getModelsFromCache(providerName, validApiKey);
+				// Pass the validated apiKey
+				if (staleCache && isCacheStale(providerName, validApiKey)) {
+					console.warn(
+						`[useModels] Returning stale cache for ${providerName} due to fetch error.`,
 					);
-					setError(errorMsg);
-
-					// Mark API key as invalid if this was an API request error
-					if (e instanceof Error && e.message.includes("API request failed")) {
-						setVerifiedAPIKey(providerName, apiKey, false);
+					if (providerName === provider) {
+						setModels(staleCache);
 					}
-				} else {
-					console.log(`[useModels] Background refresh error: ${errorMsg}`);
+					return staleCache;
 				}
 
-				// Return current models if available, empty array otherwise
-				return models.length > 0 ? models : [];
+				return []; // Return empty array on error if no stale cache
 			} finally {
-				// Clear loading states
-				if (!background) {
-					setIsLoading(false);
-				} else {
+				if (background) {
 					setIsRefreshingInBackground(false);
+				} else {
+					setIsLoading(false);
 				}
 			}
 		},
+		// Corrected dependencies: Remove state setters, keep stable functions/values
 		[
+			fetchModelsFromAPI, // Now stable
 			getModelsFromCache,
 			isCacheExpired,
 			isCacheStale,
 			updateModelsCache,
 			setVerifiedAPIKey,
-			models,
+			provider, // Hook's current provider
 		],
 	);
 
 	/**
-	 * Verify API key by attempting to fetch models
-	 * With optimization to avoid re-verification if the key is already verified
+	 * Effect to fetch models automatically if autoFetch is true and provider/API key changes
+	 */
+	useEffect(() => {
+		const apiKey = localStorage.getItem(`${provider}_api_key`);
+
+		if (autoFetch && provider && apiKey) {
+			console.log(`[useModels] Auto-fetching models for ${provider}`);
+			const cached = getModelsFromCache(provider, apiKey);
+			const expired = isCacheExpired(provider, apiKey);
+			const stale = isCacheStale(provider, apiKey);
+
+			if (cached && !expired) {
+				setModels(cached);
+				if (stale) {
+					// Replace template literal with string literal
+					fetchModels(provider, apiKey, true, true).catch((e: unknown) =>
+						console.error("[useModels] Initial background refresh failed:", e),
+					);
+				}
+			} else {
+				// Replace template literal with string literal
+				fetchModels(provider, apiKey, true, false).catch((e: unknown) =>
+					console.error("[useModels] Initial fetch failed:", e),
+				);
+			}
+		} else if (autoFetch && provider && !apiKey) {
+			console.warn(
+				`[useModels] Auto-fetch enabled for ${provider}, but no API key found.`,
+			);
+			setModels([]);
+			setError("API key required for auto-fetch.");
+		}
+	}, [
+		provider,
+		autoFetch,
+		fetchModels,
+		getModelsFromCache,
+		isCacheExpired,
+		isCacheStale,
+	]);
+
+	/**
+	 * Function to verify API key
 	 */
 	const verifyApiKey = useCallback(
 		async (providerName: string, apiKey: string): Promise<boolean> => {
-			// If the key is already verified and verification is still valid, return immediately
-			// This is a significant optimization to prevent unnecessary API calls
-			if (isAPIKeyVerified(providerName, apiKey)) {
+			if (!apiKey) return false;
+
+			// Use the validated key from the store
+			if (
+				isAPIKeyVerified(providerName, apiKey) &&
+				!isKeyVerificationExpired(providerName, apiKey)
+			) {
 				console.log(
-					`[useModels] API key already verified for ${providerName}, skipping verification`,
+					`[useModels] API key for ${providerName} already verified.`,
 				);
 				return true;
 			}
 
+			console.log(`[useModels] Verifying API key for ${providerName}...`);
+			setIsLoading(true);
+			setError(null);
+
 			try {
-				// Check if verification is expired but we have cached models
-				const keyVerificationExpired = isKeyVerificationExpired(
-					providerName,
-					apiKey,
+				// Attempt to fetch models as a way to verify the key
+				await fetchModelsFromAPI(providerName, apiKey);
+				setVerifiedAPIKey(providerName, apiKey, true);
+				console.log(
+					`[useModels] API key for ${providerName} verified successfully.`,
 				);
-				const cachedModels = getModelsFromCache(providerName, apiKey);
-
-				if (keyVerificationExpired && cachedModels) {
-					// If we have models in cache but verification expired,
-					// consider the key valid but trigger background refresh
-					setVerifiedAPIKey(providerName, apiKey, true);
-
-					// Trigger a background refresh
-					fetchModels(providerName, apiKey, {
-						forceRefresh: true,
-						background: true,
-					}).catch((e) =>
-						console.log(
-							`[useModels] Background verification refresh failed: ${e.message}`,
-						),
-					);
-
-					return true;
-				}
-
-				// If no cached models or verification is needed,
-				// try to fetch models as verification
-				const fetchedModels = await fetchModels(providerName, apiKey, {
-					forceRefresh: true,
-				});
-				return fetchedModels.length > 0;
-			} catch (e) {
+				return true;
+			} catch (error) {
 				console.error(
 					`[useModels] API key verification failed for ${providerName}:`,
-					e,
+					error,
+				);
+				setVerifiedAPIKey(providerName, apiKey, false);
+				setError(
+					error instanceof Error
+						? error.message
+						: "API key verification failed",
 				);
 				return false;
+			} finally {
+				setIsLoading(false);
 			}
 		},
 		[
-			fetchModels,
+			fetchModelsFromAPI, // Now stable
 			isAPIKeyVerified,
 			isKeyVerificationExpired,
-			getModelsFromCache,
 			setVerifiedAPIKey,
 		],
 	);
 
-	// Auto fetch models when provider changes if autoFetch is true
-	useEffect(() => {
-		if (autoFetch) {
-			// In a real implementation, we would get the API key from somewhere secure
-			// This is just a placeholder - you should replace this with your actual API key retrieval logic
-			const apiKey = localStorage.getItem(`${provider}_api_key`);
-
-			if (apiKey) {
-				fetchModels(provider, apiKey).catch(console.error);
+	/**
+	 * Function to clear cache
+	 */
+	const clearCache = useCallback(
+		(providerName?: string, apiKey?: string) => {
+			clearModelsCache(providerName, apiKey);
+			console.log(
+				`[useModels] Cache cleared for ${providerName || "all providers"}`,
+			);
+			if (providerName === provider || !providerName) {
+				setModels([]); // Clear current models if relevant cache was cleared
 			}
-		}
-	}, [provider, autoFetch, fetchModels]);
+		},
+		// Corrected dependencies: Remove state setter
+		[clearModelsCache, provider], // Removed setModels
+	);
 
+	// Final return statement for the hook
 	return {
 		models,
 		isLoading,
 		isRefreshingInBackground,
 		error,
-		fetchModels: (provider, apiKey) => fetchModels(provider, apiKey, {}),
+		fetchModels: (p: string, key: string) => fetchModels(p, key, true, false),
 		verifyApiKey,
-		clearCache: clearModelsCache,
+		clearCache,
 		isCacheExpired,
 		isCacheStale,
 		getLastCacheUpdate,

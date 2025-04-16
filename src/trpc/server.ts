@@ -1,8 +1,8 @@
+// filepath: /home/lonestar/Desktop/Projects/cr-hackathon-secours/src/trpc/server.ts
 import { createServerClient } from "@supabase/ssr";
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { env } from "~/env";
 
-import { createCallerFactory } from "@trpc/server";
 import { appRouter } from "~/server/api/root";
 import {
 	createTRPCContext,
@@ -20,21 +20,16 @@ export { createTRPCRouter, publicProcedure, protectedProcedure };
 // Export the context creation function
 export { createTRPCContext };
 
-// Factory function to create the tRPC caller
-const createCaller = createCallerFactory(appRouter);
-
 export const getServerAuthSession = async () => {
+	const cookieStore = await cookies();
+
 	const supabase = createServerClient(
 		env.NEXT_PUBLIC_SUPABASE_URL,
 		env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 		{
 			cookies: {
-				get(name) {
-					return headers()
-						.get("cookie")
-						?.split("; ")
-						.find((c) => c.startsWith(`${name}=`))
-						?.split("=")[1];
+				get(name: string) {
+					return cookieStore.get(name)?.value;
 				},
 			},
 		},
@@ -55,6 +50,26 @@ export const getServerAuthSession = async () => {
 
 export const createCaller = async () => {
 	const auth = await getServerAuthSession();
-	const ctx = await createTRPCContext({ headers: headers(), auth });
-	return createCaller(ctx);
+
+	// Create a standard Headers object from the cookie data
+	const headersList = new Headers();
+	const cookieStore = await cookies();
+	const cookieData = cookieStore.getAll();
+
+	if (cookieData.length > 0) {
+		const cookieString = cookieData
+			.map(
+				(cookie: { name: string; value: string }) =>
+					`${cookie.name}=${cookie.value}`,
+			)
+			.join("; ");
+		headersList.set("cookie", cookieString);
+	}
+
+	const ctx = await createTRPCContext({
+		headers: headersList,
+		auth,
+	});
+
+	return appRouter.createCaller(ctx);
 };

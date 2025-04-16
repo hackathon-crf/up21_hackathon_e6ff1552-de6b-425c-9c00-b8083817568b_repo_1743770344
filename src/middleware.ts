@@ -3,31 +3,34 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export async function middleware(request: NextRequest) {
 	// Create supabase server client
-	const supabase = createServerClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-		{
-			cookies: {
-				get(name) {
-					return request.cookies.get(name)?.value;
-				},
-				set(name, value, options) {
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+	if (!supabaseUrl || !supabaseAnonKey) {
+		throw new Error(
+			"Missing Supabase environment variables. Please check your .env file.",
+		);
+	}
+
+	const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+		cookies: {
+			getAll() {
+				return Array.from(request.cookies.getAll()).map((cookie) => ({
+					name: cookie.name,
+					value: cookie.value,
+				}));
+			},
+			setAll(cookiesToSet) {
+				for (const { name, value, options } of cookiesToSet) {
 					request.cookies.set({
 						name,
 						value,
 						...options,
 					});
-				},
-				remove(name, options) {
-					request.cookies.set({
-						name,
-						value: "",
-						...options,
-					});
-				},
+				}
 			},
 		},
-	);
+	});
 
 	// ONLY use getUser() for authentication - this is the secure method
 	// that validates auth with the Supabase Auth server

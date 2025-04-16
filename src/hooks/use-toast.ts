@@ -7,21 +7,28 @@ import type { ToastActionElement, ToastProps } from "~/components/ui/toast";
 const TOAST_LIMIT = 5;
 const TOAST_REMOVE_DELAY = 5000;
 
-// --- Adjusted ToasterToast type --- 
-type ToasterToast = Omit<ToastProps, 'title' | 'description'> & { // Omit conflicting props
-  id: string;
-  title?: React.ReactNode; // Add back with ReactNode type
-  description?: React.ReactNode; // Add back with ReactNode type
-  action?: ToastActionElement;
-  variant?: "default" | "success" | "info" | "warning" | "destructive";
+// --- Adjusted ToasterToast type ---
+type ToasterToast = Omit<ToastProps, "title" | "description"> & {
+	// Omit conflicting props
+	id: string;
+	title?: React.ReactNode; // Add back with ReactNode type
+	description?: React.ReactNode; // Add back with ReactNode type
+	action?: ToastActionElement;
+	variant?: "default" | "success" | "info" | "warning" | "destructive";
 };
 // ---------------------------------
 
 // --- Add Promise Toast Types ---
 type PromiseToastProps<TData = unknown> = {
 	loading: { title: React.ReactNode; description?: React.ReactNode };
-	success: (data: TData) => { title: React.ReactNode; description?: React.ReactNode };
-	error: (error: unknown) => { title: React.ReactNode; description?: React.ReactNode };
+	success: (data: TData) => {
+		title: React.ReactNode;
+		description?: React.ReactNode;
+	};
+	error: (error: unknown) => {
+		title: React.ReactNode;
+		description?: React.ReactNode;
+	};
 	duration?: number; // Optional duration for success/error toasts
 };
 // ------------------------------
@@ -131,9 +138,9 @@ let memoryState: State = { toasts: [] };
 
 function dispatch(action: Action) {
 	memoryState = reducer(memoryState, action);
-	listeners.forEach((listener) => {
+	for (const listener of listeners) {
 		listener(memoryState);
-	});
+	}
 }
 
 interface Toast extends Omit<ToasterToast, "id"> {}
@@ -178,7 +185,10 @@ function toast(props: Toast) {
 }
 
 // --- Add Promise Toast Function ---
-async function promise<TData>(promise: Promise<TData>, props: PromiseToastProps<TData>) {
+async function promise<TData>(
+	promise: Promise<TData>,
+	props: PromiseToastProps<TData>,
+) {
 	const id = genId();
 
 	// Show loading toast immediately
@@ -214,7 +224,10 @@ async function promise<TData>(promise: Promise<TData>, props: PromiseToastProps<
 
 		// Auto-dismiss success toast
 		if (duration !== Number.POSITIVE_INFINITY) {
-			setTimeout(() => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id }), duration);
+			setTimeout(
+				() => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id }),
+				duration,
+			);
 		}
 
 		return data; // Return the resolved data
@@ -235,7 +248,10 @@ async function promise<TData>(promise: Promise<TData>, props: PromiseToastProps<
 
 		// Auto-dismiss error toast
 		if (duration !== Number.POSITIVE_INFINITY) {
-			setTimeout(() => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id }), duration);
+			setTimeout(
+				() => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id }),
+				duration,
+			);
 		}
 
 		throw error; // Re-throw the error
@@ -271,7 +287,7 @@ function useToast() {
 				listeners.splice(index, 1);
 			}
 		};
-	}, [state]);
+	}, []);
 
 	return {
 		...state,

@@ -7,7 +7,7 @@ import { DEBUG_MODE, debugColors } from "./utils";
 export function useDebugRenders(
 	componentName: string,
 	color: string,
-	props?: any,
+	props?: unknown,
 ) {
 	const renderCount = useRef(0);
 
@@ -55,7 +55,7 @@ export function useDebugEffect(
 	effectName: string,
 	componentName: string,
 	color: string,
-	deps?: any[],
+	deps?: unknown[],
 ) {
 	useEffect(() => {
 		if (DEBUG_MODE) {
@@ -78,9 +78,7 @@ export function useDebugEffect(
 				);
 			}
 		};
-		// We're deliberately avoiding the eslint warning here as this is a debug utility
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, deps || []);
+	}, [color, componentName, effectName, deps, ...(deps || [])]);
 }
 
 // Callback tracker
@@ -89,7 +87,7 @@ export function useDebugCallback(
 	componentName: string,
 	color: string,
 ) {
-	return (...args: any[]) => {
+	return (...args: unknown[]) => {
 		if (DEBUG_MODE) {
 			console.log(
 				`%c[${componentName}] Callback "${callbackName}" fired with args:`,

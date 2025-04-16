@@ -3,7 +3,13 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Session, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useState,
+} from "react";
 import { env } from "~/env";
 
 type AuthContextType = {
@@ -31,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 	// This getAuthState function follows the secure pattern
 	// recommended by Supabase to avoid security warnings
-	const getAuthState = async () => {
+	const getAuthState = useCallback(async () => {
 		try {
 			setIsLoading(true);
 
@@ -55,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [supabase.auth]);
 
 	// On mount, get initial auth state
 	useEffect(() => {
@@ -80,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			// Clean up on unmount
 			subscription.unsubscribe();
 		};
-	}, [supabase.auth, router]);
+	}, [supabase.auth, router, getAuthState]);
 
 	// Sign in handler
 	const signIn = async (email: string, password: string) => {

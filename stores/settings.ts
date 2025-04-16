@@ -155,8 +155,10 @@ export const useSettingsStore = create<SettingsState>()(
 			setTemperature: (temperature) => set({ temperature }),
 			setMaxTokens: (maxTokens) => set({ maxTokens }),
 			setSystemPrompt: (prompt) => set({ systemPrompt: prompt }), // Renamed setter for systemPrompt
-			setStreamingSystemPrompt: (prompt) => set({ streamingSystemPrompt: prompt }),
-			setChatRouterSystemPrompt: (prompt) => set({ chatRouterSystemPrompt: prompt }),
+			setStreamingSystemPrompt: (prompt) =>
+				set({ streamingSystemPrompt: prompt }),
+			setChatRouterSystemPrompt: (prompt) =>
+				set({ chatRouterSystemPrompt: prompt }),
 			setPromptPrefix: (prefix) => set({ promptPrefix: prefix }),
 			setPromptSuffix: (suffix) => set({ promptSuffix: suffix }),
 			setPromptTemplates: (templates) => set({ promptTemplates: templates }),

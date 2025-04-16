@@ -114,7 +114,7 @@ export class AIService {
 			switch (this.provider) {
 				case "mistral": {
 					const mistralClient = this.getMistralClient();
-					const response = await mistralClient.chat({
+					const response = await mistralClient.chat.complete({
 						model: this.model,
 						messages,
 						temperature: finalOptions.temperature,
@@ -123,7 +123,12 @@ export class AIService {
 
 					return {
 						id: response.id,
-						content: response.choices[0]?.message.content || "",
+						content:
+							typeof response.choices?.[0]?.message.content === "string"
+								? response.choices[0].message.content
+								: Array.isArray(response.choices?.[0]?.message.content)
+									? response.choices[0].message.content.join("")
+									: "",
 						usage: {
 							promptTokens: response.usage?.promptTokens,
 							completionTokens: response.usage?.completionTokens,
@@ -241,14 +246,19 @@ export class AIService {
 	}
 
 	private async *processMistralStream(
-		stream: any,
+		stream: AsyncIterable<unknown>, // Use unknown for broader compatibility
 	): AsyncGenerator<AIStreamChunk, void, unknown> {
 		try {
 			for await (const chunk of stream) {
-				if (chunk.data.choices[0]?.delta.content) {
+				// Type assertion or checking might be needed here if accessing specific properties
+				const mistralChunk = chunk as {
+					data?: { choices?: Array<{ delta?: { content?: string | null } }> };
+					id?: string;
+				};
+				if (mistralChunk.data?.choices?.[0]?.delta?.content) {
 					yield {
-						id: chunk.id,
-						content: chunk.data.choices[0].delta.content,
+						id: mistralChunk.id,
+						content: mistralChunk.data.choices[0].delta.content,
 						done: false,
 					};
 				}
@@ -266,14 +276,19 @@ export class AIService {
 	}
 
 	private async *processOpenAIStream(
-		stream: any,
+		stream: AsyncIterable<unknown>, // Use unknown for broader compatibility
 	): AsyncGenerator<AIStreamChunk, void, unknown> {
 		try {
 			for await (const chunk of stream) {
-				if (chunk.choices[0]?.delta?.content) {
+				// Type assertion or checking might be needed here if accessing specific properties
+				const openAIChunk = chunk as {
+					id?: string;
+					choices?: Array<{ delta?: { content?: string | null } }>;
+				};
+				if (openAIChunk.choices?.[0]?.delta?.content) {
 					yield {
-						id: chunk.id,
-						content: chunk.choices[0].delta.content,
+						id: openAIChunk.id,
+						content: openAIChunk.choices[0].delta.content,
 						done: false,
 					};
 				}

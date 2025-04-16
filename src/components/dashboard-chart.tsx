@@ -10,27 +10,38 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 import {
 	ChartContainer,
 	ChartTooltip,
 	ChartTooltipContent,
 } from "~/components/ui/chart";
 
-// Define a proper type for the tooltip props
+// Import necessary types from recharts
+import type {
+	NameType,
+	ValueType,
+} from "recharts/types/component/DefaultTooltipContent";
+import type { Payload } from "recharts/types/component/DefaultTooltipContent";
+
+// Define a proper type for the tooltip props that extends recharts types
 interface CustomTooltipProps {
 	active?: boolean;
-	payload?: Array<{
-		dataKey?: string;
-		name?: string;
-		value?: number;
-		fill?: string;
-		stroke?: string;
-	}>;
+	payload?: Array<Payload<ValueType, NameType>>;
 	label?: string;
 	formatTimeValue?: (value: number) => string;
 }
 
-export function DashboardChart({ data }: { data: any[] }) {
+// Define a type for the chart data
+interface ChartDataItem {
+	day: string;
+	cards: number;
+	games: number;
+	chat: number;
+	[key: string]: string | number;
+}
+
+export function DashboardChart({ data }: { data: ChartDataItem[] }) {
 	// Format time value to hh:mm:ss
 	const formatTimeValue = (value: number): string => {
 		// Assuming the value is in hours

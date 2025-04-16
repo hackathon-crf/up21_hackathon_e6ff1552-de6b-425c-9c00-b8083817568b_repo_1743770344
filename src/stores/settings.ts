@@ -8,6 +8,25 @@ export interface PromptTemplate {
 	prompt: string;
 }
 
+// Define model cache entry type
+export interface ModelCacheEntry {
+	name: string;
+	provider: string;
+	capabilities?: string[];
+	contextWindow?: number;
+	maxTokens?: number;
+	updatedAt: number; // timestamp
+}
+
+// Define API key verification entry type
+export interface APIKeyVerificationEntry {
+	verified: boolean;
+	verifiedAt: number; // timestamp
+	validUntil: number; // timestamp
+	provider?: string;
+	models?: string[];
+}
+
 interface SettingsState {
 	// Model settings
 	provider: string;
@@ -35,9 +54,9 @@ interface SettingsState {
 	historyRetentionDays: number;
 
 	// Cache settings
-	modelsCache: Record<string, any>;
+	modelsCache: Record<string, ModelCacheEntry>;
 	cacheTimeToLive: number;
-	verifiedAPIKeys: Record<string, any>;
+	verifiedAPIKeys: Record<string, APIKeyVerificationEntry>;
 	apiKeyVerificationTTL: number;
 
 	// Actions

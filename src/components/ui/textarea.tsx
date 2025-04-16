@@ -64,15 +64,15 @@ function useCombinedRefs<T>(...refs: Array<React.ForwardedRef<T>>) {
 	const targetRef = React.useRef<T>(null);
 
 	React.useEffect(() => {
-		refs.forEach((ref) => {
-			if (!ref) return;
+		for (const ref of refs) {
+			if (!ref) continue;
 
 			if (typeof ref === "function") {
 				ref(targetRef.current);
 			} else {
 				ref.current = targetRef.current;
 			}
-		});
+		}
 	}, [refs]);
 
 	return targetRef;

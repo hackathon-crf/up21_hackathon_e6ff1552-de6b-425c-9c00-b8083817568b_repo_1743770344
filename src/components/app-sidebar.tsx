@@ -185,10 +185,7 @@ function NavigationGroup({
 }: { label: string; children: React.ReactNode }) {
 	return (
 		<div className="space-y-1.5">
-			<h2
-				className="mb-3 px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider"
-				aria-hidden="true"
-			>
+			<h2 className="mb-3 px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
 				{label}
 			</h2>
 			{children}
