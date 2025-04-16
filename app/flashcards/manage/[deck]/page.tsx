@@ -64,7 +64,7 @@ export default function ManageDeckPage({
 	const [cardsPerSession, setCardsPerSession] = useState("20");
 
 	// Fetch deck information
-	const { data: deck, isLoading: deckLoading } =
+	const { data: deck, isPending: deckLoading } =
 		api.flashcard.getDeckById.useQuery(
 			{
 				id: params.deck,
@@ -89,7 +89,7 @@ export default function ManageDeckPage({
 	// Fetch flashcards for this specific deck
 	const {
 		data: flashcards,
-		isLoading: cardsLoading,
+		isPending: cardsLoading,
 		refetch: refetchCards,
 	} = api.flashcard.getFlashcards.useQuery({
 		deckId: params.deck,
@@ -265,7 +265,7 @@ export default function ManageDeckPage({
 		});
 	};
 
-	const isLoading = deckLoading || cardsLoading;
+	const isPending = deckLoading || cardsLoading;
 
 	return (
 		<div className="flex min-h-screen flex-col">
@@ -279,7 +279,7 @@ export default function ManageDeckPage({
 					</Button>
 					<div className="ml-4 flex-1">
 						<h1 className="font-bold text-2xl">
-							{isLoading ? "Loading..." : formatDeckName(params.deck)}
+							{isPending ? "Loading..." : formatDeckName(params.deck)}
 						</h1>
 						<p className="text-muted-foreground text-sm">
 							Manage your flashcards
@@ -289,7 +289,7 @@ export default function ManageDeckPage({
 			</div>
 
 			<main className="flex-1 p-6">
-				{isLoading ? (
+				{isPending ? (
 					<div className="flex h-full items-center justify-center">
 						<Loader2 className="h-8 w-8 animate-spin text-primary/70" />
 					</div>
@@ -362,9 +362,9 @@ export default function ManageDeckPage({
 											</DialogClose>
 											<Button
 												onClick={handleAddCard}
-												disabled={createFlashcard.isLoading}
+												disabled={createFlashcard.isPending}
 											>
-												{createFlashcard.isLoading ? "Adding..." : "Add Card"}
+												{createFlashcard.isPending ? "Adding..." : "Add Card"}
 											</Button>
 										</DialogFooter>
 									</DialogContent>
@@ -470,9 +470,9 @@ export default function ManageDeckPage({
 									</Button>
 									<Button
 										onClick={handleUpdateCard}
-										disabled={updateFlashcard.isLoading}
+										disabled={updateFlashcard.isPending}
 									>
-										{updateFlashcard.isLoading ? "Updating..." : "Update Card"}
+										{updateFlashcard.isPending ? "Updating..." : "Update Card"}
 									</Button>
 								</DialogFooter>
 							</DialogContent>
@@ -557,7 +557,7 @@ export default function ManageDeckPage({
 																	variant="ghost"
 																	size="icon"
 																	onClick={() => handleDeleteCard(card.id)}
-																	disabled={deleteFlashcard.isLoading}
+																	disabled={deleteFlashcard.isPending}
 																>
 																	<Trash2 className="h-4 w-4" />
 																	<span className="sr-only">Delete</span>
@@ -882,9 +882,9 @@ export default function ManageDeckPage({
 								<CardFooter>
 									<Button
 										onClick={handleSaveSettings}
-										disabled={updateDeck.isLoading}
+										disabled={updateDeck.isPending}
 									>
-										{updateDeck.isLoading ? "Saving..." : "Save Settings"}
+										{updateDeck.isPending ? "Saving..." : "Save Settings"}
 									</Button>
 								</CardFooter>
 							</Card>
