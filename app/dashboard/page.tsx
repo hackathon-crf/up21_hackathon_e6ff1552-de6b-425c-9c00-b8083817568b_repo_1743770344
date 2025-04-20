@@ -101,7 +101,6 @@ export default function DashboardPage() {
 				return <Gamepad2 className="h-4 w-4 text-primary" />;
 			case "message-square":
 				return <MessageSquare className="h-4 w-4 text-primary" />;
-			case "activity":
 			default:
 				return <Activity className="h-4 w-4 text-muted-foreground" />;
 		}
@@ -324,10 +323,10 @@ export default function DashboardPage() {
 							<CardContent className="pb-2">
 								{upcomingReviews.length > 0 ? (
 									<div className="space-y-4">
-										{upcomingReviews.map((review: UpcomingReview, i) => (
+										{upcomingReviews.map((review: UpcomingReview) => (
 											<div
 												className="flex items-center justify-between"
-												key={`review-${i}`}
+												key={`review-${review.period}-${review.dueCards}`}
 											>
 												<div>
 													<p className="font-medium">{review.period}</p>
@@ -335,7 +334,18 @@ export default function DashboardPage() {
 														{review.dueCards} cards due
 													</p>
 												</div>
-												<Button variant={review.actionVariant as any} size="sm">
+												<Button
+													variant={
+														review.actionVariant as
+															| "default"
+															| "destructive"
+															| "outline"
+															| "secondary"
+															| "ghost"
+															| "link"
+													}
+													size="sm"
+												>
 													{review.actionText}
 												</Button>
 											</div>
@@ -359,26 +369,24 @@ export default function DashboardPage() {
 							<CardContent>
 								{recentActivity.length > 0 ? (
 									<div className="space-y-5">
-										{recentActivity.map(
-											(activity: ActivityType, index: number) => (
-												<div
-													className="flex items-start space-x-3"
-													key={`activity-${index}`}
-												>
-													<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-														{renderIcon(activity.icon)}
-													</div>
-													<div>
-														<p className="text-sm leading-snug">
-															{activity.activity}
-														</p>
-														<p className="text-muted-foreground text-xs">
-															{activity.timestamp}
-														</p>
-													</div>
+										{recentActivity.map((activity: ActivityType) => (
+											<div
+												className="flex items-start space-x-3"
+												key={`activity-${activity.timestamp}-${activity.activity}`}
+											>
+												<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+													{renderIcon(activity.icon)}
 												</div>
-											),
-										)}
+												<div>
+													<p className="text-sm leading-snug">
+														{activity.activity}
+													</p>
+													<p className="text-muted-foreground text-xs">
+														{activity.timestamp}
+													</p>
+												</div>
+											</div>
+										))}
 									</div>
 								) : (
 									<div className="py-4 text-center text-muted-foreground text-sm">
@@ -401,29 +409,27 @@ export default function DashboardPage() {
 						<CardContent>
 							{recentActivity.length > 0 ? (
 								<div className="space-y-6">
-									{recentActivity.map(
-										(activity: ActivityType, index: number) => (
-											<div
-												className="flex items-start space-x-4"
-												key={`full-activity-${index}`}
-											>
-												<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-													{renderIcon(activity.icon)}
-												</div>
-												<div className="flex-1 space-y-1">
-													<p className="font-medium text-sm leading-none">
-														{activity.activity}
-													</p>
-													<p className="text-muted-foreground text-sm">
-														{activity.timestamp}
-													</p>
-												</div>
-												<Button variant="ghost" size="sm">
-													Details
-												</Button>
+									{recentActivity.map((activity: ActivityType) => (
+										<div
+											className="flex items-start space-x-4"
+											key={`full-activity-${activity.timestamp || activity.activity}`}
+										>
+											<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+												{renderIcon(activity.icon)}
 											</div>
-										),
-									)}
+											<div className="flex-1 space-y-1">
+												<p className="font-medium text-sm leading-none">
+													{activity.activity}
+												</p>
+												<p className="text-muted-foreground text-sm">
+													{activity.timestamp}
+												</p>
+											</div>
+											<Button variant="ghost" size="sm">
+												Details
+											</Button>
+										</div>
+									))}
 								</div>
 							) : (
 								<div className="py-8 text-center">
@@ -440,26 +446,27 @@ export default function DashboardPage() {
 
 				<TabsContent value="recommendations" className="space-y-4">
 					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-						{trainingRecommendations.map(
-							(recommendation: Recommendation, index: number) => (
-								<Card key={`rec-${index}`} className="flex flex-col">
-									<CardHeader>
-										<div className="flex items-center space-x-2">
-											{renderIcon(recommendation.icon)}
-											<CardTitle className="text-lg">
-												{recommendation.title}
-											</CardTitle>
-										</div>
-										<CardDescription>
-											{recommendation.description}
-										</CardDescription>
-									</CardHeader>
-									<CardFooter className="mt-auto">
-										<Button className="w-full">Begin Training</Button>
-									</CardFooter>
-								</Card>
-							),
-						)}
+						{trainingRecommendations.map((recommendation: Recommendation) => (
+							<Card
+								key={`rec-${recommendation.title}`}
+								className="flex flex-col"
+							>
+								<CardHeader>
+									<div className="flex items-center space-x-2">
+										{renderIcon(recommendation.icon)}
+										<CardTitle className="text-lg">
+											{recommendation.title}
+										</CardTitle>
+									</div>
+									<CardDescription>
+										{recommendation.description}
+									</CardDescription>
+								</CardHeader>
+								<CardFooter className="mt-auto">
+									<Button className="w-full">Begin Training</Button>
+								</CardFooter>
+							</Card>
+						))}
 					</div>
 				</TabsContent>
 			</Tabs>

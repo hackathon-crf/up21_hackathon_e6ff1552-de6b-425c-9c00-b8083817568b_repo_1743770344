@@ -211,17 +211,20 @@ const handler = async (req: NextRequest) => {
 								return { message: value.message, name: value.name };
 							}
 							const seen = new Set();
-							return Object.entries(value).reduce((acc: Record<string, unknown>, [k, v]) => {
-								// Don't log large objects or circular references
-								if (
-									typeof v !== "function" &&
-									(!v || typeof v !== "object" || !seen.has(v))
-								) {
-									if (v && typeof v === "object") seen.add(v);
-									acc[k] = v;
-								}
-								return acc;
-							}, {});
+							return Object.entries(value).reduce(
+								(acc: Record<string, unknown>, [k, v]) => {
+									// Don't log large objects or circular references
+									if (
+										typeof v !== "function" &&
+										(!v || typeof v !== "object" || !seen.has(v))
+									) {
+										if (v && typeof v === "object") seen.add(v);
+										acc[k] = v;
+									}
+									return acc;
+								},
+								{},
+							);
 						}
 						return value;
 					},

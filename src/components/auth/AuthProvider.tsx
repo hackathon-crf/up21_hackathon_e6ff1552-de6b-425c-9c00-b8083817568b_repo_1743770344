@@ -79,14 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					setUser(null);
 					setSession(null);
 					return; // Exit early - this is a normal "not logged in" state
-				} else {
-					// Other errors should still be thrown
-					console.error(
-						"🔒 AUTH FLOW [getAuthState]: Unexpected session error:",
-						sessionError,
-					);
-					throw sessionError;
 				}
+				// Other errors should still be thrown
+				console.error(
+					"🔒 AUTH FLOW [getAuthState]: Unexpected session error:",
+					sessionError,
+				);
+				throw sessionError;
 			}
 
 			// If we have a session, now fetch the user data
@@ -94,8 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				console.log(
 					"🔒 AUTH FLOW [getAuthState]: Valid session found, fetching user data",
 					{
-						accessToken:
-							sessionData.session.access_token.substring(0, 10) + "...",
+						accessToken: `${sessionData.session.access_token.substring(0, 10)}...`,
 						expiresAt: sessionData.session.expires_at
 							? new Date(sessionData.session.expires_at * 1000).toISOString()
 							: "not set",
@@ -190,14 +188,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		);
 
 		try {
-			console.log(`🔒 AUTH FLOW [signIn]: Calling Supabase signInWithPassword`);
+			console.log("🔒 AUTH FLOW [signIn]: Calling Supabase signInWithPassword");
 			// Attempt to sign in with credentials
 			const { data, error } = await supabase.auth.signInWithPassword({
 				email,
 				password,
 			});
 
-			console.log(`🔒 AUTH FLOW [signIn]: Sign-in response received`, {
+			console.log("🔒 AUTH FLOW [signIn]: Sign-in response received", {
 				hasError: !!error,
 				errorMessage: error?.message,
 				errorName: error?.name,
@@ -260,29 +258,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					user: user,
 					session: session,
 				};
-			} else {
-				console.log(
-					"🔒 AUTH FLOW [signIn]: Login successful with valid user and session",
-					{
-						userId: data.user.id,
-						email: data.user.email?.substring(0, 3) + "...",
-						sessionExpiry: data.session.expires_at
-							? new Date(data.session.expires_at * 1000).toISOString()
-							: "unknown",
-						authenticated: true,
-					},
-				);
-
-				// Explicitly update state with new data
-				setUser(data.user);
-				setSession(data.session);
-
-				return {
-					success: true,
-					user: data.user,
-					session: data.session,
-				};
 			}
+			console.log(
+				"🔒 AUTH FLOW [signIn]: Login successful with valid user and session",
+				{
+					userId: data.user.id,
+					email: `${data.user.email?.substring(0, 3)}...`,
+					sessionExpiry: data.session.expires_at
+						? new Date(data.session.expires_at * 1000).toISOString()
+						: "unknown",
+					authenticated: true,
+				},
+			);
+
+			// Explicitly update state with new data
+			setUser(data.user);
+			setSession(data.session);
+
+			return {
+				success: true,
+				user: data.user,
+				session: data.session,
+			};
 		} catch (error) {
 			console.error(
 				"🔒 AUTH FLOW [signIn]: Exception during sign-in process:",
@@ -337,12 +334,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					message:
 						"Sign up successful. Please check your email for verification.",
 				};
-			} else {
-				return {
-					success: false,
-					message: "Sign up failed: No user was created",
-				};
 			}
+			return {
+				success: false,
+				message: "Sign up failed: No user was created",
+			};
 		} catch (error) {
 			console.error("Error signing up:", error);
 			const errorMessage =

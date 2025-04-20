@@ -244,13 +244,15 @@ export default function FlashcardsPage() {
 											new Date(deck.updatedAt) >
 												new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
 									) // Last 7 days
-									.sort(
-										(a, b) => {
-											const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-											const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-											return dateB - dateA;
-										},
-									) // Most recently updated first
+									.sort((a, b) => {
+										const dateA = a.updatedAt
+											? new Date(a.updatedAt).getTime()
+											: 0;
+										const dateB = b.updatedAt
+											? new Date(b.updatedAt).getTime()
+											: 0;
+										return dateB - dateA;
+									}) // Most recently updated first
 									.map((deck) => (
 										<Card
 											key={deck.id}

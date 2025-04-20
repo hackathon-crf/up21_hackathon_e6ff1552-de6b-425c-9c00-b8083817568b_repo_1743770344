@@ -83,13 +83,10 @@ export default function FlashcardsRumblePage({
 	const handleSubmitAnswer = () => {
 		if (answer.trim() && result === null) {
 			// Simple string comparison - in a real app, you'd want more sophisticated matching
+			const currentAnswer = flashcards[currentCard]?.answer || "";
 			const isCorrect = answer
 				.toLowerCase()
-				.includes(
-					isValidCard
-						? flashcards[currentCard].answer.toLowerCase().substring(0, 10)
-						: "",
-				);
+				.includes(currentAnswer.toLowerCase().substring(0, 10));
 
 			setResult(isCorrect ? "correct" : "incorrect");
 
@@ -183,7 +180,7 @@ export default function FlashcardsRumblePage({
 								</CardHeader>
 								<CardContent>
 									<div className="text-center font-medium text-xl">
-										{isValidCard ? flashcards[currentCard].question : ""}
+										{flashcards[currentCard]?.question || ""}
 									</div>
 								</CardContent>
 								<CardFooter className="text-center text-muted-foreground text-sm">
@@ -201,7 +198,7 @@ export default function FlashcardsRumblePage({
 								</CardHeader>
 								<CardContent>
 									<div className="text-center font-medium text-xl">
-										{isValidCard ? flashcards[currentCard].answer : ""}
+										{flashcards[currentCard]?.answer || ""}
 									</div>
 								</CardContent>
 								<CardFooter className="flex justify-center gap-4">

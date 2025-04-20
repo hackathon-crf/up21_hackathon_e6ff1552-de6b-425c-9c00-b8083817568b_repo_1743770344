@@ -527,9 +527,11 @@ export async function fetchRecentActivity(userId: string): Promise<Activity[]> {
 
 	// Create a map of deck IDs to names for easy lookup
 	const deckNames = new Map();
-	decksData?.forEach((deck) => {
-		deckNames.set(deck.id, deck.name);
-	});
+	if (decksData) {
+		for (const deck of decksData) {
+			deckNames.set(deck.id, deck.name);
+		}
+	}
 
 	// Get recent chat activities
 	const { data: chatData, error: chatError } = await supabase
@@ -548,34 +550,40 @@ export async function fetchRecentActivity(userId: string): Promise<Activity[]> {
 	}
 
 	// Process game activities
-	gamesData?.forEach((game) => {
-		activities.push({
-			activity: `Completed game with score: ${game.score}`,
-			timestamp: new Date(game.joined_at).toISOString(),
-			icon: "gamepad",
-		});
-	});
+	if (gamesData) {
+		for (const game of gamesData) {
+			activities.push({
+				activity: `Completed game with score: ${game.score}`,
+				timestamp: new Date(game.joined_at).toISOString(),
+				icon: "gamepad",
+			});
+		}
+	}
 
 	// Process flashcard activities
-	flashcardData?.forEach((card) => {
-		const deckName = card.deck_id
-			? deckNames.get(card.deck_id) || "Unnamed deck"
-			: "Unassigned cards";
-		activities.push({
-			activity: `Studied flashcard: ${card.title || "Untitled"} (${deckName})`,
-			timestamp: new Date(card.last_review).toISOString(),
-			icon: "layers",
-		});
-	});
+	if (flashcardData) {
+		for (const card of flashcardData) {
+			const deckName = card.deck_id
+				? deckNames.get(card.deck_id) || "Unnamed deck"
+				: "Unassigned cards";
+			activities.push({
+				activity: `Studied flashcard: ${card.title || "Untitled"} (${deckName})`,
+				timestamp: new Date(card.last_review).toISOString(),
+				icon: "layers",
+			});
+		}
+	}
 
 	// Process chat activities
-	chatData?.forEach((chat) => {
-		activities.push({
-			activity: `Chat session: ${chat.title || "New Chat"}`,
-			timestamp: new Date(chat.created_at).toISOString(),
-			icon: "message-square",
-		});
-	});
+	if (chatData) {
+		for (const chat of chatData) {
+			activities.push({
+				activity: `Chat session: ${chat.title || "New Chat"}`,
+				timestamp: new Date(chat.created_at).toISOString(),
+				icon: "message-square",
+			});
+		}
+	}
 
 	// Sort by timestamp (most recent first)
 	return activities

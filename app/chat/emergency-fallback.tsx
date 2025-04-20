@@ -169,7 +169,7 @@ export function injectEmergencyFallback() {
 
 		// If React is available, try to render the component using React
 		// Otherwise, show a basic HTML message
-		if (React?.createElement && typeof document !== 'undefined') {
+		if (React?.createElement && typeof document !== "undefined") {
 			try {
 				// Use the imported createRoot (React 18+)
 				createRoot(container).render(React.createElement(EmergencyFallback));
@@ -192,7 +192,7 @@ export function injectEmergencyFallback() {
         <div style="padding: 20px; max-width: 600px; margin: 0 auto; font-family: sans-serif;">
           <h1 style="color: #d00;">Basic Emergency Fallback</h1>
           <p>The chat interface couldn't be loaded due to a critical error.</p>
-          <p>Error: ${e instanceof Error ? e.message : 'Unknown error'}</p>
+          <p>Error: ${e instanceof Error ? e.message : "Unknown error"}</p>
           <p>Please refresh the page or contact support.</p>
         </div>
       `;

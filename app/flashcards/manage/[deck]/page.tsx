@@ -12,7 +12,7 @@ import {
 	Upload,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -63,11 +63,11 @@ type Flashcard = {
 	easeFactor: number | null;
 	repetitions: number | null;
 	aiGenerated: boolean;
-	deck?: { name: string; } | null;
+	deck?: { name: string } | null;
 	deckName?: string;
 	// Make updatedAt optional since it might be missing
 	updatedAt?: Date | null;
-}
+};
 
 export default function ManageDeckPage({
 	params,
@@ -99,14 +99,20 @@ export default function ManageDeckPage({
 	}, [deck]);
 
 	// Error handling for deck loading
-	const handleDeckError = (error: unknown) => {
-		const errorMessage = error instanceof Error ? error.message : "Failed to load deck information";
-		toast({
-			title: "Error",
-			description: errorMessage,
-			variant: "destructive",
-		});
-	};
+	const handleDeckError = useCallback(
+		(error: unknown) => {
+			const errorMessage =
+				error instanceof Error
+					? error.message
+					: "Failed to load deck information";
+			toast({
+				title: "Error",
+				description: errorMessage,
+				variant: "destructive",
+			});
+		},
+		[toast],
+	);
 
 	// Fetch flashcards for this specific deck
 	const {
@@ -123,7 +129,7 @@ export default function ManageDeckPage({
 		if (flashcardsError) {
 			handleDeckError(flashcardsError);
 		}
-	}, [flashcardsError]);
+	}, [flashcardsError, handleDeckError]);
 
 	// Mutations for flashcard operations
 	const createFlashcard = api.flashcard.createFlashcard.useMutation({

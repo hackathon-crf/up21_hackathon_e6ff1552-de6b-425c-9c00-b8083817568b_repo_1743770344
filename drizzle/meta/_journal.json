@@ -1,48 +1,48 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1743981935422,
-      "tag": "0000_cuddly_cardiac",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1744243674046,
-      "tag": "0001_cooing_stephen_strange",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1744411097961,
-      "tag": "0002_amazing_captain_marvel",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1744453664370,
-      "tag": "0003_melodic_justin_hammer",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1744460649124,
-      "tag": "0004_adorable_captain_universe",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1745168667088,
-      "tag": "0005_supreme_mystique",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "postgresql",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "7",
+			"when": 1743981935422,
+			"tag": "0000_cuddly_cardiac",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1744243674046,
+			"tag": "0001_cooing_stephen_strange",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1744411097961,
+			"tag": "0002_amazing_captain_marvel",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1744453664370,
+			"tag": "0003_melodic_justin_hammer",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "7",
+			"when": 1744460649124,
+			"tag": "0004_adorable_captain_universe",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "7",
+			"when": 1745168667088,
+			"tag": "0005_supreme_mystique",
+			"breakpoints": true
+		}
+	]
 }

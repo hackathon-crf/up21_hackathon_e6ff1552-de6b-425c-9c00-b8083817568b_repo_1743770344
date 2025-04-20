@@ -115,22 +115,22 @@ export default function LoginPage() {
 	}, [searchParams]);
 
 	// Function to add debug logs that will be visible on screen when debug=true
-	const addDebugLog = (message: string, data?: any) => {
-		const logEntry = `${new Date().toISOString()}: ${message}${data ? " " + JSON.stringify(data) : ""}`;
+	const addDebugLog = (message: string, data?: unknown) => {
+		const logEntry = `${new Date().toISOString()}: ${message}${data ? ` ${JSON.stringify(data)}` : ""}`;
 		setDebugLogs((prev) => [logEntry, ...prev.slice(0, 99)]);
 	};
 
 	// Enhanced logger that ensures visibility of critical logs
 	const logger = {
-		log: (message: string, data?: any) => {
+		log: (message: string, data?: unknown) => {
 			console.log(message, data);
 			if (debugMode) addDebugLog(`LOG: ${message}`, data);
 		},
-		error: (message: string, data?: any) => {
+		error: (message: string, data?: unknown) => {
 			console.error(message, data);
 			if (debugMode) addDebugLog(`ERROR: ${message}`, data);
 		},
-		critical: (message: string, data?: any) => {
+		critical: (message: string, data?: unknown) => {
 			// Use multiple console methods to maximize visibility
 			console.log(`%c${message}`, "color: red; font-weight: bold", data);
 			console.error(message, data);
@@ -172,7 +172,7 @@ export default function LoginPage() {
 			// If we have the real auth system available, use it
 			if (signIn) {
 				logger.log("🔒 AUTH UI [Login]: Attempting to sign in with Supabase", {
-					emailHint: data.email.substring(0, 3) + "...",
+					emailHint: `${data.email.substring(0, 3)}...`,
 				});
 
 				const authResult = await signIn(data.email, data.password);
@@ -346,10 +346,9 @@ export default function LoginPage() {
 
 					setIsLoading(false);
 					return;
-				} else {
-					// Reset counter after cooldown period
-					sessionStorage.setItem("registration_attempts", "1");
 				}
+				// Reset counter after cooldown period
+				sessionStorage.setItem("registration_attempts", "1");
 			}
 
 			// Record attempt timestamp
@@ -476,6 +475,7 @@ export default function LoginPage() {
 																{...field}
 															/>
 														</div>
+														_
 													</FormControl>
 													<FormMessage />
 												</FormItem>
@@ -569,7 +569,10 @@ export default function LoginPage() {
 											xmlns="http://www.w3.org/2000/svg"
 											viewBox="0 0 24 24"
 											fill="currentColor"
+											role="img"
+											aria-labelledby="googleIconTitle"
 										>
+											<title id="googleIconTitle">Google Logo</title>
 											<path
 												d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
 												fill="#4285F4"
@@ -600,7 +603,10 @@ export default function LoginPage() {
 											xmlns="http://www.w3.org/2000/svg"
 											viewBox="0 0 24 24"
 											fill="currentColor"
+											role="img"
+											aria-labelledby="githubIconTitle"
 										>
+											<title id="githubIconTitle">GitHub Logo</title>
 											<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
 										</svg>
 										GitHub
@@ -796,7 +802,12 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="checkIcon1Title"
 																		>
+																			<title id="checkIcon1Title">
+																				Check mark
+																			</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -811,7 +822,10 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="xIcon1Title"
 																		>
+																			<title id="xIcon1Title">X mark</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -832,7 +846,12 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="checkIcon2Title"
 																		>
+																			<title id="checkIcon2Title">
+																				Check mark
+																			</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -847,7 +866,10 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="xIcon2Title"
 																		>
+																			<title id="xIcon2Title">X mark</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -855,7 +877,7 @@ export default function LoginPage() {
 																			/>
 																		</svg>
 																	)}
-																	At least one uppercase letter (A-Z)
+																	At least one uppercase letter
 																</li>
 																<li
 																	className={`flex items-center gap-2 ${/[a-z]/.test(password) ? "text-green-500" : "text-red-500"}`}
@@ -868,7 +890,12 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="checkIcon3Title"
 																		>
+																			<title id="checkIcon3Title">
+																				Check mark
+																			</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -883,7 +910,10 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="xIcon3Title"
 																		>
+																			<title id="xIcon3Title">X mark</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -891,7 +921,7 @@ export default function LoginPage() {
 																			/>
 																		</svg>
 																	)}
-																	At least one lowercase letter (a-z)
+																	At least one lowercase letter
 																</li>
 																<li
 																	className={`flex items-center gap-2 ${/[0-9]/.test(password) ? "text-green-500" : "text-red-500"}`}
@@ -904,7 +934,12 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="checkIcon4Title"
 																		>
+																			<title id="checkIcon4Title">
+																				Check mark
+																			</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -919,7 +954,10 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="xIcon4Title"
 																		>
+																			<title id="xIcon4Title">X mark</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -927,7 +965,7 @@ export default function LoginPage() {
 																			/>
 																		</svg>
 																	)}
-																	At least one number (0-9)
+																	At least one number
 																</li>
 																<li
 																	className={`flex items-center gap-2 ${/[\W_]/.test(password) ? "text-green-500" : "text-red-500"}`}
@@ -940,7 +978,12 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="checkIcon5Title"
 																		>
+																			<title id="checkIcon5Title">
+																				Check mark
+																			</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -955,7 +998,10 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="xIcon5Title"
 																		>
+																			<title id="xIcon5Title">X mark</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -963,7 +1009,7 @@ export default function LoginPage() {
 																			/>
 																		</svg>
 																	)}
-																	At least one special character (!@#$%^&*)
+																	At least one special character
 																</li>
 																<li
 																	className={`flex items-center gap-2 ${!/\s/.test(password) ? "text-green-500" : "text-red-500"}`}
@@ -976,7 +1022,12 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="checkIcon6Title"
 																		>
+																			<title id="checkIcon6Title">
+																				Check mark
+																			</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -991,7 +1042,10 @@ export default function LoginPage() {
 																			fill="none"
 																			stroke="currentColor"
 																			strokeWidth="2"
+																			role="img"
+																			aria-labelledby="xIcon6Title"
 																		>
+																			<title id="xIcon6Title">X mark</title>
 																			<path
 																				strokeLinecap="round"
 																				strokeLinejoin="round"
@@ -999,7 +1053,7 @@ export default function LoginPage() {
 																			/>
 																		</svg>
 																	)}
-																	No spaces allowed
+																	No spaces
 																</li>
 															</ul>
 														</div>
@@ -1058,7 +1112,6 @@ export default function LoginPage() {
 												</FormItem>
 											)}
 										/>
-
 										<Button
 											type="submit"
 											className="w-full"
@@ -1069,18 +1122,18 @@ export default function LoginPage() {
 									</form>
 								</Form>
 
-								<div className="relative mt-2">
+								<div className="relative mt-6">
 									<div className="absolute inset-0 flex items-center">
 										<Separator className="w-full" />
 									</div>
 									<div className="relative flex justify-center text-xs uppercase">
 										<span className="bg-card px-2 text-muted-foreground">
-											or sign up with
+											or register with
 										</span>
 									</div>
 								</div>
 
-								<div className="mt-4 grid grid-cols-2 gap-4">
+								<div className="mt-6 grid grid-cols-2 gap-4">
 									<Button
 										type="button"
 										variant="outline"
@@ -1092,7 +1145,10 @@ export default function LoginPage() {
 											xmlns="http://www.w3.org/2000/svg"
 											viewBox="0 0 24 24"
 											fill="currentColor"
+											role="img"
+											aria-labelledby="googleIconTitle2"
 										>
+											<title id="googleIconTitle2">Google Logo</title>
 											<path
 												d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
 												fill="#4285F4"
@@ -1123,7 +1179,10 @@ export default function LoginPage() {
 											xmlns="http://www.w3.org/2000/svg"
 											viewBox="0 0 24 24"
 											fill="currentColor"
+											role="img"
+											aria-labelledby="githubIconTitle2"
 										>
+											<title id="githubIconTitle2">GitHub Logo</title>
 											<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
 										</svg>
 										GitHub
@@ -1131,117 +1190,111 @@ export default function LoginPage() {
 								</div>
 							</CardContent>
 
-							<CardFooter className="text-center">
+							<CardFooter>
 								<p className="w-full text-center text-muted-foreground text-sm">
-									Already have an account?{" "}
+									Don't have an account?{" "}
 									<Link
 										href="#"
 										className="text-primary underline hover:no-underline"
 										onClick={(e) => {
 											e.preventDefault();
 											document
-												.querySelector('[data-value="login"]')
+												.querySelector('[data-value="register"]')
 												?.dispatchEvent(
 													new MouseEvent("click", { bubbles: true }),
 												);
 										}}
 									>
-										Login
+										Register
 									</Link>
 								</p>
-							</CardFooter>
-
-							<CardFooter className="text-center text-sm">
-								By creating an account, you agree to our{" "}
-								<Link href="#" className="text-primary hover:underline">
-									Terms of Service
-								</Link>{" "}
-								and{" "}
-								<Link href="#" className="text-primary hover:underline">
-									Privacy Policy
-								</Link>
 							</CardFooter>
 						</Card>
 					</TabsContent>
 				</Tabs>
-			</div>
 
-			{/* Render debug logs panel when debug mode is active */}
-			{debugMode && (
-				<div
-					className="fixed right-4 bottom-4 z-50 max-h-[50vh] max-w-md overflow-y-auto rounded bg-black/90 p-4 text-white shadow-lg"
-					style={{ fontSize: "12px", fontFamily: "monospace" }}
-				>
-					<div className="mb-2 flex items-center justify-between">
-						<h4 className="font-bold">Auth Debug Logs</h4>
-						<button
-							onClick={() => setDebugLogs([])}
-							className="rounded bg-gray-700 px-2 py-1 text-xs hover:bg-gray-600"
-						>
-							Clear
-						</button>
-					</div>
-
-					<div className="space-y-1">
-						{debugLogs.map((log, i) => (
-							<div
-								key={i}
-								className={cn(
-									"whitespace-pre-wrap break-all",
-									log.includes("CRITICAL") ? "text-red-400" : "",
-									log.includes("ERROR") ? "text-yellow-400" : "",
-								)}
+				{/* Debug Panel (Only visible when ?debug=true) */}
+				{debugMode && (
+					<div className="mt-6 rounded border border-gray-700 bg-gray-950/50 p-4 text-xs">
+						<div className="mb-2 flex items-center justify-between">
+							<h4 className="font-bold">Auth Debug Logs</h4>
+							<button
+								type="button"
+								onClick={() => setDebugLogs([])}
+								className="rounded bg-gray-700 px-2 py-1 text-xs hover:bg-gray-600"
 							>
-								{log}
+								Clear
+							</button>
+						</div>
+						<div className="h-40 overflow-auto rounded bg-gray-900 p-2">
+							<div className="space-y-1">
+								{debugLogs.map((log) => {
+									// Extract timestamp to use as part of the unique key
+									const timestamp = log.substring(0, log.indexOf(":"));
+									const logDigest = log.substring(0, 20).replace(/\s+/g, "");
+									return (
+										<div
+											key={`debug-${timestamp}-${logDigest}`}
+											className={cn(
+												"whitespace-pre-wrap break-all",
+												log.includes("CRITICAL:") && "text-red-400",
+												log.includes("ERROR:") && "text-yellow-400",
+											)}
+										>
+											{log}
+										</div>
+									);
+								})}
 							</div>
-						))}
+						</div>
 
-						{debugLogs.length === 0 && (
-							<p className="text-gray-400 italic">No logs yet</p>
-						)}
-					</div>
-
-					{/* Show critical logs from localStorage for persistence across page loads */}
-					{(() => {
-						try {
-							const storedLogs =
-								typeof localStorage !== "undefined"
-									? JSON.parse(
-											localStorage.getItem("auth_critical_logs") || "[]",
-										)
-									: [];
-
-							if (storedLogs.length > 0) {
-								return (
-									<div className="mt-4 border-gray-700 border-t pt-2">
-										<h5 className="mb-2 font-bold text-xs">
-											Persisted Critical Logs
-										</h5>
+						<div className="mt-4">
+							<h5 className="mb-1 font-semibold">Recent Critical Issues</h5>
+							{(() => {
+								try {
+									const storedLogs = JSON.parse(
+										localStorage.getItem("auth_critical_logs") || "[]",
+									);
+									return (
 										<div className="space-y-1 text-red-400">
-											{storedLogs.slice(0, 5).map((log: any, i: number) => (
-												<div
-													key={`crit-${i}`}
-													className="whitespace-pre-wrap break-all"
-												>
-													{log.timestamp}: {log.message}
+											{storedLogs.slice(0, 5).map(
+												(log: {
+													timestamp: string;
+													message: string;
+													data: unknown;
+												}) => {
+													// Create a unique key using timestamp and message digest
+													const uniqueKey = `${log.timestamp}-${log.message.substring(0, 10).replace(/\s+/g, "")}`;
+													return (
+														<div
+															key={`crit-log-${uniqueKey}`}
+															className="whitespace-pre-wrap break-all"
+														>
+															[{new Date(log.timestamp).toLocaleTimeString()}]{" "}
+															{log.message}
+														</div>
+													);
+												},
+											)}
+											{storedLogs.length === 0 && (
+												<div className="text-gray-500">
+													No critical issues recorded
 												</div>
-											))}
-											{storedLogs.length > 5 && (
-												<p className="text-gray-400 text-xs">
-													+ {storedLogs.length - 5} more logs stored
-												</p>
 											)}
 										</div>
-									</div>
-								);
-							}
-							return null;
-						} catch (e) {
-							return <p className="text-red-400">Error loading stored logs</p>;
-						}
-					})()}
-				</div>
-			)}
+									);
+								} catch (e) {
+									return (
+										<div className="text-yellow-500">
+											Error retrieving stored logs: {String(e)}
+										</div>
+									);
+								}
+							})()}
+						</div>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }

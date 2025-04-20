@@ -286,7 +286,7 @@ const PlayerListComponent = ({
 
 	return (
 		<Card className={cn("", className)}>
-			<CardHeader className="p-4 pt-0 pb-0 pb-2">
+			<CardHeader className="p-4 pt-0 pb-2">
 				<div className="flex items-center justify-between">
 					<div>
 						<CardTitle className="text-base">{title}</CardTitle>
@@ -340,7 +340,7 @@ const PlayerListMemo = memo(PlayerListComponent, (prevProps, nextProps) => {
 			const nextPlayer = nextProps.players[index];
 			// Safe check if nextPlayer exists (TypeScript safety)
 			if (!nextPlayer) return false;
-			
+
 			return (
 				player.id === nextPlayer.id &&
 				player.name === nextPlayer.name &&

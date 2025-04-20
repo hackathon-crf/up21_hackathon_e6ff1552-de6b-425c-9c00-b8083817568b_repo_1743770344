@@ -7,7 +7,7 @@ import { env } from "~/env";
 function logAuthEvent(
 	level: "info" | "warn" | "error" | "critical",
 	message: string,
-	data?: any,
+	data?: unknown,
 ) {
 	const timestamp = new Date().toISOString();
 	const prefix =
@@ -124,7 +124,7 @@ export async function GET(request: Request) {
 		// Success case
 		logAuthEvent("info", "Authentication successful", {
 			userId: user.id,
-			email: user.email?.substring(0, 3) + "...",
+			email: `${user.email?.substring(0, 3)}...`,
 		});
 
 		return NextResponse.json(
@@ -133,7 +133,7 @@ export async function GET(request: Request) {
 				user: {
 					id: user.id,
 					email: user.email,
-					emailConfirmed: user.email_confirmed_at ? true : false,
+					emailConfirmed: !!user.email_confirmed_at,
 				},
 				session: {
 					expires: session.expires_at
