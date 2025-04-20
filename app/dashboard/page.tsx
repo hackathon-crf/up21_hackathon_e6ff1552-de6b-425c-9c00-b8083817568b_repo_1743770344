@@ -6,6 +6,7 @@ import {
 	Clock,
 	Gamepad2,
 	Heart,
+	Loader2,
 	MessageSquare,
 	Shield,
 	Stethoscope,
@@ -13,6 +14,7 @@ import {
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
+import { useAuth } from "~/components/auth/AuthProvider";
 import { DashboardHeader } from "~/components/dashboard-header";
 import { Button } from "~/components/ui/button";
 import {
@@ -24,15 +26,18 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import { Progress } from "~/components/ui/progress";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { createBrowserClient } from "~/lib/supabase";
 import {
+	fetchDashboardData,
 	type Activity as ActivityType,
-	type Certification,
+	type DashboardData,
 	type LearningProgress,
 	type Recommendation,
 	type UpcomingReview,
-	dashboardData,
-} from "./mock-data";
+	type WeeklyProgressData
+} from "~/lib/services/dashboard";
 
 // Dynamically import the DashboardChart with no SSR to prevent hydration issues
 const DynamicDashboardChart = dynamic(
@@ -44,23 +49,40 @@ const DynamicDashboardChart = dynamic(
 );
 
 export default function DashboardPage() {
-	// State to ensure client-side rendering for data-dependent components
+	// State for client-side rendering and dashboard data
 	const [isClient, setIsClient] = useState(false);
+	const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+	const [dataLoading, setDataLoading] = useState(true);
+	
+	// Use the AuthProvider's context instead of creating a separate auth state
+	const { user, isLoading: authLoading } = useAuth();
 
 	useEffect(() => {
 		setIsClient(true);
-	}, []);
-
-	// Get data from our mock data source
-	const {
-		summaryCards,
-		weeklyProgress,
-		learningProgress,
-		upcomingReviews,
-		certifications,
-		recentActivity,
-		trainingRecommendations,
-	} = dashboardData;
+		
+		// Only fetch dashboard data if we have a user
+		const fetchData = async () => {
+			if (!user?.id) return;
+			
+			try {
+				setDataLoading(true);
+				console.log("Fetching dashboard data for user:", user.id);
+				const data = await fetchDashboardData(user.id);
+				setDashboardData(data);
+			} catch (error) {
+				console.error("Failed to fetch dashboard data:", error);
+			} finally {
+				setDataLoading(false);
+			}
+		};
+		
+		// When auth state changes and we have a user, fetch data
+		if (user?.id) {
+			fetchData();
+		} else {
+			setDataLoading(false);
+		}
+	}, [user]);
 
 	// Helper function to render the appropriate icon
 	const renderIcon = (iconName: string) => {
@@ -77,315 +99,364 @@ export default function DashboardPage() {
 				return <Gamepad2 className="h-4 w-4 text-primary" />;
 			case "message-square":
 				return <MessageSquare className="h-4 w-4 text-primary" />;
+			case "activity":
 			default:
-				return <Shield className="h-4 w-4 text-primary" />;
+				return <Activity className="h-4 w-4 text-muted-foreground" />;
 		}
 	};
 
-	return (
-		<div className="flex min-h-screen flex-col">
-			<DashboardHeader
-				title="Dashboard"
-				description="Welcome back! Here's an overview of your training progress."
-			/>
-
-			<main className="flex-1 space-y-6 p-6">
-				<div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="font-medium text-sm">
-								Training Streak
-							</CardTitle>
-							<Activity className="h-4 w-4 text-muted-foreground" />
+	// If user is not logged in
+	if (isClient && !authLoading && !user) {
+		return (
+			<div className="container">
+				<DashboardHeader
+					title="Dashboard"
+					description="Welcome to your Red Cross Training dashboard. Please log in to view your personalized dashboard."
+				/>
+				<div className="flex items-center justify-center h-[50vh]">
+					<Card className="w-full max-w-md">
+						<CardHeader>
+							<CardTitle>Authentication Required</CardTitle>
+							<CardDescription>
+								Please log in to access your dashboard
+							</CardDescription>
 						</CardHeader>
-						<CardContent>
-							<div className="font-bold text-2xl">
-								{summaryCards.trainingStreak.value} days
-							</div>
-							<p className="text-muted-foreground text-xs">
-								{summaryCards.trainingStreak.changeText}
-							</p>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="font-medium text-sm">
-								Cards Reviewed
-							</CardTitle>
-							<BookOpen className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="font-bold text-2xl">
-								{summaryCards.cardsReviewed.value}
-							</div>
-							<p className="text-muted-foreground text-xs">
-								{summaryCards.cardsReviewed.changeText}
-							</p>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="font-medium text-sm">Game Score</CardTitle>
-							<Gamepad2 className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="font-bold text-2xl">
-								{summaryCards.gameScore.value}%
-							</div>
-							<p className="text-muted-foreground text-xs">
-								{summaryCards.gameScore.changeText}
-							</p>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="font-medium text-sm">AI Chats</CardTitle>
-							<MessageSquare className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="font-bold text-2xl">
-								{summaryCards.aiChats.value}
-							</div>
-							<p className="text-muted-foreground text-xs">
-								{summaryCards.aiChats.changeText}
-							</p>
-						</CardContent>
+						<CardFooter>
+							<Button asChild className="w-full">
+								<a href="/auth/login">Log In</a>
+							</Button>
+						</CardFooter>
 					</Card>
 				</div>
+			</div>
+		);
+	}
 
-				<Tabs defaultValue="progress" className="space-y-4">
-					<TabsList>
-						<TabsTrigger value="progress">Learning Progress</TabsTrigger>
-						<TabsTrigger value="upcoming">Upcoming Reviews</TabsTrigger>
-						<TabsTrigger value="certifications">Certifications</TabsTrigger>
-					</TabsList>
-					<TabsContent value="progress" className="space-y-4">
+	// Loading state
+	if (!isClient || authLoading || dataLoading || !dashboardData) {
+		return (
+			<div className="container">
+				<DashboardHeader
+					title="Dashboard"
+					description="Your Red Cross Training dashboard is loading..."
+				/>
+				<div className="flex flex-col items-center justify-center space-y-4 py-6">
+					<Loader2 className="h-12 w-12 animate-spin text-primary" />
+					<p>Loading your dashboard data...</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Destructure the data with safe fallbacks
+	const {
+		summaryCards,
+		weeklyProgress = [],
+		learningProgress = [],
+		upcomingReviews = [],
+		recentActivity = [],
+		trainingRecommendations = [],
+	} = dashboardData;
+
+	return (
+		<div className="container">
+			<DashboardHeader
+				title="Welcome to Your Dashboard"
+				description="Track your progress and get personalized training recommendations"
+			/>
+
+			<Tabs defaultValue="overview" className="space-y-4">
+				<TabsList>
+					<TabsTrigger value="overview">Overview</TabsTrigger>
+					<TabsTrigger value="activity">Activity</TabsTrigger>
+					<TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+				</TabsList>
+
+				<TabsContent value="overview" className="space-y-4">
+					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 						<Card>
-							<CardHeader className="flex flex-col items-start justify-between sm:flex-row sm:items-center">
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">
+									Training Streak
+								</CardTitle>
+								<Clock className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{summaryCards.trainingStreak.value} days
+								</div>
+								<p className="text-xs text-muted-foreground">
+									{summaryCards.trainingStreak.changeText}
+								</p>
+							</CardContent>
+						</Card>
+
+						<Card>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">
+									Cards Reviewed
+								</CardTitle>
+								<BookOpen className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{summaryCards.cardsReviewed.value}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									{summaryCards.cardsReviewed.changeText}
+								</p>
+							</CardContent>
+						</Card>
+
+						<Card>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">
+									Game Score Average
+								</CardTitle>
+								<Gamepad2 className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{summaryCards.gameScore.value}%
+								</div>
+								<p className="text-xs text-muted-foreground">
+									{summaryCards.gameScore.changeText}
+								</p>
+							</CardContent>
+						</Card>
+
+						<Card>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-sm font-medium">
+									AI Chat Sessions
+								</CardTitle>
+								<MessageSquare className="h-4 w-4 text-muted-foreground" />
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{summaryCards.aiChats.value}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									{summaryCards.aiChats.changeText}
+								</p>
+							</CardContent>
+						</Card>
+					</div>
+
+					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+						<Card className="col-span-4">
+							<CardHeader>
 								<div>
-									<CardTitle>Weekly Progress</CardTitle>
+									<CardTitle>Weekly Training Progress</CardTitle>
 									<CardDescription>
 										Your training activity over the past 7 days
 									</CardDescription>
 								</div>
 							</CardHeader>
 							<CardContent className="h-64 sm:h-80">
-								{isClient && <DynamicDashboardChart data={weeklyProgress} />}
+								{isClient && weeklyProgress?.length > 0 && (
+									<DynamicDashboardChart data={weeklyProgress} />
+								)}
 							</CardContent>
 						</Card>
 
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-							{learningProgress.map((course: LearningProgress) => (
-								<Card key={course.id}>
-									<CardHeader className="pb-2">
-										<CardTitle className="font-medium text-sm">
-											{course.title}
+						<div className="col-span-3 grid grid-cols-1 gap-4">
+							{learningProgress.length > 0 ? (
+								learningProgress.map((course: LearningProgress) => (
+									<Card key={course.id}>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">
+												{course.title}
+											</CardTitle>
+										</CardHeader>
+										<CardContent className="pb-2">
+											<div className="flex items-center justify-between">
+												<Progress value={course.progress} className="h-2" />
+												<span className="ml-2 text-sm text-muted-foreground">
+													{course.progress}%
+												</span>
+											</div>
+										</CardContent>
+										<CardFooter className="pt-0">
+											<div className="flex w-full items-center justify-between">
+												<p className="text-xs text-muted-foreground">
+													{course.dueCards} cards due for review
+												</p>
+												<Button variant="outline" size="sm">
+													Study
+												</Button>
+											</div>
+										</CardFooter>
+									</Card>
+								))
+							) : (
+								<Card>
+									<CardHeader>
+										<CardTitle className="text-sm font-medium">
+											No Learning Progress Yet
 										</CardTitle>
 									</CardHeader>
-									<CardContent className="space-y-2">
-										<div className="space-y-1">
-											<div className="flex items-center justify-between text-sm">
-												<span>Progress</span>
-												<span className="font-medium">{course.progress}%</span>
-											</div>
-											<Progress value={course.progress} className="h-2" />
-										</div>
-										<div className="text-muted-foreground text-xs">
-											{course.dueCards} cards due today
-										</div>
+									<CardContent>
+										<p className="text-sm text-muted-foreground">
+											Start your first flashcard deck to track progress here
+										</p>
 									</CardContent>
 									<CardFooter>
-										<Button size="sm" className="w-full">
-											<BookOpen className="mr-2 h-4 w-4" />
-											Study Now
+										<Button asChild variant="outline" size="sm">
+											<a href="/flashcards">Get Started</a>
 										</Button>
 									</CardFooter>
 								</Card>
-							))}
+							)}
 						</div>
-					</TabsContent>
+					</div>
 
-					<TabsContent value="upcoming" className="space-y-4">
-						<Card>
+					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+						<Card className="col-span-3">
 							<CardHeader>
 								<CardTitle>Upcoming Reviews</CardTitle>
 								<CardDescription>
-									Cards scheduled for review in the next few days
+									Spaced repetition schedule for optimal learning
 								</CardDescription>
 							</CardHeader>
-							<CardContent>
-								<div className="space-y-4">
-									{upcomingReviews.map(
-										(review: UpcomingReview, index: number) => (
+							<CardContent className="pb-2">
+								{upcomingReviews.length > 0 ? (
+									<div className="space-y-4">
+										{upcomingReviews.map((review: UpcomingReview, i) => (
 											<div
-												key={review.period} // Using period as a unique key
 												className="flex items-center justify-between"
+												key={`review-${i}`}
 											>
-												<div className="flex items-center space-x-4">
-													<div className="rounded-full bg-primary/10 p-2">
-														<Clock className="h-5 w-5 text-primary" />
-													</div>
-													<div>
-														<p className="font-medium text-sm">
-															{review.period}
-														</p>
-														<p className="text-muted-foreground text-xs">
-															{review.dueCards} cards due
-														</p>
-													</div>
+												<div>
+													<p className="font-medium">{review.period}</p>
+													<p className="text-sm text-muted-foreground">
+														{review.dueCards} cards due
+													</p>
 												</div>
-												<Button size="sm" variant={review.actionVariant}>
+												<Button variant={review.actionVariant as any} size="sm">
 													{review.actionText}
 												</Button>
 											</div>
-										),
-									)}
-								</div>
+										))}
+									</div>
+								) : (
+									<div className="py-4 text-center text-sm text-muted-foreground">
+										No upcoming reviews scheduled
+									</div>
+								)}
 							</CardContent>
 						</Card>
-					</TabsContent>
 
-					<TabsContent value="certifications" className="space-y-4">
-						<Card>
+						<Card className="col-span-4">
 							<CardHeader>
-								<CardTitle>Your Certifications</CardTitle>
+								<CardTitle>Recent Activity</CardTitle>
 								<CardDescription>
-									Track your Red Cross certifications and renewals
+									Your latest training sessions and interactions
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
-								<div className="space-y-4">
-									{certifications.map((cert: Certification, index: number) => {
-										// Determine the icon based on the cert.icon property
-										let IconComponent: React.ElementType;
-										if (cert.icon === "heart") IconComponent = Heart;
-										else if (cert.icon === "shield") IconComponent = Shield;
-										else if (cert.icon === "stethoscope")
-											IconComponent = Stethoscope;
-										else IconComponent = Shield;
-
-										// Determine color classes based on status
-										const bgColorClass =
-											cert.color === "green"
-												? "bg-green-100 dark:bg-green-900"
-												: cert.color === "yellow"
-													? "bg-yellow-100 dark:bg-yellow-900"
-													: "bg-red-100 dark:bg-red-900";
-
-										const textColorClass =
-											cert.color === "green"
-												? "text-green-600 dark:text-green-400"
-												: cert.color === "yellow"
-													? "text-yellow-600 dark:text-yellow-400"
-													: "text-red-600 dark:text-red-400";
-
-										return (
+								{recentActivity.length > 0 ? (
+									<div className="space-y-5">
+										{recentActivity.map((activity: ActivityType, index: number) => (
 											<div
-												key={cert.title} // Using title as a unique key since titles should be unique
-												className="flex items-center justify-between"
+												className="flex items-start space-x-3"
+												key={`activity-${index}`}
 											>
-												<div className="flex items-center space-x-4">
-													<div className={`p-2 ${bgColorClass} rounded-full`}>
-														<IconComponent
-															className={`h-5 w-5 ${textColorClass}`}
-														/>
-													</div>
-													<div>
-														<p className="font-medium text-sm">{cert.title}</p>
-														<p className="text-muted-foreground text-xs">
-															{cert.validUntil}
-														</p>
-													</div>
+												<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+													{renderIcon(activity.icon)}
 												</div>
-												<Button
-													size="sm"
-													variant={
-														cert.status === "expiring" ? "default" : "outline"
-													}
-												>
-													{cert.status === "expiring"
-														? "Renew Now"
-														: "View Certificate"}
-												</Button>
+												<div>
+													<p className="text-sm leading-snug">
+														{activity.activity}
+													</p>
+													<p className="text-xs text-muted-foreground">
+														{activity.timestamp}
+													</p>
+												</div>
 											</div>
-										);
-									})}
-								</div>
-							</CardContent>
-							<CardFooter>
-								<Button variant="outline" className="w-full">
-									View All Certifications
-								</Button>
-							</CardFooter>
-						</Card>
-					</TabsContent>
-				</Tabs>
-
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-					<Card>
-						<CardHeader>
-							<CardTitle>Recent Activity</CardTitle>
-							<CardDescription>Your recent training activities</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-4">
-								{recentActivity.map((activity: ActivityType, index: number) => (
-									<div
-										key={`${activity.activity}-${activity.timestamp}`}
-										className="flex items-start space-x-4"
-									>
-										<div className="rounded-full bg-primary/10 p-2">
-											{renderIcon(activity.icon)}
-										</div>
-										<div className="space-y-1">
-											<p className="font-medium text-sm">{activity.activity}</p>
-											<p className="text-muted-foreground text-xs">
-												{activity.timestamp}
-											</p>
-										</div>
+										))}
 									</div>
-								))}
-							</div>
-						</CardContent>
-					</Card>
+								) : (
+									<div className="py-4 text-center text-sm text-muted-foreground">
+										No recent activity to display
+									</div>
+								)}
+							</CardContent>
+						</Card>
+					</div>
+				</TabsContent>
 
+				<TabsContent value="activity" className="space-y-4">
 					<Card>
 						<CardHeader>
-							<CardTitle>Training Recommendations</CardTitle>
+							<CardTitle>All Activity</CardTitle>
 							<CardDescription>
-								Personalized suggestions based on your progress
+								A comprehensive view of your training history
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<div className="space-y-4">
-								{trainingRecommendations.map(
-									(recommendation: Recommendation, index: number) => (
+							{recentActivity.length > 0 ? (
+								<div className="space-y-6">
+									{recentActivity.map((activity: ActivityType, index: number) => (
 										<div
-											key={recommendation.title}
 											className="flex items-start space-x-4"
+											key={`full-activity-${index}`}
 										>
-											<div className="rounded-full bg-accent/10 p-2">
-												{renderIcon(recommendation.icon)}
+											<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+												{renderIcon(activity.icon)}
 											</div>
-											<div className="space-y-1">
-												<p className="font-medium text-sm">
-													{recommendation.title}
+											<div className="flex-1 space-y-1">
+												<p className="text-sm font-medium leading-none">
+													{activity.activity}
 												</p>
-												<p className="text-muted-foreground text-xs">
-													{recommendation.description}
+												<p className="text-sm text-muted-foreground">
+													{activity.timestamp}
 												</p>
 											</div>
+											<Button variant="ghost" size="sm">
+												Details
+											</Button>
 										</div>
-									),
-								)}
-							</div>
+									))}
+								</div>
+							) : (
+								<div className="py-8 text-center">
+									<MessageSquare className="mx-auto h-10 w-10 text-muted-foreground" />
+									<h3 className="mt-4 text-lg font-medium">No activity yet</h3>
+									<p className="text-sm text-muted-foreground">
+										Start using the app to see your activity history here
+									</p>
+								</div>
+							)}
 						</CardContent>
-						<CardFooter>
-							<Button className="w-full">View All Recommendations</Button>
-						</CardFooter>
 					</Card>
-				</div>
-			</main>
+				</TabsContent>
+
+				<TabsContent value="recommendations" className="space-y-4">
+					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+						{trainingRecommendations.map(
+							(recommendation: Recommendation, index: number) => (
+								<Card key={`rec-${index}`} className="flex flex-col">
+									<CardHeader>
+										<div className="flex items-center space-x-2">
+											{renderIcon(recommendation.icon)}
+											<CardTitle className="text-lg">
+												{recommendation.title}
+											</CardTitle>
+										</div>
+										<CardDescription>
+											{recommendation.description}
+										</CardDescription>
+									</CardHeader>
+									<CardFooter className="mt-auto">
+										<Button className="w-full">Begin Training</Button>
+									</CardFooter>
+								</Card>
+							),
+						)}
+					</div>
+				</TabsContent>
+			</Tabs>
 		</div>
 	);
 }

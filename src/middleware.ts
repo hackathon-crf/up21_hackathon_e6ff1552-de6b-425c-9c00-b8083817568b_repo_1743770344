@@ -62,9 +62,21 @@ export async function middleware(request: NextRequest) {
 	}
 
 	// Auth routes - redirect to dashboard if already authenticated
-	const authRoutes = ["/login", "/signup", "/forgot-password"];
+	const authRoutes = ["/login", "/signup", "/forgot-password", "/auth/login"];
 
 	if (authRoutes.includes(path) && user) {
+		return NextResponse.redirect(new URL("/dashboard", request.url));
+	}
+	
+	// Also check if path starts with any auth path patterns (for nested auth routes)
+	if ((path.startsWith("/auth/") || path.startsWith("/login/")) && user) {
+		console.log("Authenticated user trying to access auth route, redirecting to dashboard");
+		return NextResponse.redirect(new URL("/dashboard", request.url));
+	}
+	
+	// Also redirect authenticated users from root path to dashboard
+	if (path === "/" && user) {
+		console.log("Authenticated user at root path, redirecting to dashboard");
 		return NextResponse.redirect(new URL("/dashboard", request.url));
 	}
 

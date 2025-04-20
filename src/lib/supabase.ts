@@ -21,6 +21,9 @@ export const createBrowserClient = () => {
 			auth: {
 				persistSession: true,
 				autoRefreshToken: true,
+				detectSessionInUrl: true,
+				flowType: 'pkce',
+				storageKey: 'supabase-auth',
 			},
 		},
 	);

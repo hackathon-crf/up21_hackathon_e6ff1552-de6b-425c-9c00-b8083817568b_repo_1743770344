@@ -9,6 +9,7 @@ export interface WeeklyProgressData {
 	cards: number;
 	games: number;
 	chat: number;
+	[key: string]: string | number;
 }
 
 export interface LearningProgress {
@@ -29,15 +30,6 @@ export interface UpcomingReview {
 		| "destructive"
 		| "ghost"
 		| "link";
-}
-
-export interface Certification {
-	id: number;
-	title: string;
-	validUntil: string;
-	status: "valid" | "expiring" | "expired";
-	color: "green" | "yellow" | "red";
-	icon: "heart" | "shield" | "stethoscope";
 }
 
 export interface Activity {
@@ -62,7 +54,6 @@ export interface DashboardData {
 	weeklyProgress: WeeklyProgressData[];
 	learningProgress: LearningProgress[];
 	upcomingReviews: UpcomingReview[];
-	certifications: Certification[];
 	recentActivity: Activity[];
 	trainingRecommendations: Recommendation[];
 }
@@ -144,38 +135,6 @@ export const dashboardData: DashboardData = {
 		},
 	],
 
-	// Certifications data
-	certifications: [
-		{
-			title: "Basic Life Support",
-			validUntil: "Valid until Apr 2026",
-			status: "valid",
-			color: "green",
-			icon: "heart",
-		},
-		{
-			title: "First Aid",
-			validUntil: "Valid until Jun 2025",
-			status: "valid",
-			color: "green",
-			icon: "shield",
-		},
-		{
-			title: "Emergency Medical Response",
-			validUntil: "Expires in 45 days",
-			status: "expiring",
-			color: "yellow",
-			icon: "stethoscope",
-		},
-		{
-			title: "Wilderness First Aid",
-			validUntil: "Expired Jan 2025",
-			status: "expired",
-			color: "red",
-			icon: "shield",
-		},
-	],
-
 	// Recent activity data
 	recentActivity: [
 		{
@@ -209,7 +168,7 @@ export const dashboardData: DashboardData = {
 		},
 		{
 			title: "Mass Casualty Incident Training",
-			description: "Popular among users with similar certifications",
+			description: "Popular among users with similar experience",
 			icon: "shield",
 		},
 		{

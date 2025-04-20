@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type React from "react";
 import "./globals.css";
 import { AppSidebar } from "~/components/app-sidebar";
+import { AuthProvider } from "~/components/auth/AuthProvider";
 import { ThemeProvider } from "~/components/theme-provider";
 import { Toaster } from "~/components/ui/toaster";
 import { TooltipProvider } from "~/components/ui/tooltip";
@@ -32,18 +33,20 @@ export default function RootLayout({
 						enableSystem
 						disableTransitionOnChange
 					>
-						{/* Add a global TooltipProvider to prevent nested tooltip providers causing render loops */}
-						<TooltipProvider delayDuration={300}>
-							{isAuthPage ? (
-								<main className="w-full">{children}</main>
-							) : (
-								<div className="flex h-screen">
-									<AppSidebar />
-									<main className="flex-1 overflow-auto">{children}</main>
-								</div>
-							)}
-						</TooltipProvider>
-						<Toaster />
+						<AuthProvider>
+							{/* Add a global TooltipProvider to prevent nested tooltip providers causing render loops */}
+							<TooltipProvider delayDuration={300}>
+								{isAuthPage ? (
+									<main className="w-full">{children}</main>
+								) : (
+									<div className="flex h-screen">
+										<AppSidebar />
+										<main className="flex-1 overflow-auto">{children}</main>
+									</div>
+								)}
+							</TooltipProvider>
+							<Toaster />
+						</AuthProvider>
 					</ThemeProvider>
 				</TRPCReactProvider>
 			</body>

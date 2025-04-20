@@ -171,28 +171,8 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 		env: process.env.NODE_ENV || "unknown",
 	});
 
-	// TEMPORARY: Skip auth check during development, but with a safer approach
+	// Always enforce authentication regardless of environment
 	if (!ctx.auth?.user) {
-		const isDevelopment = process.env.NODE_ENV === "development";
-
-		if (isDevelopment) {
-			console.log(
-				"[isAuthed middleware] No user found, bypassing auth check for development environment",
-			);
-			// Use a consistent mock user ID that's clearly for development
-			return next({
-				ctx: {
-					auth: {
-						user: {
-							id: `dev-user-${new Date().toISOString().slice(0, 10)}`,
-							email: "dev@example.com",
-							role: "user",
-						},
-						session: null,
-					},
-				},
-			});
-		}
 		console.log("[isAuthed middleware] No user found, authentication required");
 		throw new TRPCError({
 			code: "UNAUTHORIZED",

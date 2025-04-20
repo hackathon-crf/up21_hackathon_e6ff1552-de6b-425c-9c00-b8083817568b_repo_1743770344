@@ -201,7 +201,7 @@ export default function GameResultsPage({
 									</Button>
 									<Button>
 										<Download className="mr-2 h-4 w-4" />
-										Download Certificate
+										Download Results
 									</Button>
 								</CardFooter>
 							</Card>
