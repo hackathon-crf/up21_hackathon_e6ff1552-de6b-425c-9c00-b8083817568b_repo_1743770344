@@ -475,7 +475,6 @@ export default function LoginPage() {
 																{...field}
 															/>
 														</div>
-														_
 													</FormControl>
 													<FormMessage />
 												</FormItem>
