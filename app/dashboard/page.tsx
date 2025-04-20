@@ -28,16 +28,16 @@ import {
 import { Progress } from "~/components/ui/progress";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { createBrowserClient } from "~/lib/supabase";
 import {
-	fetchDashboardData,
 	type Activity as ActivityType,
 	type DashboardData,
 	type LearningProgress,
 	type Recommendation,
 	type UpcomingReview,
-	type WeeklyProgressData
+	type WeeklyProgressData,
+	fetchDashboardData,
 } from "~/lib/services/dashboard";
+import { createBrowserClient } from "~/lib/supabase";
 
 // Dynamically import the DashboardChart with no SSR to prevent hydration issues
 const DynamicDashboardChart = dynamic(
@@ -51,19 +51,21 @@ const DynamicDashboardChart = dynamic(
 export default function DashboardPage() {
 	// State for client-side rendering and dashboard data
 	const [isClient, setIsClient] = useState(false);
-	const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+	const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+		null,
+	);
 	const [dataLoading, setDataLoading] = useState(true);
-	
+
 	// Use the AuthProvider's context instead of creating a separate auth state
 	const { user, isLoading: authLoading } = useAuth();
 
 	useEffect(() => {
 		setIsClient(true);
-		
+
 		// Only fetch dashboard data if we have a user
 		const fetchData = async () => {
 			if (!user?.id) return;
-			
+
 			try {
 				setDataLoading(true);
 				console.log("Fetching dashboard data for user:", user.id);
@@ -75,7 +77,7 @@ export default function DashboardPage() {
 				setDataLoading(false);
 			}
 		};
-		
+
 		// When auth state changes and we have a user, fetch data
 		if (user?.id) {
 			fetchData();
@@ -113,7 +115,7 @@ export default function DashboardPage() {
 					title="Dashboard"
 					description="Welcome to your Red Cross Training dashboard. Please log in to view your personalized dashboard."
 				/>
-				<div className="flex items-center justify-center h-[50vh]">
+				<div className="flex h-[50vh] items-center justify-center">
 					<Card className="w-full max-w-md">
 						<CardHeader>
 							<CardTitle>Authentication Required</CardTitle>
@@ -176,16 +178,16 @@ export default function DashboardPage() {
 					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
+								<CardTitle className="font-medium text-sm">
 									Training Streak
 								</CardTitle>
 								<Clock className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">
+								<div className="font-bold text-2xl">
 									{summaryCards.trainingStreak.value} days
 								</div>
-								<p className="text-xs text-muted-foreground">
+								<p className="text-muted-foreground text-xs">
 									{summaryCards.trainingStreak.changeText}
 								</p>
 							</CardContent>
@@ -193,16 +195,16 @@ export default function DashboardPage() {
 
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
+								<CardTitle className="font-medium text-sm">
 									Cards Reviewed
 								</CardTitle>
 								<BookOpen className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">
+								<div className="font-bold text-2xl">
 									{summaryCards.cardsReviewed.value}
 								</div>
-								<p className="text-xs text-muted-foreground">
+								<p className="text-muted-foreground text-xs">
 									{summaryCards.cardsReviewed.changeText}
 								</p>
 							</CardContent>
@@ -210,16 +212,16 @@ export default function DashboardPage() {
 
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
+								<CardTitle className="font-medium text-sm">
 									Game Score Average
 								</CardTitle>
 								<Gamepad2 className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">
+								<div className="font-bold text-2xl">
 									{summaryCards.gameScore.value}%
 								</div>
-								<p className="text-xs text-muted-foreground">
+								<p className="text-muted-foreground text-xs">
 									{summaryCards.gameScore.changeText}
 								</p>
 							</CardContent>
@@ -227,16 +229,16 @@ export default function DashboardPage() {
 
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
+								<CardTitle className="font-medium text-sm">
 									AI Chat Sessions
 								</CardTitle>
 								<MessageSquare className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">
+								<div className="font-bold text-2xl">
 									{summaryCards.aiChats.value}
 								</div>
-								<p className="text-xs text-muted-foreground">
+								<p className="text-muted-foreground text-xs">
 									{summaryCards.aiChats.changeText}
 								</p>
 							</CardContent>
@@ -265,21 +267,21 @@ export default function DashboardPage() {
 								learningProgress.map((course: LearningProgress) => (
 									<Card key={course.id}>
 										<CardHeader className="pb-2">
-											<CardTitle className="text-sm font-medium">
+											<CardTitle className="font-medium text-sm">
 												{course.title}
 											</CardTitle>
 										</CardHeader>
 										<CardContent className="pb-2">
 											<div className="flex items-center justify-between">
 												<Progress value={course.progress} className="h-2" />
-												<span className="ml-2 text-sm text-muted-foreground">
+												<span className="ml-2 text-muted-foreground text-sm">
 													{course.progress}%
 												</span>
 											</div>
 										</CardContent>
 										<CardFooter className="pt-0">
 											<div className="flex w-full items-center justify-between">
-												<p className="text-xs text-muted-foreground">
+												<p className="text-muted-foreground text-xs">
 													{course.dueCards} cards due for review
 												</p>
 												<Button variant="outline" size="sm">
@@ -292,12 +294,12 @@ export default function DashboardPage() {
 							) : (
 								<Card>
 									<CardHeader>
-										<CardTitle className="text-sm font-medium">
+										<CardTitle className="font-medium text-sm">
 											No Learning Progress Yet
 										</CardTitle>
 									</CardHeader>
 									<CardContent>
-										<p className="text-sm text-muted-foreground">
+										<p className="text-muted-foreground text-sm">
 											Start your first flashcard deck to track progress here
 										</p>
 									</CardContent>
@@ -329,7 +331,7 @@ export default function DashboardPage() {
 											>
 												<div>
 													<p className="font-medium">{review.period}</p>
-													<p className="text-sm text-muted-foreground">
+													<p className="text-muted-foreground text-sm">
 														{review.dueCards} cards due
 													</p>
 												</div>
@@ -340,7 +342,7 @@ export default function DashboardPage() {
 										))}
 									</div>
 								) : (
-									<div className="py-4 text-center text-sm text-muted-foreground">
+									<div className="py-4 text-center text-muted-foreground text-sm">
 										No upcoming reviews scheduled
 									</div>
 								)}
@@ -357,27 +359,29 @@ export default function DashboardPage() {
 							<CardContent>
 								{recentActivity.length > 0 ? (
 									<div className="space-y-5">
-										{recentActivity.map((activity: ActivityType, index: number) => (
-											<div
-												className="flex items-start space-x-3"
-												key={`activity-${index}`}
-											>
-												<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-													{renderIcon(activity.icon)}
+										{recentActivity.map(
+											(activity: ActivityType, index: number) => (
+												<div
+													className="flex items-start space-x-3"
+													key={`activity-${index}`}
+												>
+													<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+														{renderIcon(activity.icon)}
+													</div>
+													<div>
+														<p className="text-sm leading-snug">
+															{activity.activity}
+														</p>
+														<p className="text-muted-foreground text-xs">
+															{activity.timestamp}
+														</p>
+													</div>
 												</div>
-												<div>
-													<p className="text-sm leading-snug">
-														{activity.activity}
-													</p>
-													<p className="text-xs text-muted-foreground">
-														{activity.timestamp}
-													</p>
-												</div>
-											</div>
-										))}
+											),
+										)}
 									</div>
 								) : (
-									<div className="py-4 text-center text-sm text-muted-foreground">
+									<div className="py-4 text-center text-muted-foreground text-sm">
 										No recent activity to display
 									</div>
 								)}
@@ -397,33 +401,35 @@ export default function DashboardPage() {
 						<CardContent>
 							{recentActivity.length > 0 ? (
 								<div className="space-y-6">
-									{recentActivity.map((activity: ActivityType, index: number) => (
-										<div
-											className="flex items-start space-x-4"
-											key={`full-activity-${index}`}
-										>
-											<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-												{renderIcon(activity.icon)}
+									{recentActivity.map(
+										(activity: ActivityType, index: number) => (
+											<div
+												className="flex items-start space-x-4"
+												key={`full-activity-${index}`}
+											>
+												<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+													{renderIcon(activity.icon)}
+												</div>
+												<div className="flex-1 space-y-1">
+													<p className="font-medium text-sm leading-none">
+														{activity.activity}
+													</p>
+													<p className="text-muted-foreground text-sm">
+														{activity.timestamp}
+													</p>
+												</div>
+												<Button variant="ghost" size="sm">
+													Details
+												</Button>
 											</div>
-											<div className="flex-1 space-y-1">
-												<p className="text-sm font-medium leading-none">
-													{activity.activity}
-												</p>
-												<p className="text-sm text-muted-foreground">
-													{activity.timestamp}
-												</p>
-											</div>
-											<Button variant="ghost" size="sm">
-												Details
-											</Button>
-										</div>
-									))}
+										),
+									)}
 								</div>
 							) : (
 								<div className="py-8 text-center">
 									<MessageSquare className="mx-auto h-10 w-10 text-muted-foreground" />
-									<h3 className="mt-4 text-lg font-medium">No activity yet</h3>
-									<p className="text-sm text-muted-foreground">
+									<h3 className="mt-4 font-medium text-lg">No activity yet</h3>
+									<p className="text-muted-foreground text-sm">
 										Start using the app to see your activity history here
 									</p>
 								</div>

@@ -335,13 +335,19 @@ const PlayerListMemo = memo(PlayerListComponent, (prevProps, nextProps) => {
 	// Very detailed comparison for debugging
 	const playerArraysEqual =
 		prevProps.players.length === nextProps.players.length &&
-		prevProps.players.every(
-			(player, index) =>
-				player.id === nextProps.players[index].id &&
-				player.name === nextProps.players[index].name &&
-				player.isReady === nextProps.players[index].isReady &&
-				player.status === nextProps.players[index].status,
-		);
+		prevProps.players.every((player, index) => {
+			// Get the corresponding player from next props
+			const nextPlayer = nextProps.players[index];
+			// Safe check if nextPlayer exists (TypeScript safety)
+			if (!nextPlayer) return false;
+			
+			return (
+				player.id === nextPlayer.id &&
+				player.name === nextPlayer.name &&
+				player.isReady === nextPlayer.isReady &&
+				player.status === nextPlayer.status
+			);
+		});
 
 	const arePropsEqual =
 		playerArraysEqual &&

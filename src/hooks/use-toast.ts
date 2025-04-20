@@ -20,7 +20,7 @@ type ToasterToast = Omit<ToastProps, "title" | "description"> & {
 
 // --- Add Promise Toast Types ---
 type ToastContentProps = {
-	title: React.ReactNode; 
+	title: React.ReactNode;
 	description?: React.ReactNode;
 };
 
@@ -146,15 +146,15 @@ interface Toast extends Omit<ToasterToast, "id"> {}
 
 // Define the return type of toast function
 type ToastReturn = {
-    id: string;
-    dismiss: () => void;
-    update: (props: ToasterToast) => void;
+	id: string;
+	dismiss: () => void;
+	update: (props: ToasterToast) => void;
 };
 
 // Define the Toast function with promise method
 interface ToastFunction {
-    (props: Toast): ToastReturn;
-    promise: typeof promise;
+	(props: Toast): ToastReturn;
+	promise: typeof promise;
 }
 
 // Create the toast function
@@ -222,9 +222,8 @@ async function promise<TData>(
 	try {
 		const data = await promise;
 		// Handle both function and object formats
-		const successProps = typeof props.success === 'function' 
-			? props.success(data) 
-			: props.success;
+		const successProps =
+			typeof props.success === "function" ? props.success(data) : props.success;
 		const duration = props.duration ?? TOAST_REMOVE_DELAY;
 
 		// Update to success toast
@@ -249,9 +248,8 @@ async function promise<TData>(
 		return data; // Return the resolved data
 	} catch (error) {
 		// Handle both function and object formats
-		const errorProps = typeof props.error === 'function' 
-			? props.error(error) 
-			: props.error;
+		const errorProps =
+			typeof props.error === "function" ? props.error(error) : props.error;
 		const duration = props.duration ?? TOAST_REMOVE_DELAY;
 
 		// Update to error toast

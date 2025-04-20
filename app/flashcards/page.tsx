@@ -45,7 +45,7 @@ export default function FlashcardsPage() {
 	);
 
 	// Calculate mastery percentage for a deck (this could be enhanced with real calculation logic)
-	const calculateMastery = (deck: (typeof decks)[0]) => {
+	const calculateMastery = (deck: NonNullable<typeof decks>[number]) => {
 		// This is a placeholder - in a real app, you might calculate this based on SRS data
 		return Math.floor(Math.random() * 100); // Placeholder random value
 	};
@@ -245,9 +245,11 @@ export default function FlashcardsPage() {
 												new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
 									) // Last 7 days
 									.sort(
-										(a, b) =>
-											new Date(b.updatedAt).getTime() -
-											new Date(a.updatedAt).getTime(),
+										(a, b) => {
+											const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+											const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+											return dateB - dateA;
+										},
 									) // Most recently updated first
 									.map((deck) => (
 										<Card

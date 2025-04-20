@@ -107,7 +107,9 @@ export default function CreateFlashcard() {
 	});
 
 	const createDeck = api.flashcard.createDeck.useMutation({
-		onSuccess: (newDeck: { id: string; name: string }) => {
+		onSuccess: (newDeck) => {
+			if (!newDeck) return;
+			
 			toast({
 				title: "Deck Created!",
 				description: `Your deck "${newDeck.name}" has been created.`,

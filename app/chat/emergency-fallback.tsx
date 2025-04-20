@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
 
 /**
  * This is a minimal fallback component that will be used if the main chat
@@ -166,22 +167,23 @@ export function injectEmergencyFallback() {
 		container.id = "emergency-fallback-container";
 		root.appendChild(container);
 
-		// If React is available, use it to render the component
-		// Otherwise, just show a basic HTML message
-		if (React?.createElement && React.render) {
-			React.render(React.createElement(EmergencyFallback), container);
+		// If React is available, try to render the component using React
+		// Otherwise, show a basic HTML message
+		if (React?.createElement && typeof document !== 'undefined') {
+			try {
+				// Use the imported createRoot (React 18+)
+				createRoot(container).render(React.createElement(EmergencyFallback));
+			} catch (renderError) {
+				console.error("Error rendering React component:", renderError);
+				// Fallback to basic HTML if React rendering fails
+				renderBasicHTML(container);
+			}
 		} else {
-			container.innerHTML = `
-        <div style="padding: 20px; max-width: 600px; margin: 0 auto; font-family: sans-serif;">
-          <h1 style="color: #d00;">Emergency Fallback (No React)</h1>
-          <p>The chat interface couldn't be loaded.</p>
-          <p>Please refresh the page or contact support.</p>
-        </div>
-      `;
+			renderBasicHTML(container);
 		}
 
 		return true;
-	} catch (e) {
+	} catch (e: unknown) {
 		console.error("Failed to inject emergency fallback:", e);
 
 		// Last resort - try to show something without React
@@ -190,7 +192,7 @@ export function injectEmergencyFallback() {
         <div style="padding: 20px; max-width: 600px; margin: 0 auto; font-family: sans-serif;">
           <h1 style="color: #d00;">Basic Emergency Fallback</h1>
           <p>The chat interface couldn't be loaded due to a critical error.</p>
-          <p>Error: ${e.message}</p>
+          <p>Error: ${e instanceof Error ? e.message : 'Unknown error'}</p>
           <p>Please refresh the page or contact support.</p>
         </div>
       `;
@@ -200,4 +202,15 @@ export function injectEmergencyFallback() {
 
 		return false;
 	}
+}
+
+// Helper function to render basic HTML when React is not available
+function renderBasicHTML(container: HTMLElement) {
+	container.innerHTML = `
+    <div style="padding: 20px; max-width: 600px; margin: 0 auto; font-family: sans-serif;">
+      <h1 style="color: #d00;">Emergency Fallback (No React)</h1>
+      <p>The chat interface couldn't be loaded.</p>
+      <p>Please refresh the page or contact support.</p>
+    </div>
+  `;
 }

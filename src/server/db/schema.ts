@@ -122,6 +122,9 @@ export const flashcards = createTable(
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.default(sql`CURRENT_TIMESTAMP`)
 			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.$onUpdate(() => new Date()),
 		tags: jsonb("tags").default([]),
 		// SRS algorithm fields
 		repetitions: integer("repetitions").default(0).notNull(),
@@ -129,6 +132,7 @@ export const flashcards = createTable(
 		interval: integer("interval").default(1).notNull(), // Days
 		nextReview: timestamp("next_review", { withTimezone: true }),
 		lastReview: timestamp("last_review", { withTimezone: true }),
+		difficulty: integer("difficulty").default(0).notNull(), // New field to track card difficulty
 		// Metadata
 		aiGenerated: boolean("ai_generated").default(false).notNull(),
 	}),

@@ -162,8 +162,6 @@ const handler = async (req: NextRequest) => {
 		req,
 		router: appRouter,
 		createContext: async () => await createContext(req),
-		// Use the shared transformer for consistency
-		transformer,
 		onError:
 			env.NODE_ENV === "development"
 				? ({ path, error, input }) => {
@@ -174,7 +172,7 @@ const handler = async (req: NextRequest) => {
 							{
 								message: error.message,
 								code: error.code,
-								data: error.data,
+								// Safely access error properties
 								cause: error.cause,
 								input,
 							},
@@ -213,7 +211,7 @@ const handler = async (req: NextRequest) => {
 								return { message: value.message, name: value.name };
 							}
 							const seen = new Set();
-							return Object.entries(value).reduce((acc, [k, v]) => {
+							return Object.entries(value).reduce((acc: Record<string, unknown>, [k, v]) => {
 								// Don't log large objects or circular references
 								if (
 									typeof v !== "function" &&

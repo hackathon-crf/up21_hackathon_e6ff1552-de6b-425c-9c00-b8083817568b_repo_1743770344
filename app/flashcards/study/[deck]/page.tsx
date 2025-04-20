@@ -19,21 +19,35 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import React from "react";
 
-// Define proper types for our flashcards
+// Define the full flashcard interface with all properties we need
 interface Flashcard {
+	// Core properties
 	id: string;
+	question: string;
+	answer: string;
+	deckId: string | null;
+	userId: string;
+	title: string | null;
+	imageUrl: string | null;
+	createdAt: Date;
+	
+	// Optional API properties
+	tags?: string[];
+	repetitions?: number;
+	easeFactor?: number;
+	interval: number;
+	nextReview: Date | null;
+	lastReview: Date | null; // This matches the DB schema
+	aiGenerated: boolean;
+	deck?: { name: string } | null;
+	
+	// Additional fields for our application
+	updatedAt: Date;
+	difficulty: number;
+	
+	// For backward compatibility
 	front: string;
 	back: string;
-	deckId: string;
-	title?: string;
-	question?: string;
-	answer?: string;
-	imageUrl?: string;
-	lastReviewed?: Date;
-	nextReview?: Date;
-	interval?: number;
-	difficulty?: number;
-	created_at?: Date;
 }
 
 import Image from "next/image";
@@ -99,7 +113,55 @@ export default function StudyDeckPage({
 	// Set up cards once data is loaded
 	useEffect(() => {
 		if (dueCards && dueCards.length > 0) {
-			setCards(dueCards);
+			// Add console log to see the actual structure of the first card
+			console.log("First card structure:", dueCards[0]);
+			
+			// Map the data and ensure all required properties are present with default values
+			const mappedCards = dueCards.map(card => {
+				// Use a type assertion to declare the card object type we expect
+				// This helps TypeScript understand that these properties exist (or will be added)
+				type APICard = typeof card & {
+					updatedAt?: Date;
+					difficulty?: number;
+				};
+				
+				const cardData = card as APICard;
+				
+				// Create a properly typed object that matches our Flashcard interface
+				const typedCard: Flashcard = {
+					// Core properties
+					id: cardData.id,
+					question: cardData.question,
+					answer: cardData.answer,
+					deckId: cardData.deckId,
+					userId: cardData.userId,
+					title: cardData.title,
+					imageUrl: cardData.imageUrl,
+					createdAt: cardData.createdAt,
+					
+					// Optional API properties
+					tags: Array.isArray(cardData.tags) ? cardData.tags : [],
+					repetitions: typeof cardData.repetitions === 'number' ? cardData.repetitions : 0,
+					easeFactor: typeof cardData.easeFactor === 'number' ? cardData.easeFactor : 2.5,
+					interval: typeof cardData.interval === 'number' ? cardData.interval : 1,
+					nextReview: cardData.nextReview instanceof Date ? cardData.nextReview : new Date(),
+					lastReview: cardData.lastReview instanceof Date ? cardData.lastReview : null,
+					aiGenerated: Boolean(cardData.aiGenerated),
+					deck: cardData.deck || null,
+					
+					// Additional fields for our application
+					updatedAt: cardData.updatedAt instanceof Date ? cardData.updatedAt : new Date(),
+					difficulty: typeof cardData.difficulty === 'number' ? cardData.difficulty : 0,
+					
+					// For backward compatibility
+					front: cardData.question,
+					back: cardData.answer,
+				};
+				
+				return typedCard;
+			});
+			
+			setCards(mappedCards);
 		}
 	}, [dueCards]);
 

@@ -46,10 +46,10 @@ export default function ChatSessionPage() {
 			console.error(`Error loading session ${session_id}:`, sessionQuery.error);
 			// Log more details about the error - handle safely since some properties might not exist
 			console.error(`Error details: ${sessionQuery.error.message}`, {
-				// Use optional chaining and type assertions to safely access potential properties
-				code: (sessionQuery.error as Error & { code?: string }).code,
-				// Avoid accessing name and cause directly since they aren't guaranteed to exist
-				data: (sessionQuery.error as Error & { data?: unknown }).data,
+				// Access properties that are available on TRPCClientErrorLike
+				code: sessionQuery.error.data?.code,
+				httpStatus: sessionQuery.error.data?.httpStatus,
+				path: sessionQuery.error.data?.path,
 			});
 		}
 	}, [

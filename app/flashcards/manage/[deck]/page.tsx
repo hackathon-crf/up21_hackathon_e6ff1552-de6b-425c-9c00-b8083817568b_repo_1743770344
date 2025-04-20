@@ -12,7 +12,7 @@ import {
 	Upload,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -48,6 +48,27 @@ import { Textarea } from "~/components/ui/textarea";
 import { useToast } from "~/hooks/use-toast";
 import { api } from "~/trpc/react";
 
+// Define the Flashcard type to avoid type errors
+type Flashcard = {
+	id: string;
+	userId: string;
+	deckId: string | null;
+	question: string;
+	answer: string;
+	title: string | null;
+	imageUrl: string | null;
+	createdAt: Date;
+	lastReview: Date | null;
+	nextReview: Date | null;
+	easeFactor: number | null;
+	repetitions: number | null;
+	aiGenerated: boolean;
+	deck?: { name: string; } | null;
+	deckName?: string;
+	// Make updatedAt optional since it might be missing
+	updatedAt?: Date | null;
+}
+
 export default function ManageDeckPage({
 	params,
 }: { params: { deck: string } }) {
@@ -65,35 +86,44 @@ export default function ManageDeckPage({
 
 	// Fetch deck information
 	const { data: deck, isPending: deckLoading } =
-		api.flashcard.getDeckById.useQuery(
-			{
-				id: params.deck,
-			},
-			{
-				onSuccess: (data) => {
-					if (data) {
-						setDeckName(data.name);
-						setDeckDescription(data.description || "");
-					}
-				},
-				onError: (error) => {
-					toast({
-						title: "Error",
-						description: error.message || "Failed to load deck information",
-						variant: "destructive",
-					});
-				},
-			},
-		);
+		api.flashcard.getDeckById.useQuery({
+			id: params.deck,
+		});
+
+	// Update state when deck data is received
+	useEffect(() => {
+		if (deck) {
+			setDeckName(deck.name);
+			setDeckDescription(deck.description || "");
+		}
+	}, [deck]);
+
+	// Error handling for deck loading
+	const handleDeckError = (error: unknown) => {
+		const errorMessage = error instanceof Error ? error.message : "Failed to load deck information";
+		toast({
+			title: "Error",
+			description: errorMessage,
+			variant: "destructive",
+		});
+	};
 
 	// Fetch flashcards for this specific deck
 	const {
 		data: flashcards,
 		isPending: cardsLoading,
 		refetch: refetchCards,
+		error: flashcardsError,
 	} = api.flashcard.getFlashcards.useQuery({
 		deckId: params.deck,
 	});
+
+	// Handle error if flashcards query fails
+	useEffect(() => {
+		if (flashcardsError) {
+			handleDeckError(flashcardsError);
+		}
+	}, [flashcardsError]);
 
 	// Mutations for flashcard operations
 	const createFlashcard = api.flashcard.createFlashcard.useMutation({
@@ -211,7 +241,7 @@ export default function ManageDeckPage({
 		deleteFlashcard.mutate({ id });
 	};
 
-	const handleEditCard = (card: (typeof flashcards)[0]) => {
+	const handleEditCard = (card: Flashcard) => {
 		setCurrentEditCard(card.id);
 		setNewQuestion(card.question);
 		setNewAnswer(card.answer);
@@ -250,7 +280,7 @@ export default function ManageDeckPage({
 	};
 
 	// Calculate difficulty based on SRS data
-	const calculateDifficulty = (card: (typeof flashcards)[0]) => {
+	const calculateDifficulty = (card: Flashcard) => {
 		if (!card.easeFactor) return "Medium";
 		if (card.easeFactor < 1.5) return "Hard";
 		if (card.easeFactor > 2.5) return "Easy";

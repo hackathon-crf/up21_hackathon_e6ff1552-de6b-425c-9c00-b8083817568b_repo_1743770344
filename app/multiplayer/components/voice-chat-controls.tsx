@@ -78,7 +78,8 @@ export function VoiceChatControls({
 	};
 
 	const handleVolumeChange = (value: number[]) => {
-		const newVolume = value[0];
+		// Make sure we have a valid number from the array
+		const newVolume = value[0] ?? volume; // Fallback to current volume if undefined
 		setVolume(newVolume);
 		if (onVolumeChange) onVolumeChange(newVolume);
 	};
