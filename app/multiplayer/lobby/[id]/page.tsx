@@ -11,7 +11,7 @@ import {
 	X,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type React from "react";
 
@@ -110,9 +110,10 @@ const mockSessionBase = {
 };
 // -----------------------------
 
-export default function LobbyPage({ params }: { params: LobbyParams }) {
-	// Route parameters are directly available in params, no need for React.use
-	return <LobbyContent gameId={params.id} />;
+export default function LobbyPage() {
+	// Use the useParams hook to get route parameters
+	const { id } = useParams() as { id: string };
+	return <LobbyContent gameId={id} />;
 }
 
 function LobbyContent({ gameId }: { gameId: string }) {

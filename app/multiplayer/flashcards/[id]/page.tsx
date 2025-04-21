@@ -2,6 +2,7 @@
 
 import { Clock, ThumbsDown, ThumbsUp, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -14,9 +15,8 @@ import {
 import { Input } from "~/components/ui/input";
 import { Progress } from "~/components/ui/progress";
 
-export default function FlashcardsRumblePage({
-	params,
-}: { params: { id: string } }) {
+export default function FlashcardsRumblePage() {
+	const { id } = useParams() as { id: string };
 	const [currentCard, setCurrentCard] = useState(0);
 	const [flipped, setFlipped] = useState(false);
 	const [timeLeft, setTimeLeft] = useState(60);

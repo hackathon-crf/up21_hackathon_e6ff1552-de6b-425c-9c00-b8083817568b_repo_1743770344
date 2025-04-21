@@ -57,7 +57,7 @@ interface Message {
 	}[];
 }
 
-interface ChatPageProps {
+export interface ChatPageProps {
 	initialSessionId?: string;
 }
 
@@ -72,8 +72,13 @@ type ChatMessageFromDB = {
 	sources: unknown;
 };
 
+// Export the component without props for Next.js routing
+export default function Page() {
+	return <ChatPageWrapper initialSessionId={undefined} />;
+}
+
 // Wrap the main component in an error boundary
-export default function ChatPageWrapper({ initialSessionId }: ChatPageProps) {
+function ChatPageWrapper({ initialSessionId }: ChatPageProps) {
 	const [hasError, setHasError] = useState(false);
 
 	useEffect(() => {
@@ -107,10 +112,11 @@ export default function ChatPageWrapper({ initialSessionId }: ChatPageProps) {
 		);
 	}
 
-	return <ChatPage initialSessionId={initialSessionId} />;
+	return <ChatPageImpl initialSessionId={initialSessionId} />;
 }
 
-function ChatPage({ initialSessionId }: ChatPageProps) {
+// Main chat component implementation
+export function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 	// Router for navigation
 	const router = useRouter();
 	const pathname = usePathname();

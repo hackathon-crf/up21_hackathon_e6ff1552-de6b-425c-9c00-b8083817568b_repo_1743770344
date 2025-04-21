@@ -12,6 +12,7 @@ import {
 	Upload,
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -69,9 +70,9 @@ type Flashcard = {
 	updatedAt?: Date | null;
 };
 
-export default function ManageDeckPage({
-	params,
-}: { params: { deck: string } }) {
+// Next.js 15+ App Router expects this pattern for client components with dynamic routes
+export default function ManageDeckPage() {
+	const { deck } = useParams() as { deck: string };
 	const { toast } = useToast();
 	const [searchTerm, setSearchTerm] = useState("");
 	const [newQuestion, setNewQuestion] = useState("");
@@ -85,18 +86,18 @@ export default function ManageDeckPage({
 	const [cardsPerSession, setCardsPerSession] = useState("20");
 
 	// Fetch deck information
-	const { data: deck, isPending: deckLoading } =
+	const { data: deckData, isPending: deckLoading } =
 		api.flashcard.getDeckById.useQuery({
-			id: params.deck,
+			id: deck,
 		});
 
 	// Update state when deck data is received
 	useEffect(() => {
-		if (deck) {
-			setDeckName(deck.name);
-			setDeckDescription(deck.description || "");
+		if (deckData) {
+			setDeckName(deckData.name);
+			setDeckDescription(deckData.description || "");
 		}
-	}, [deck]);
+	}, [deckData]);
 
 	// Error handling for deck loading
 	const handleDeckError = useCallback(
@@ -121,7 +122,7 @@ export default function ManageDeckPage({
 		refetch: refetchCards,
 		error: flashcardsError,
 	} = api.flashcard.getFlashcards.useQuery({
-		deckId: params.deck,
+		deckId: deck,
 	});
 
 	// Handle error if flashcards query fails
@@ -239,7 +240,7 @@ export default function ManageDeckPage({
 			answer: newAnswer,
 			title: newTitle || undefined,
 			imageUrl: newImageUrl || undefined,
-			deckId: params.deck,
+			deckId: deck,
 		});
 	};
 
@@ -279,7 +280,7 @@ export default function ManageDeckPage({
 
 	const handleSaveSettings = () => {
 		updateDeck.mutate({
-			id: params.deck,
+			id: deck,
 			name: deckName,
 			description: deckDescription,
 		});
@@ -315,7 +316,7 @@ export default function ManageDeckPage({
 					</Button>
 					<div className="ml-4 flex-1">
 						<h1 className="font-bold text-2xl">
-							{isPending ? "Loading..." : formatDeckName(params.deck)}
+							{isPending ? "Loading..." : formatDeckName(deck)}
 						</h1>
 						<p className="text-muted-foreground text-sm">
 							Manage your flashcards
@@ -351,7 +352,7 @@ export default function ManageDeckPage({
 											<DialogTitle>Add New Flashcard</DialogTitle>
 											<DialogDescription>
 												Create a new flashcard for your{" "}
-												{formatDeckName(params.deck)} deck
+												{formatDeckName(deck)} deck
 											</DialogDescription>
 										</DialogHeader>
 										<div className="space-y-4 py-4">

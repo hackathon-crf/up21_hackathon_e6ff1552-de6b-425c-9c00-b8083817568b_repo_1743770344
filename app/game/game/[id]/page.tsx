@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react"; // Added useCallback
 
 import { Button } from "~/components/ui/button";
@@ -15,7 +15,8 @@ import {
 import { Progress } from "~/components/ui/progress";
 import { useToast } from "~/hooks/use-toast";
 
-export default function GameGamePage({ params }: { params: { id: string } }) {
+export default function GameGamePage() {
+	const { id } = useParams() as { id: string };
 	const router = useRouter();
 	const { toast, promise } = useToast(); // Destructure promise from useToast
 	const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -104,7 +105,7 @@ export default function GameGamePage({ params }: { params: { id: string } }) {
 				},
 			)
 				.then(() => {
-					router.push(`/game/results/${params.id}?score=${score}`);
+					router.push(`/game/results/${id}?score=${score}`);
 				})
 				.catch((err) => {
 					console.error("Error after game completion promise:", err);
@@ -117,7 +118,7 @@ export default function GameGamePage({ params }: { params: { id: string } }) {
 		promise,
 		score,
 		router,
-		params.id,
+		id,
 	]);
 	// ----------------------------------------------------
 

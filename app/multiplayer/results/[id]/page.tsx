@@ -9,7 +9,7 @@ import {
 	Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -28,11 +28,12 @@ import { useToast } from "~/hooks/use-toast";
 import { cn } from "~/lib/utils";
 import { PlayerAvatar } from "../../components/player-avatar";
 
-export default function ResultsPage({ params }: { params: { id: string } }) {
-	return <ResultsContent params={params} />;
+export default function ResultsPage() {
+	const params = useParams();
+	return <ResultsContent sessionId={params.id as string} />;
 }
 
-function ResultsContent({ params }: { params: { id: string } }) {
+function ResultsContent({ sessionId }: { sessionId: string }) {
 	const router = useRouter();
 	const toast = useToast();
 	const [showShareOptions, setShowShareOptions] = useState(false);

@@ -9,7 +9,7 @@ import {
 	Users,
 	XCircle,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -53,13 +53,12 @@ interface Question {
 	explanation?: string;
 }
 
-export default function RapidResponsePage({
-	params,
-}: { params: { id: string } }) {
-	return <RapidResponseContent params={params} />;
+export default function RapidResponsePage() {
+	const params = useParams();
+	return <RapidResponseContent gameId={params.id as string} />;
 }
 
-function RapidResponseContent({ params }: { params: { id: string } }) {
+function RapidResponseContent({ gameId }: { gameId: string }) {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -99,7 +98,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 
 	// Mock data for the challenge
 	const challenge = {
-		id: params.id,
+		id: gameId,
 		title: "CPR & AED Challenge",
 		totalQuestions: 5,
 		category: "Emergency Response",
@@ -309,7 +308,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 
 			setTimeout(() => {
 				if (router) {
-					router.push(`/multiplayer/results/${params.id}`);
+					router.push(`/multiplayer/results/${gameId}`);
 				}
 			}, 3000);
 		}
@@ -318,7 +317,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 		totalQuestions,
 		challenge.questions,
 		router,
-		params.id,
+		gameId,
 		toast,
 	]);
 
@@ -880,7 +879,7 @@ function RapidResponseContent({ params }: { params: { id: string } }) {
 				{!chatCollapsed ? (
 					<div className="h-96 w-80">
 						<GameChat
-							sessionId={params.id}
+							sessionId={gameId}
 							onToggleCollapse={() => setChatCollapsed(true)}
 						/>
 					</div>

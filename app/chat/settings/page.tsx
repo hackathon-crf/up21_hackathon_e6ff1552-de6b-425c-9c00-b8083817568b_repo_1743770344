@@ -144,7 +144,9 @@ export default function AIAssistantSettingsPage() {
 	const [showApiKey, setShowApiKey] = useState(false);
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | null>(null);
 	// Track which provider+key combinations we've already loaded models for
-	const [loadedProviderKeys, setLoadedProviderKeys] = useState<Record<string, boolean>>({});
+	const [loadedProviderKeys, setLoadedProviderKeys] = useState<
+		Record<string, boolean>
+	>({});
 
 	// Get cached API key from localStorage
 	useEffect(() => {
@@ -188,31 +190,37 @@ export default function AIAssistantSettingsPage() {
 			}
 		}
 	}, [models, selectedModel, setModel]);
-	
+
 	// Ref to track if fetch is in progress and prevent unnecessary re-fetches
 	const fetchInProgressRef = useRef(false);
-	
+
 	// Ref to track which provider+key combination we've already fetched
-	const lastFetchRef = useRef<{provider: string, key: string} | null>(null);
+	const lastFetchRef = useRef<{ provider: string; key: string } | null>(null);
 
 	// State to track which provider+key combinations we've already loaded
-	const [loadedCombinations, setLoadedCombinations] = useState<{[key: string]: boolean}>({});
-	
+	const [loadedCombinations, setLoadedCombinations] = useState<{
+		[key: string]: boolean;
+	}>({});
+
 	// Load cached models on initial load if API key exists - with strict control to prevent loops
 	useEffect(() => {
 		// Create a unique key for this provider+key combination
 		const combinationKey = `${selectedProvider}:${apiKey}`;
-		
+
 		// Skip if no API key, fetch in progress, or we've already loaded this combination
-		if (!apiKey || fetchInProgressRef.current || loadedCombinations[combinationKey]) {
+		if (
+			!apiKey ||
+			fetchInProgressRef.current ||
+			loadedCombinations[combinationKey]
+		) {
 			return;
 		}
-		
+
 		// Mark fetch as in progress
 		fetchInProgressRef.current = true;
-		
+
 		console.log(`[settings] Initial fetch for ${combinationKey}`);
-		
+
 		// Use a stable timeout to prevent rapid succession of API calls
 		const timeoutId = setTimeout(() => {
 			fetchModels(selectedProvider, apiKey)
@@ -221,9 +229,9 @@ export default function AIAssistantSettingsPage() {
 						`[settings] Loaded ${fetchedModels.length} models for ${selectedProvider}`,
 					);
 					// Mark this combination as loaded to prevent future fetches
-					setLoadedCombinations(prev => ({
+					setLoadedCombinations((prev) => ({
 						...prev,
-						[combinationKey]: true
+						[combinationKey]: true,
 					}));
 					fetchInProgressRef.current = false;
 				})
@@ -233,7 +241,7 @@ export default function AIAssistantSettingsPage() {
 					fetchInProgressRef.current = false;
 				});
 		}, 300);
-		
+
 		// Cleanup function to prevent memory leaks
 		return () => {
 			clearTimeout(timeoutId);

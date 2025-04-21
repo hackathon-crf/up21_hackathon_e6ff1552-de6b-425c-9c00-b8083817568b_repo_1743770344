@@ -9,7 +9,7 @@ import {
 	User,
 	Users,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -122,12 +122,13 @@ const flashcards: Flashcard[] = [
 	},
 ];
 
-export default function CardClashPage({ params }: { params: { id: string } }) {
-	return <CardClashContent params={params} />;
+export default function CardClashPage() {
+	return <CardClashContent />;
 }
 
-function CardClashContent({ params }: { params: { id: string } }) {
+function CardClashContent() {
 	const router = useRouter();
+	const { id } = useParams() as { id: string };
 	const { toast } = useToast();
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [currentCard, setCurrentCard] = useState(0);
@@ -397,13 +398,13 @@ function CardClashContent({ params }: { params: { id: string } }) {
 
 			setTimeout(() => {
 				if (router) {
-					router.push(`/multiplayer/results/${params.id}`);
+					router.push(`/multiplayer/results/${id}`);
 				}
 			}, 3000);
 		}
-		// Dependencies: currentCard, totalCards, router, params.id, toast
+		// Dependencies: currentCard, totalCards, router, id, toast
 		// flashcards is now stable as it's defined outside the component
-	}, [currentCard, totalCards, router, params.id, toast]);
+	}, [currentCard, totalCards, router, id, toast]);
 
 	// Timer effect
 	useEffect(() => {

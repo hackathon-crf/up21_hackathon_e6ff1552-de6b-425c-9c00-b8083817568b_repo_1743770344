@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, ArrowLeft, HelpCircle, Save } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -34,11 +34,12 @@ import {
 import { useToast } from "~/hooks/use-toast";
 import { ConnectionStatus } from "../../components/connection-status";
 
-export default function SettingsPage({ params }: { params: { id: string } }) {
-	return <SettingsContent params={params} />;
+export default function SettingsPage() {
+	const params = useParams();
+	return <SettingsContent sessionId={params.id as string} />;
 }
 
-function SettingsContent({ params }: { params: { id: string } }) {
+function SettingsContent({ sessionId }: { sessionId: string }) {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [isSaving, setIsSaving] = useState(false);
@@ -86,7 +87,7 @@ function SettingsContent({ params }: { params: { id: string } }) {
 		if (hasChanges) {
 			setShowUnsavedChangesWarning(true);
 		} else {
-			router.push(`/multiplayer/lobby/${params.id}`);
+			router.push(`/multiplayer/lobby/${sessionId}`);
 		}
 	};
 
@@ -115,7 +116,7 @@ function SettingsContent({ params }: { params: { id: string } }) {
 
 			// Navigate back to lobby
 			setTimeout(() => {
-				router.push(`/multiplayer/lobby/${params.id}`);
+				router.push(`/multiplayer/lobby/${sessionId}`);
 			}, 1000);
 		} catch (error) {
 			// Error handling
@@ -133,7 +134,7 @@ function SettingsContent({ params }: { params: { id: string } }) {
 	// Handle discard changes
 	const handleDiscardChanges = () => {
 		setShowUnsavedChangesWarning(false);
-		router.push(`/multiplayer/lobby/${params.id}`);
+		router.push(`/multiplayer/lobby/${sessionId}`);
 	};
 
 	// Handle continue editing

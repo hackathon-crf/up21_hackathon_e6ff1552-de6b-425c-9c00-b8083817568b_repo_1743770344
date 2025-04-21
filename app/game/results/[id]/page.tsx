@@ -9,6 +9,7 @@ import {
 	Shield,
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -22,9 +23,8 @@ import {
 import { Progress } from "~/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
-export default function GameResultsPage({
-	params,
-}: { params: { id: string } }) {
+export default function GameResultsPage() {
+	const { id } = useParams() as { id: string };
 	// Mock data for game results
 	const results = {
 		gameTitle: "CPR & AED Challenge",
