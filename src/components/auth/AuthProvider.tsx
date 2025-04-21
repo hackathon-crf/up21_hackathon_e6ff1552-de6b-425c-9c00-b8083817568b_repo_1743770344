@@ -8,6 +8,7 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useRef,
 	useState,
 } from "react";
 import { env } from "~/env";
@@ -148,44 +149,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			setUser(null);
 			setSession(null);
 		} finally {
+			console.log("🔍 AUTH FLOW [getAuthState] FINALLY BLOCK: Setting loading false and auth check complete", {
+				currentUser: user?.email || 'none',
+				newUser: !!user
+			});
 			setIsLoading(false);
 			setInitialAuthCheckComplete(true);
 		}
 	}, [supabase.auth]);
 
-	// On mount, get initial auth state
+	// Track if we've initialized the auth state listener to prevent multiple subscriptions
+	const authInitializedRef = useRef(false);
+	
+	// On mount, get initial auth state - use useRef to prevent repeated effect calls
 	useEffect(() => {
-		// Get initial auth state
-		getAuthState();
+		// Prevent multiple initializations
+		if (authInitializedRef.current) {
+			console.log("🔒 AUTH PROVIDER: Auth already initialized, skipping duplicate initialization");
+			return;
+		}
+		
+		// Mark as initialized immediately to prevent race conditions
+		authInitializedRef.current = true;
+		
+		console.log("🔒 AUTH PROVIDER: Initial mount effect running", {
+			timestamp: new Date().toISOString(),
+			authCheckComplete: initialAuthCheckComplete,
+			pathname: window.location.pathname
+		});
 
-		// Set up the auth state listener
-		const {
-			data: { subscription },
-		} = supabase.auth.onAuthStateChange(async (event) => {
-			console.log("AUTH DEBUG: Auth state change event:", event);
+		// Create a unique ID for this instance of the effect
+		const effectId = Math.random().toString(36).substring(2, 6);
+		console.log(`🔒 AUTH PROVIDER [${effectId}]: Starting auth initialization`);
 
-			// On ANY auth state change, ALWAYS fetch fresh user data
-			// from the Supabase Auth server using getUser()
-			await getAuthState();
+		// Get initial auth state without async/await to avoid blocking
+		console.log(`🔒 AUTH PROVIDER [${effectId}]: Calling initial getAuthState()`);
+		getAuthState().catch(err => {
+			console.error(`🔒 AUTH PROVIDER [${effectId}]: Error in initial getAuthState()`, err);
+		});
 
-			// Only handle navigation in specific cases:
-			// 1. When user explicitly signs out
-			// 2. When user explicitly signs in (but not on initial load)
-			if (event === "SIGNED_OUT") {
-				console.log("🔒 AUTH FLOW: User signed out, redirecting to home");
-				router.push("/");
-			} else if (event === "SIGNED_IN" && initialAuthCheckComplete) {
-				// Only redirect on explicit sign-in events (not initial page load auth checks)
-				console.log("🔒 AUTH FLOW: User signed in, redirecting to dashboard");
-				router.push("/dashboard");
+		// Set up the auth state listener with enhanced logging - only once
+		console.log(`🔒 AUTH PROVIDER [${effectId}]: Setting up auth state listener`);
+		const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+			console.log(`🔒 AUTH PROVIDER [${effectId}]: Auth state change event:`, {
+				event,
+				hasSession: !!session,
+				timestamp: new Date().toISOString(),
+				pathname: window.location.pathname
+			});
+
+			// Only update auth state for specific events to reduce unnecessary updates
+			if (event === "SIGNED_IN" || 
+				event === "SIGNED_OUT" || 
+				event === "USER_UPDATED" || 
+				event === "PASSWORD_RECOVERY" ||
+				event === "INITIAL_SESSION") {
+				
+				try {
+					console.log(`🔒 AUTH PROVIDER [${effectId}]: Refreshing auth state due to ${event}`);
+					await getAuthState();
+					
+					// Only handle navigation in specific cases:
+					// 1. When user explicitly signs out
+					// 2. When user explicitly signs in (but not on initial load)
+					// And only if we're not on the target page already
+					if (event === "SIGNED_OUT" && !window.location.pathname.includes('/auth/')) {
+						console.log(`🔒 AUTH PROVIDER [${effectId}]: User signed out, redirecting to login`);
+						router.push('/auth/login');
+					} else if (event === "SIGNED_IN" && initialAuthCheckComplete && !window.location.pathname.includes('/dashboard')) {
+						// Only redirect on explicit sign-in events (not initial page load auth checks)
+						console.log(`🔒 AUTH PROVIDER [${effectId}]: User signed in, redirecting to dashboard`);
+						router.push('/dashboard');
+					}
+				} catch (error) {
+					console.error(`🔒 AUTH PROVIDER [${effectId}]: Error handling auth event ${event}:`, error);
+				}
+			} else if (event === "TOKEN_REFRESHED") {
+				// For token refreshes, just log but don't trigger state updates or redirects
+				console.log(`🔒 AUTH PROVIDER [${effectId}]: Token refreshed, no redirect needed`);
 			}
 		});
 
+		// Cleanup function that will run when the provider is unmounted
 		return () => {
-			// Clean up on unmount
+			console.log(`🔒 AUTH PROVIDER [${effectId}]: Cleanup - unsubscribing from auth events`);
 			subscription.unsubscribe();
 		};
-	}, [supabase.auth, router, getAuthState]);
+		
+		// Empty dependency array - we want this to run exactly once when the app initializes
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	// Sign in handler
 	const signIn = async (
@@ -224,30 +277,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					success: false,
 					message: error.message || "Invalid login credentials",
 				};
-			}
+			}				// Verify we actually got a user and session back
+				if (!data?.user || !data?.session) {
+					console.error(
+						"🔒 AUTH FLOW [signIn]: Auth response missing user or session despite no error",
+						{
+							hasUser: !!data?.user,
+							hasSession: !!data?.session,
+						},
+					);
 
-			// Verify we actually got a user and session back
-			if (!data?.user || !data?.session) {
-				console.error(
-					"🔒 AUTH FLOW [signIn]: Auth response missing user or session despite no error",
-					{
-						hasUser: !!data?.user,
-						hasSession: !!data?.session,
-					},
-				);
+					// Try to refresh auth state
+					console.log(
+						"🔒 AUTH FLOW [signIn]: Attempting to refresh auth state via getAuthState()",
+					);
+					await getAuthState();
 
-				// Try to refresh auth state
-				console.log(
-					"🔒 AUTH FLOW [signIn]: Attempting to refresh auth state via getAuthState()",
-				);
-				await getAuthState();
-
-				// Check if auth state refresh worked
-				console.log("🔒 AUTH FLOW [signIn]: Auth state refresh complete", {
-					refreshedUser: !!user,
-					refreshedSession: !!session,
-					timestamp: new Date().toISOString(),
-				});
+					// Check if auth state refresh worked
+					console.log("🔒 AUTH FLOW [signIn]: Auth state refresh complete", {
+						refreshedUser: !!user,
+						refreshedSession: !!session,
+						timestamp: new Date().toISOString(),
+					});
 
 				if (!user || !session) {
 					console.error(

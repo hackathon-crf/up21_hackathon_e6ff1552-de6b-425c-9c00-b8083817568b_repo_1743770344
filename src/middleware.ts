@@ -77,7 +77,8 @@ export async function middleware(request: NextRequest) {
 	}
 
 	// Also redirect authenticated users from root path to dashboard
-	if (path === "/" && user) {
+	// Only do this if not explicitly bypassing redirects with a query param
+	if (path === "/" && user && !request.nextUrl.searchParams.has("no_redirect")) {
 		console.log("Authenticated user at root path, redirecting to dashboard");
 		return NextResponse.redirect(new URL("/dashboard", request.url));
 	}

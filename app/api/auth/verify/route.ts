@@ -20,22 +20,25 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Get current auth user to check verification status
-		const { data: userData, error: userError } =
-			await supabase.auth.admin.getUserByEmail(email);
+		const { data: userList, error: userError } =
+			await supabase.auth.admin.listUsers();
 
-		if (userError) {
+		// Find the user with matching email
+		const userData = userList?.users?.find((user) => user.email === email);
+
+		if (userError || !userData) {
 			return NextResponse.json(
 				{ error: "Error fetching user" },
 				{ status: 500 },
 			);
 		}
 
-		if (!userData?.user) {
+		if (!userData) {
 			return NextResponse.json({ error: "User not found" }, { status: 404 });
 		}
 
 		// Check if the user is verified in Supabase
-		const isVerified = userData.user.email_confirmed_at !== null;
+		const isVerified = userData.email_confirmed_at !== null;
 
 		// If user is verified, update our local database too
 		if (isVerified) {
@@ -49,7 +52,7 @@ export async function POST(request: NextRequest) {
 		if (action === "check") {
 			return NextResponse.json({
 				verified: isVerified,
-				userId: userData.user.id,
+				userId: userData.id,
 			});
 		}
 
