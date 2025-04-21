@@ -72,9 +72,9 @@ type ChatMessageFromDB = {
 	sources: unknown;
 };
 
-// Export the component without props for Next.js routing
-export default function Page() {
-	return <ChatPageWrapper initialSessionId={undefined} />;
+// Export the component with optional props for Next.js routing
+export default function Page({ initialSessionId }: ChatPageProps) {
+	return <ChatPageWrapper initialSessionId={initialSessionId} />;
 }
 
 // Wrap the main component in an error boundary

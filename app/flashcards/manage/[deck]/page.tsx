@@ -208,7 +208,7 @@ export default function ManageDeckPage() {
 
 	// Format the deck name for display
 	const formatDeckName = (name: string) => {
-		if (deck) return deck.name;
+		if (deckData) return deckData.name;
 
 		// Fallback if deck data isn't loaded yet
 		return name

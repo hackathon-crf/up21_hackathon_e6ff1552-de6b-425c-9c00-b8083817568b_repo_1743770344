@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import React, { useEffect } from "react";
 import type { AppRouter } from "~/server/api/root";
 import { api } from "~/trpc/react";
-import ChatPage from "../page";
+import Page from "../page";
+import type { ChatPageProps } from "../page";
 
 // Define session type based on the database structure
 type Session = {
@@ -67,5 +68,6 @@ export default function ChatSessionPage() {
 		}
 	}, [session_id]);
 
-	return <ChatPage initialSessionId={session_id} />;
+	// Now we can pass the session_id as initialSessionId
+	return <Page initialSessionId={session_id} />;
 }

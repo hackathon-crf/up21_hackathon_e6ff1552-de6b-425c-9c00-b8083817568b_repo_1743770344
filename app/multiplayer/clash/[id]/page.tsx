@@ -948,7 +948,7 @@ function CardClashContent() {
 				{!chatCollapsed ? (
 					<div className="h-96 w-80">
 						<GameChat
-							sessionId={params.id}
+							sessionId={id}
 							onToggleCollapse={() => setChatCollapsed(true)}
 						/>
 					</div>
