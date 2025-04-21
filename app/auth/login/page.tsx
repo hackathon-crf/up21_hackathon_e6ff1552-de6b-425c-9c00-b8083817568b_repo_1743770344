@@ -4,13 +4,15 @@ import type React from "react";
 import type { ControllerRenderProps } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { createBrowserClient } from "@supabase/ssr";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAuth } from "~/components/auth/AuthProvider";
+import { OTPVerificationForm } from "~/components/auth/otp-verification-form";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -42,7 +44,8 @@ import {
 	registerSchema,
 } from "~/lib/validation/auth";
 
-export default function LoginPage() {
+// Define the component that uses useSearchParams
+function LoginPageContent() {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [showPassword, setShowPassword] = useState(false);
@@ -50,8 +53,15 @@ export default function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [debugMode, setDebugMode] = useState(false);
 	const [debugLogs, setDebugLogs] = useState<string[]>([]);
-	const searchParams = useSearchParams();
+	const [showOTPVerify, setShowOTPVerify] = useState(false);
+	const [verificationEmail, setVerificationEmail] = useState("");
+	const searchParams = useSearchParams(); // This hook needs Suspense
 	const { signIn } = useAuth();
+
+	// Initialize Supabase client
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+	const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+	const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
 	// React Hook Form for login
 	const loginForm = useForm<LoginFormValues>({
@@ -298,6 +308,60 @@ export default function LoginPage() {
 		}
 	};
 
+	// States for OTP verification
+	const [isVerifying, setIsVerifying] = useState(false);
+	const [registrationSuccessful, setRegistrationSuccessful] = useState(false);
+
+	// Handle OTP verification using Supabase's built-in verification
+	const handleVerifyOTP = async (otp: string) => {
+		setIsVerifying(true);
+
+		try {
+			logger.log("🔒 AUTH UI [OTP]: Verifying code with Supabase", {
+				email: verificationEmail,
+			});
+
+			// Use Supabase's verification API to verify the OTP
+			const { error } = await supabase.auth.verifyOtp({
+				email: verificationEmail,
+				token: otp,
+				type: "email",
+			});
+
+			if (error) {
+				throw new Error(error.message || "Verification failed");
+			}
+
+			logger.log("🔒 AUTH UI [OTP]: Verification successful");
+
+			toast({
+				title: "Email verified",
+				description:
+					"Your account has been verified successfully. You can now log in.",
+				variant: "success",
+			});
+
+			// Reset verification state
+			setShowOTPVerify(false);
+
+			// Switch to login tab
+			(document.querySelector('[data-value="login"]') as HTMLElement)?.click();
+		} catch (error) {
+			logger.error("🔒 AUTH UI [OTP]: Verification failed", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			toast({
+				title: "Verification failed",
+				description:
+					error instanceof Error ? error.message : "Please try again",
+				variant: "destructive",
+			});
+		} finally {
+			setIsVerifying(false);
+		}
+	};
+
 	// Register form submission handler
 	const onRegisterSubmit = async (data: RegisterFormValues) => {
 		setIsLoading(true);
@@ -310,11 +374,8 @@ export default function LoginPage() {
 		});
 
 		try {
-			// Simulate API call delay
-			await new Promise((resolve) => setTimeout(resolve, 1500));
-
-			// Implement rate limiting check (demo)
-			const ipAddress = "192.168.1.1"; // Normally would get this from the request
+			/* Rate limiting temporarily disabled
+			// Implement rate limiting check
 			const registrationAttempts =
 				sessionStorage.getItem("registration_attempts") || "0";
 			const attempts = Number.parseInt(registrationAttempts, 10) + 1;
@@ -335,7 +396,6 @@ export default function LoginPage() {
 					logger.error("🔒 AUTH UI [Register]: Rate limit exceeded", {
 						attempts,
 						minutesRemaining,
-						ipAddress,
 					});
 
 					toast({
@@ -356,23 +416,78 @@ export default function LoginPage() {
 				"last_registration_attempt",
 				Date.now().toString(),
 			);
+			*/
 
-			// In a real app, we would send the data to the server here
-			// and handle email verification
-			logger.log("🔒 AUTH UI [Register]: Account created successfully", {
-				email: data.email,
-				fullName: `${data.firstName} ${data.lastName}`,
+			// Create the user account with Supabase
+			logger.log("🔒 AUTH UI [Register]: Creating user account", {
+				emailHint: `${data.email.substring(0, 3)}...`,
 			});
 
-			toast({
-				title: "Registration successful",
-				description:
-					"A verification link has been sent to your email address. Please verify your account to continue.",
-				variant: "success",
-			});
+			if (supabase) {
+				// Sign up the user and let Supabase handle email verification with OTP
+				const { data: authData, error: authError } = await supabase.auth.signUp(
+					{
+						email: data.email,
+						password: data.password,
+						options: {
+							data: {
+								first_name: data.firstName,
+								last_name: data.lastName,
+								full_name: `${data.firstName} ${data.lastName}`,
+							},
+							// Set emailRedirectTo to the app URL (can be adjusted as needed)
+							emailRedirectTo: window.location.origin,
+						},
+					},
+				);
 
-			// Switch to login tab after successful registration
-			(document.querySelector('[data-value="login"]') as HTMLElement)?.click();
+				if (authError) {
+					logger.error("🔒 AUTH UI [Register]: Auth error", {
+						error: authError.message,
+					});
+
+					toast({
+						title: "Registration failed",
+						description: authError.message,
+						variant: "destructive",
+					});
+					return;
+				}
+
+				if (!authData.user) {
+					logger.error("🔒 AUTH UI [Register]: No user returned");
+
+					toast({
+						title: "Registration failed",
+						description: "Could not create user account",
+						variant: "destructive",
+					});
+					return;
+				}
+
+				logger.log("🔒 AUTH UI [Register]: User created successfully");
+
+				// Check if the user was created but needs email verification
+				const needsEmailVerification =
+					authData?.session === null && authData?.user !== null;
+
+				logger.log("🔒 AUTH UI [Register]: Verification status", {
+					needsVerification: needsEmailVerification,
+					hasSession: !!authData?.session,
+				});
+
+				// Set the email for verification and show the OTP verification form
+				setVerificationEmail(data.email);
+				setShowOTPVerify(true);
+				setRegistrationSuccessful(true);
+
+				toast({
+					title: "Registration successful",
+					description:
+						"A verification code has been sent to your email. Please check your inbox and enter the code to verify your account.",
+					variant: "success",
+				});
+			}
 		} catch (error) {
 			logger.critical(
 				"AUTH CRITICAL: Unhandled exception during registration",
@@ -434,783 +549,817 @@ export default function LoginPage() {
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 p-4">
 			<div className="w-full max-w-md">
-				<Tabs defaultValue="login" className="w-full">
-					<TabsList className="mb-6 grid w-full grid-cols-2">
-						<TabsTrigger value="login">Login</TabsTrigger>
-						<TabsTrigger value="register">Register</TabsTrigger>
-					</TabsList>
+				{/* Logo and Title */}
+				<div className="mb-8 text-center">
+					<Link href="/" className="inline-block">
+						<img
+							src="/mascot.svg"
+							alt="Secours Logo"
+							className="mx-auto h-16 w-16"
+						/>
+					</Link>
+					<h1 className="mt-4 font-bold text-3xl text-primary">Secours</h1>
+					<p className="mt-2 text-muted-foreground">
+						Your Emergency Response Training Platform
+					</p>
+				</div>
 
-					{/* Login Tab */}
-					<TabsContent value="login">
-						<Card>
-							<CardHeader className="space-y-1">
-								<CardTitle className="text-2xl">Login</CardTitle>
-								<CardDescription>
-									Enter your credentials to access your account
-								</CardDescription>
-							</CardHeader>
+				{/* Show OTP verification form when needed */}
+				{showOTPVerify ? (
+					<OTPVerificationForm
+						email={verificationEmail}
+						onVerify={handleVerifyOTP}
+						onCancel={() => setShowOTPVerify(false)}
+						isLoading={isVerifying}
+					/>
+				) : (
+					<Tabs defaultValue="login" className="w-full">
+						<TabsList className="mb-6 grid w-full grid-cols-2">
+							<TabsTrigger value="login">Login</TabsTrigger>
+							<TabsTrigger value="register">Register</TabsTrigger>
+						</TabsList>
 
-							<CardContent>
-								<Form {...loginForm}>
-									<form
-										onSubmit={loginForm.handleSubmit(onLoginSubmit)}
-										className="space-y-4"
-									>
-										<FormField
-											control={loginForm.control}
-											name="email"
-											render={({
-												field,
-											}: {
-												field: ControllerRenderProps<LoginFormValues, "email">;
-											}) => (
-												<FormItem>
-													<FormLabel htmlFor="email">Email</FormLabel>
-													<FormControl>
-														<div className="relative">
+						{/* Login Tab */}
+						<TabsContent value="login">
+							<Card>
+								<CardHeader className="space-y-1">
+									<CardTitle className="text-2xl">Login</CardTitle>
+									<CardDescription>
+										Enter your credentials to access your account
+									</CardDescription>
+								</CardHeader>
+
+								<CardContent>
+									<Form {...loginForm}>
+										<form
+											onSubmit={loginForm.handleSubmit(onLoginSubmit)}
+											className="space-y-4"
+										>
+											<FormField
+												control={loginForm.control}
+												name="email"
+												render={({
+													field,
+												}: {
+													field: ControllerRenderProps<
+														LoginFormValues,
+														"email"
+													>;
+												}) => (
+													<FormItem>
+														<FormLabel htmlFor="email">Email</FormLabel>
+														<FormControl>
+															<div className="relative">
+																<Input
+																	id="email"
+																	type="email"
+																	placeholder="name@example.com"
+																	{...field}
+																/>
+															</div>
+														</FormControl>
+														<FormMessage />
+													</FormItem>
+												)}
+											/>
+
+											<FormField
+												control={loginForm.control}
+												name="password"
+												render={({
+													field,
+												}: {
+													field: ControllerRenderProps<
+														LoginFormValues,
+														"password"
+													>;
+												}) => (
+													<FormItem>
+														<div className="flex items-center justify-between">
+															<FormLabel htmlFor="password">Password</FormLabel>
+															<Link
+																href="#"
+																className="text-primary text-sm hover:underline"
+															>
+																Forgot password?
+															</Link>
+														</div>
+														<FormControl>
+															<div className="relative">
+																<Input
+																	id="password"
+																	type={showPassword ? "text" : "password"}
+																	placeholder="••••••••"
+																	{...field}
+																/>
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="icon"
+																	className="absolute top-0 right-0 h-full px-3"
+																	onClick={() => setShowPassword(!showPassword)}
+																>
+																	{showPassword ? (
+																		<EyeOff className="h-4 w-4" />
+																	) : (
+																		<Eye className="h-4 w-4" />
+																	)}
+																	<span className="sr-only">
+																		{showPassword
+																			? "Hide password"
+																			: "Show password"}
+																	</span>
+																</Button>
+															</div>
+														</FormControl>
+														<FormMessage />
+													</FormItem>
+												)}
+											/>
+
+											<Button
+												type="submit"
+												className="w-full"
+												disabled={isLoading}
+											>
+												{isLoading ? "Signing in..." : "Sign in"}
+											</Button>
+										</form>
+									</Form>
+
+									<div className="relative mt-6">
+										<div className="absolute inset-0 flex items-center">
+											<Separator className="w-full" />
+										</div>
+										<div className="relative flex justify-center text-xs uppercase">
+											<span className="bg-card px-2 text-muted-foreground">
+												or continue with
+											</span>
+										</div>
+									</div>
+
+									<div className="mt-6 grid grid-cols-2 gap-4">
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => handleSocialLogin("Google")}
+											disabled={isLoading}
+										>
+											<svg
+												className="mr-2 h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+												role="img"
+												aria-labelledby="googleIconTitle"
+											>
+												<title id="googleIconTitle">Google Logo</title>
+												<path
+													d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+													fill="#4285F4"
+												/>
+												<path
+													d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+													fill="#34A853"
+												/>
+												<path
+													d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+													fill="#FBBC05"
+												/>
+												<path
+													d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+													fill="#EA4335"
+												/>
+											</svg>
+											Google
+										</Button>
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => handleSocialLogin("GitHub")}
+											disabled={isLoading}
+										>
+											<svg
+												className="mr-2 h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+												role="img"
+												aria-labelledby="githubIconTitle"
+											>
+												<title id="githubIconTitle">GitHub Logo</title>
+												<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+											</svg>
+											GitHub
+										</Button>
+									</div>
+								</CardContent>
+
+								<CardFooter>
+									<p className="w-full text-center text-muted-foreground text-sm">
+										Don't have an account?{" "}
+										<Link
+											href="#"
+											className="text-primary underline hover:no-underline"
+											onClick={(e) => {
+												e.preventDefault();
+												document
+													.querySelector('[data-value="register"]')
+													?.dispatchEvent(
+														new MouseEvent("click", { bubbles: true }),
+													);
+											}}
+										>
+											Register
+										</Link>
+									</p>
+								</CardFooter>
+							</Card>
+						</TabsContent>
+
+						{/* Register Tab */}
+						<TabsContent value="register">
+							<Card>
+								<CardHeader className="space-y-1">
+									<CardTitle className="text-2xl">Create an account</CardTitle>
+									<CardDescription>
+										Enter your information to create an account
+									</CardDescription>
+								</CardHeader>
+
+								<CardContent>
+									<Form {...registerForm}>
+										<form
+											onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
+											className="space-y-4"
+										>
+											<div className="grid grid-cols-2 gap-4">
+												<FormField
+													control={registerForm.control}
+													name="firstName"
+													render={({
+														field,
+													}: {
+														field: ControllerRenderProps<
+															RegisterFormValues,
+															"firstName"
+														>;
+													}) => (
+														<FormItem>
+															<FormLabel htmlFor="first-name">
+																First name
+															</FormLabel>
+															<FormControl>
+																<Input
+																	id="first-name"
+																	placeholder="John"
+																	{...field}
+																/>
+															</FormControl>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={registerForm.control}
+													name="lastName"
+													render={({
+														field,
+													}: {
+														field: ControllerRenderProps<
+															RegisterFormValues,
+															"lastName"
+														>;
+													}) => (
+														<FormItem>
+															<FormLabel htmlFor="last-name">
+																Last name
+															</FormLabel>
+															<FormControl>
+																<Input
+																	id="last-name"
+																	placeholder="Doe"
+																	{...field}
+																/>
+															</FormControl>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+											</div>
+
+											<FormField
+												control={registerForm.control}
+												name="email"
+												render={({
+													field,
+												}: {
+													field: ControllerRenderProps<
+														RegisterFormValues,
+														"email"
+													>;
+												}) => (
+													<FormItem>
+														<FormLabel htmlFor="email-register">
+															Email
+														</FormLabel>
+														<FormControl>
 															<Input
-																id="email"
+																id="email-register"
 																type="email"
 																placeholder="name@example.com"
 																{...field}
 															/>
-														</div>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={loginForm.control}
-											name="password"
-											render={({
-												field,
-											}: {
-												field: ControllerRenderProps<
-													LoginFormValues,
-													"password"
-												>;
-											}) => (
-												<FormItem>
-													<div className="flex items-center justify-between">
-														<FormLabel htmlFor="password">Password</FormLabel>
-														<Link
-															href="#"
-															className="text-primary text-sm hover:underline"
-														>
-															Forgot password?
-														</Link>
-													</div>
-													<FormControl>
-														<div className="relative">
-															<Input
-																id="password"
-																type={showPassword ? "text" : "password"}
-																placeholder="••••••••"
-																{...field}
-															/>
-															<Button
-																type="button"
-																variant="ghost"
-																size="icon"
-																className="absolute top-0 right-0 h-full px-3"
-																onClick={() => setShowPassword(!showPassword)}
-															>
-																{showPassword ? (
-																	<EyeOff className="h-4 w-4" />
-																) : (
-																	<Eye className="h-4 w-4" />
-																)}
-																<span className="sr-only">
-																	{showPassword
-																		? "Hide password"
-																		: "Show password"}
-																</span>
-															</Button>
-														</div>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<Button
-											type="submit"
-											className="w-full"
-											disabled={isLoading}
-										>
-											{isLoading ? "Signing in..." : "Sign in"}
-										</Button>
-									</form>
-								</Form>
-
-								<div className="relative mt-6">
-									<div className="absolute inset-0 flex items-center">
-										<Separator className="w-full" />
-									</div>
-									<div className="relative flex justify-center text-xs uppercase">
-										<span className="bg-card px-2 text-muted-foreground">
-											or continue with
-										</span>
-									</div>
-								</div>
-
-								<div className="mt-6 grid grid-cols-2 gap-4">
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => handleSocialLogin("Google")}
-										disabled={isLoading}
-									>
-										<svg
-											className="mr-2 h-4 w-4"
-											xmlns="http://www.w3.org/2000/svg"
-											viewBox="0 0 24 24"
-											fill="currentColor"
-											role="img"
-											aria-labelledby="googleIconTitle"
-										>
-											<title id="googleIconTitle">Google Logo</title>
-											<path
-												d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-												fill="#4285F4"
+														</FormControl>
+														<FormMessage />
+													</FormItem>
+												)}
 											/>
-											<path
-												d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-												fill="#34A853"
-											/>
-											<path
-												d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-												fill="#FBBC05"
-											/>
-											<path
-												d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-												fill="#EA4335"
-											/>
-										</svg>
-										Google
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => handleSocialLogin("GitHub")}
-										disabled={isLoading}
-									>
-										<svg
-											className="mr-2 h-4 w-4"
-											xmlns="http://www.w3.org/2000/svg"
-											viewBox="0 0 24 24"
-											fill="currentColor"
-											role="img"
-											aria-labelledby="githubIconTitle"
-										>
-											<title id="githubIconTitle">GitHub Logo</title>
-											<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-										</svg>
-										GitHub
-									</Button>
-								</div>
-							</CardContent>
 
-							<CardFooter>
-								<p className="w-full text-center text-muted-foreground text-sm">
-									Don't have an account?{" "}
-									<Link
-										href="#"
-										className="text-primary underline hover:no-underline"
-										onClick={(e) => {
-											e.preventDefault();
-											document
-												.querySelector('[data-value="register"]')
-												?.dispatchEvent(
-													new MouseEvent("click", { bubbles: true }),
-												);
-										}}
-									>
-										Register
-									</Link>
-								</p>
-							</CardFooter>
-						</Card>
-					</TabsContent>
-
-					{/* Register Tab */}
-					<TabsContent value="register">
-						<Card>
-							<CardHeader className="space-y-1">
-								<CardTitle className="text-2xl">Create an account</CardTitle>
-								<CardDescription>
-									Enter your information to create an account
-								</CardDescription>
-							</CardHeader>
-
-							<CardContent>
-								<Form {...registerForm}>
-									<form
-										onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
-										className="space-y-4"
-									>
-										<div className="grid grid-cols-2 gap-4">
 											<FormField
 												control={registerForm.control}
-												name="firstName"
+												name="password"
 												render={({
 													field,
 												}: {
 													field: ControllerRenderProps<
 														RegisterFormValues,
-														"firstName"
+														"password"
 													>;
 												}) => (
 													<FormItem>
-														<FormLabel htmlFor="first-name">
-															First name
+														<FormLabel htmlFor="password-register">
+															Password
 														</FormLabel>
 														<FormControl>
-															<Input
-																id="first-name"
-																placeholder="John"
-																{...field}
+															<div className="relative">
+																<Input
+																	id="password-register"
+																	type={showPassword ? "text" : "password"}
+																	placeholder="••••••••"
+																	{...field}
+																/>
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="icon"
+																	className="absolute top-0 right-0 h-full px-3"
+																	onClick={() => setShowPassword(!showPassword)}
+																>
+																	{showPassword ? (
+																		<EyeOff className="h-4 w-4" />
+																	) : (
+																		<Eye className="h-4 w-4" />
+																	)}
+																	<span className="sr-only">
+																		{showPassword
+																			? "Hide password"
+																			: "Show password"}
+																	</span>
+																</Button>
+															</div>
+														</FormControl>{" "}
+														{/* Password strength meter */}
+														<div className="mt-2">
+															<Progress
+																value={passwordStrength}
+																className={`transition-all duration-300 ${getPasswordStrengthColor(passwordStrength)}`}
 															/>
-														</FormControl>
+															<p className="mt-1 text-muted-foreground text-xs">
+																{getPasswordStrengthText(passwordStrength)}{" "}
+																password
+															</p>
+
+															{/* Visual password requirements */}
+															<div className="mt-3 space-y-2 text-sm">
+																<h4 className="font-medium text-foreground">
+																	Password requirements:
+																</h4>
+																<ul className="space-y-1 text-xs">
+																	<li
+																		className={`flex items-center gap-2 ${password.length >= 8 ? "text-green-500" : "text-red-500"}`}
+																	>
+																		{password.length >= 8 ? (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="checkIcon1Title"
+																			>
+																				<title id="checkIcon1Title">
+																					Check mark
+																				</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M5 13l4 4L19 7"
+																				/>
+																			</svg>
+																		) : (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="xIcon1Title"
+																			>
+																				<title id="xIcon1Title">X mark</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M6 18L18 6M6 6l12 12"
+																				/>
+																			</svg>
+																		)}
+																		At least 8 characters
+																	</li>
+																	<li
+																		className={`flex items-center gap-2 ${/[A-Z]/.test(password) ? "text-green-500" : "text-red-500"}`}
+																	>
+																		{/[A-Z]/.test(password) ? (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="checkIcon2Title"
+																			>
+																				<title id="checkIcon2Title">
+																					Check mark
+																				</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M5 13l4 4L19 7"
+																				/>
+																			</svg>
+																		) : (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="xIcon2Title"
+																			>
+																				<title id="xIcon2Title">X mark</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M6 18L18 6M6 6l12 12"
+																				/>
+																			</svg>
+																		)}
+																		At least one uppercase letter
+																	</li>
+																	<li
+																		className={`flex items-center gap-2 ${/[a-z]/.test(password) ? "text-green-500" : "text-red-500"}`}
+																	>
+																		{/[a-z]/.test(password) ? (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="checkIcon3Title"
+																			>
+																				<title id="checkIcon3Title">
+																					Check mark
+																				</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M5 13l4 4L19 7"
+																				/>
+																			</svg>
+																		) : (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="xIcon3Title"
+																			>
+																				<title id="xIcon3Title">X mark</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M6 18L18 6M6 6l12 12"
+																				/>
+																			</svg>
+																		)}
+																		At least one lowercase letter
+																	</li>
+																	<li
+																		className={`flex items-center gap-2 ${/[0-9]/.test(password) ? "text-green-500" : "text-red-500"}`}
+																	>
+																		{/[0-9]/.test(password) ? (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="checkIcon4Title"
+																			>
+																				<title id="checkIcon4Title">
+																					Check mark
+																				</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M5 13l4 4L19 7"
+																				/>
+																			</svg>
+																		) : (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="xIcon4Title"
+																			>
+																				<title id="xIcon4Title">X mark</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M6 18L18 6M6 6l12 12"
+																				/>
+																			</svg>
+																		)}
+																		At least one number
+																	</li>
+																	<li
+																		className={`flex items-center gap-2 ${/[\W_]/.test(password) ? "text-green-500" : "text-red-500"}`}
+																	>
+																		{/[\W_]/.test(password) ? (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="checkIcon5Title"
+																			>
+																				<title id="checkIcon5Title">
+																					Check mark
+																				</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M5 13l4 4L19 7"
+																				/>
+																			</svg>
+																		) : (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="xIcon5Title"
+																			>
+																				<title id="xIcon5Title">X mark</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M6 18L18 6M6 6l12 12"
+																				/>
+																			</svg>
+																		)}
+																		At least one special character
+																	</li>
+																	<li
+																		className={`flex items-center gap-2 ${!/\s/.test(password) ? "text-green-500" : "text-red-500"}`}
+																	>
+																		{!/\s/.test(password) ? (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="checkIcon6Title"
+																			>
+																				<title id="checkIcon6Title">
+																					Check mark
+																				</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M5 13l4 4L19 7"
+																				/>
+																			</svg>
+																		) : (
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				className="h-4 w-4"
+																				viewBox="0 0 24 24"
+																				fill="none"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				role="img"
+																				aria-labelledby="xIcon6Title"
+																			>
+																				<title id="xIcon6Title">X mark</title>
+																				<path
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																					d="M6 18L18 6M6 6l12 12"
+																				/>
+																			</svg>
+																		)}
+																		No spaces
+																	</li>
+																</ul>
+															</div>
+														</div>
 														<FormMessage />
 													</FormItem>
 												)}
 											/>
+
 											<FormField
 												control={registerForm.control}
-												name="lastName"
+												name="confirmPassword"
 												render={({
 													field,
 												}: {
 													field: ControllerRenderProps<
 														RegisterFormValues,
-														"lastName"
+														"confirmPassword"
 													>;
 												}) => (
 													<FormItem>
-														<FormLabel htmlFor="last-name">Last name</FormLabel>
+														<FormLabel htmlFor="confirm-password">
+															Confirm Password
+														</FormLabel>
 														<FormControl>
-															<Input
-																id="last-name"
-																placeholder="Doe"
-																{...field}
-															/>
+															<div className="relative">
+																<Input
+																	id="confirm-password"
+																	type={
+																		showConfirmPassword ? "text" : "password"
+																	}
+																	placeholder="••••••••"
+																	{...field}
+																/>
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="icon"
+																	className="absolute top-0 right-0 h-full px-3"
+																	onClick={() =>
+																		setShowConfirmPassword(!showConfirmPassword)
+																	}
+																>
+																	{showConfirmPassword ? (
+																		<EyeOff className="h-4 w-4" />
+																	) : (
+																		<Eye className="h-4 w-4" />
+																	)}
+																	<span className="sr-only">
+																		{showConfirmPassword
+																			? "Hide password"
+																			: "Show password"}
+																	</span>
+																</Button>
+															</div>
 														</FormControl>
 														<FormMessage />
 													</FormItem>
 												)}
 											/>
+											<Button
+												type="submit"
+												className="w-full"
+												disabled={isLoading}
+											>
+												{isLoading ? "Creating account..." : "Create account"}
+											</Button>
+										</form>
+									</Form>
+
+									<div className="relative mt-6">
+										<div className="absolute inset-0 flex items-center">
+											<Separator className="w-full" />
 										</div>
+										<div className="relative flex justify-center text-xs uppercase">
+											<span className="bg-card px-2 text-muted-foreground">
+												or register with
+											</span>
+										</div>
+									</div>
 
-										<FormField
-											control={registerForm.control}
-											name="email"
-											render={({
-												field,
-											}: {
-												field: ControllerRenderProps<
-													RegisterFormValues,
-													"email"
-												>;
-											}) => (
-												<FormItem>
-													<FormLabel htmlFor="email-register">Email</FormLabel>
-													<FormControl>
-														<Input
-															id="email-register"
-															type="email"
-															placeholder="name@example.com"
-															{...field}
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={registerForm.control}
-											name="password"
-											render={({
-												field,
-											}: {
-												field: ControllerRenderProps<
-													RegisterFormValues,
-													"password"
-												>;
-											}) => (
-												<FormItem>
-													<FormLabel htmlFor="password-register">
-														Password
-													</FormLabel>
-													<FormControl>
-														<div className="relative">
-															<Input
-																id="password-register"
-																type={showPassword ? "text" : "password"}
-																placeholder="••••••••"
-																{...field}
-															/>
-															<Button
-																type="button"
-																variant="ghost"
-																size="icon"
-																className="absolute top-0 right-0 h-full px-3"
-																onClick={() => setShowPassword(!showPassword)}
-															>
-																{showPassword ? (
-																	<EyeOff className="h-4 w-4" />
-																) : (
-																	<Eye className="h-4 w-4" />
-																)}
-																<span className="sr-only">
-																	{showPassword
-																		? "Hide password"
-																		: "Show password"}
-																</span>
-															</Button>
-														</div>
-													</FormControl>{" "}
-													{/* Password strength meter */}
-													<div className="mt-2">
-														<Progress
-															value={passwordStrength}
-															className={`transition-all duration-300 ${getPasswordStrengthColor(passwordStrength)}`}
-														/>
-														<p className="mt-1 text-muted-foreground text-xs">
-															{getPasswordStrengthText(passwordStrength)}{" "}
-															password
-														</p>
-
-														{/* Visual password requirements */}
-														<div className="mt-3 space-y-2 text-sm">
-															<h4 className="font-medium text-foreground">
-																Password requirements:
-															</h4>
-															<ul className="space-y-1 text-xs">
-																<li
-																	className={`flex items-center gap-2 ${password.length >= 8 ? "text-green-500" : "text-red-500"}`}
-																>
-																	{password.length >= 8 ? (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="checkIcon1Title"
-																		>
-																			<title id="checkIcon1Title">
-																				Check mark
-																			</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M5 13l4 4L19 7"
-																			/>
-																		</svg>
-																	) : (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="xIcon1Title"
-																		>
-																			<title id="xIcon1Title">X mark</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M6 18L18 6M6 6l12 12"
-																			/>
-																		</svg>
-																	)}
-																	At least 8 characters
-																</li>
-																<li
-																	className={`flex items-center gap-2 ${/[A-Z]/.test(password) ? "text-green-500" : "text-red-500"}`}
-																>
-																	{/[A-Z]/.test(password) ? (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="checkIcon2Title"
-																		>
-																			<title id="checkIcon2Title">
-																				Check mark
-																			</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M5 13l4 4L19 7"
-																			/>
-																		</svg>
-																	) : (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="xIcon2Title"
-																		>
-																			<title id="xIcon2Title">X mark</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M6 18L18 6M6 6l12 12"
-																			/>
-																		</svg>
-																	)}
-																	At least one uppercase letter
-																</li>
-																<li
-																	className={`flex items-center gap-2 ${/[a-z]/.test(password) ? "text-green-500" : "text-red-500"}`}
-																>
-																	{/[a-z]/.test(password) ? (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="checkIcon3Title"
-																		>
-																			<title id="checkIcon3Title">
-																				Check mark
-																			</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M5 13l4 4L19 7"
-																			/>
-																		</svg>
-																	) : (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="xIcon3Title"
-																		>
-																			<title id="xIcon3Title">X mark</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M6 18L18 6M6 6l12 12"
-																			/>
-																		</svg>
-																	)}
-																	At least one lowercase letter
-																</li>
-																<li
-																	className={`flex items-center gap-2 ${/[0-9]/.test(password) ? "text-green-500" : "text-red-500"}`}
-																>
-																	{/[0-9]/.test(password) ? (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="checkIcon4Title"
-																		>
-																			<title id="checkIcon4Title">
-																				Check mark
-																			</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M5 13l4 4L19 7"
-																			/>
-																		</svg>
-																	) : (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="xIcon4Title"
-																		>
-																			<title id="xIcon4Title">X mark</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M6 18L18 6M6 6l12 12"
-																			/>
-																		</svg>
-																	)}
-																	At least one number
-																</li>
-																<li
-																	className={`flex items-center gap-2 ${/[\W_]/.test(password) ? "text-green-500" : "text-red-500"}`}
-																>
-																	{/[\W_]/.test(password) ? (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="checkIcon5Title"
-																		>
-																			<title id="checkIcon5Title">
-																				Check mark
-																			</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M5 13l4 4L19 7"
-																			/>
-																		</svg>
-																	) : (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="xIcon5Title"
-																		>
-																			<title id="xIcon5Title">X mark</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M6 18L18 6M6 6l12 12"
-																			/>
-																		</svg>
-																	)}
-																	At least one special character
-																</li>
-																<li
-																	className={`flex items-center gap-2 ${!/\s/.test(password) ? "text-green-500" : "text-red-500"}`}
-																>
-																	{!/\s/.test(password) ? (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="checkIcon6Title"
-																		>
-																			<title id="checkIcon6Title">
-																				Check mark
-																			</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M5 13l4 4L19 7"
-																			/>
-																		</svg>
-																	) : (
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			className="h-4 w-4"
-																			viewBox="0 0 24 24"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeWidth="2"
-																			role="img"
-																			aria-labelledby="xIcon6Title"
-																		>
-																			<title id="xIcon6Title">X mark</title>
-																			<path
-																				strokeLinecap="round"
-																				strokeLinejoin="round"
-																				d="M6 18L18 6M6 6l12 12"
-																			/>
-																		</svg>
-																	)}
-																	No spaces
-																</li>
-															</ul>
-														</div>
-													</div>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={registerForm.control}
-											name="confirmPassword"
-											render={({
-												field,
-											}: {
-												field: ControllerRenderProps<
-													RegisterFormValues,
-													"confirmPassword"
-												>;
-											}) => (
-												<FormItem>
-													<FormLabel htmlFor="confirm-password">
-														Confirm Password
-													</FormLabel>
-													<FormControl>
-														<div className="relative">
-															<Input
-																id="confirm-password"
-																type={showConfirmPassword ? "text" : "password"}
-																placeholder="••••••••"
-																{...field}
-															/>
-															<Button
-																type="button"
-																variant="ghost"
-																size="icon"
-																className="absolute top-0 right-0 h-full px-3"
-																onClick={() =>
-																	setShowConfirmPassword(!showConfirmPassword)
-																}
-															>
-																{showConfirmPassword ? (
-																	<EyeOff className="h-4 w-4" />
-																) : (
-																	<Eye className="h-4 w-4" />
-																)}
-																<span className="sr-only">
-																	{showConfirmPassword
-																		? "Hide password"
-																		: "Show password"}
-																</span>
-															</Button>
-														</div>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
+									<div className="mt-6 grid grid-cols-2 gap-4">
 										<Button
-											type="submit"
-											className="w-full"
+											type="button"
+											variant="outline"
+											onClick={() => handleSocialLogin("Google")}
 											disabled={isLoading}
 										>
-											{isLoading ? "Creating account..." : "Create account"}
+											<svg
+												className="mr-2 h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+												role="img"
+												aria-labelledby="googleIconTitle2"
+											>
+												<title id="googleIconTitle2">Google Logo</title>
+												<path
+													d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+													fill="#4285F4"
+												/>
+												<path
+													d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+													fill="#34A853"
+												/>
+												<path
+													d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+													fill="#FBBC05"
+												/>
+												<path
+													d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+													fill="#EA4335"
+												/>
+											</svg>
+											Google
 										</Button>
-									</form>
-								</Form>
-
-								<div className="relative mt-6">
-									<div className="absolute inset-0 flex items-center">
-										<Separator className="w-full" />
-									</div>
-									<div className="relative flex justify-center text-xs uppercase">
-										<span className="bg-card px-2 text-muted-foreground">
-											or register with
-										</span>
-									</div>
-								</div>
-
-								<div className="mt-6 grid grid-cols-2 gap-4">
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => handleSocialLogin("Google")}
-										disabled={isLoading}
-									>
-										<svg
-											className="mr-2 h-4 w-4"
-											xmlns="http://www.w3.org/2000/svg"
-											viewBox="0 0 24 24"
-											fill="currentColor"
-											role="img"
-											aria-labelledby="googleIconTitle2"
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => handleSocialLogin("GitHub")}
+											disabled={isLoading}
 										>
-											<title id="googleIconTitle2">Google Logo</title>
-											<path
-												d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-												fill="#4285F4"
-											/>
-											<path
-												d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-												fill="#34A853"
-											/>
-											<path
-												d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-												fill="#FBBC05"
-											/>
-											<path
-												d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-												fill="#EA4335"
-											/>
-										</svg>
-										Google
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => handleSocialLogin("GitHub")}
-										disabled={isLoading}
-									>
-										<svg
-											className="mr-2 h-4 w-4"
-											xmlns="http://www.w3.org/2000/svg"
-											viewBox="0 0 24 24"
-											fill="currentColor"
-											role="img"
-											aria-labelledby="githubIconTitle2"
-										>
-											<title id="githubIconTitle2">GitHub Logo</title>
-											<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-										</svg>
-										GitHub
-									</Button>
-								</div>
-							</CardContent>
+											<svg
+												className="mr-2 h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+												role="img"
+												aria-labelledby="githubIconTitle2"
+											>
+												<title id="githubIconTitle2">GitHub Logo</title>
+												<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+											</svg>
+											GitHub
+										</Button>
+									</div>
+								</CardContent>
 
-							<CardFooter>
-								<p className="w-full text-center text-muted-foreground text-sm">
-									Don't have an account?{" "}
-									<Link
-										href="#"
-										className="text-primary underline hover:no-underline"
-										onClick={(e) => {
-											e.preventDefault();
-											document
-												.querySelector('[data-value="register"]')
-												?.dispatchEvent(
-													new MouseEvent("click", { bubbles: true }),
-												);
-										}}
-									>
-										Register
-									</Link>
-								</p>
-							</CardFooter>
-						</Card>
-					</TabsContent>
-				</Tabs>
+								<CardFooter>
+									<p className="w-full text-center text-muted-foreground text-sm">
+										Don't have an account?{" "}
+										<Link
+											href="#"
+											className="text-primary underline hover:no-underline"
+											onClick={(e) => {
+												e.preventDefault();
+												document
+													.querySelector('[data-value="register"]')
+													?.dispatchEvent(
+														new MouseEvent("click", { bubbles: true }),
+													);
+											}}
+										>
+											Register
+										</Link>
+									</p>
+								</CardFooter>
+							</Card>
+						</TabsContent>
+					</Tabs>
+				)}
 
 				{/* Debug Panel (Only visible when ?debug=true) */}
 				{debugMode && (
@@ -1295,5 +1444,27 @@ export default function LoginPage() {
 				)}
 			</div>
 		</div>
+	);
+}
+
+// Define the default export for the page, wrapping the content in Suspense
+export default function LoginPage() {
+	return (
+		<Suspense
+			fallback={
+				<div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
+					<img
+						src="/mascot.svg"
+						alt="Secours Logo"
+						className="mb-4 h-20 w-20"
+					/>
+					<div className="animate-pulse font-semibold text-lg">
+						Loading Secours...
+					</div>
+				</div>
+			}
+		>
+			<LoginPageContent />
+		</Suspense>
 	);
 }

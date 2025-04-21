@@ -3,14 +3,34 @@
 import { Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useAuth } from "~/components/auth/AuthProvider";
 
 export default function Home() {
 	const router = useRouter();
+	const { user, isLoading } = useAuth();
 
 	useEffect(() => {
-		// Use client-side navigation to ensure the redirect works
-		router.replace("/auth/login");
-	}, [router]);
+		// Add a slight delay to avoid race conditions with AuthProvider
+		const redirectTimer = setTimeout(() => {
+			if (isLoading) return; // Wait until auth state is loaded
+
+			// If user is authenticated, redirect to dashboard
+			// Otherwise, redirect to login
+			if (user) {
+				console.log(
+					"Home page: User is authenticated, redirecting to dashboard",
+				);
+				router.replace("/dashboard");
+			} else {
+				console.log(
+					"Home page: User is not authenticated, redirecting to login",
+				);
+				router.replace("/auth/login");
+			}
+		}, 300); // Small delay to let AuthProvider's logic complete first
+
+		return () => clearTimeout(redirectTimer);
+	}, [router, user, isLoading]);
 
 	// Show a loading state while redirecting
 	return (

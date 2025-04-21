@@ -11,7 +11,7 @@ import {
 	X,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type React from "react";
 

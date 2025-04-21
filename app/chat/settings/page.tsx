@@ -247,7 +247,7 @@ export default function AIAssistantSettingsPage() {
 			clearTimeout(timeoutId);
 			fetchInProgressRef.current = false;
 		};
-	}, [apiKey, fetchModels, selectedProvider]);
+	}, [apiKey, fetchModels, selectedProvider, loadedCombinations]);
 
 	const [newPromptName, setNewPromptName] = useState("");
 	const [newPromptContent, setNewPromptContent] = useState("");

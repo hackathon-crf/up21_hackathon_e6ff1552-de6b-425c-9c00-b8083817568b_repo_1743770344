@@ -35,6 +35,7 @@ export const users = createTable(
 	(t) => ({
 		id: varchar("id", { length: 36 }).primaryKey(), // Corresponds to Supabase Auth user ID
 		email: varchar("email", { length: 256 }).notNull().unique(),
+		emailVerified: boolean("email_verified").default(false).notNull(), // Track email verification status
 		createdAt: timestamp("created_at", { withTimezone: true }) // Changed from 'createdAt' to 'created_at'
 			.default(sql`CURRENT_TIMESTAMP`)
 			.notNull(),
@@ -52,6 +53,7 @@ export const users = createTable(
  * Merged from both files, using File 2's structure (snake_case, $onUpdate, defaults, separate PK)
  * FIX: Ensure only one primary key definition exists.
  */
+
 export const userPreferences = createTable(
 	"user_preference", // Table name in the database
 	(t) => ({

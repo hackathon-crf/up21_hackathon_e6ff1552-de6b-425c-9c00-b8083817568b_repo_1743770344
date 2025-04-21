@@ -351,8 +351,8 @@ export default function ManageDeckPage() {
 										<DialogHeader>
 											<DialogTitle>Add New Flashcard</DialogTitle>
 											<DialogDescription>
-												Create a new flashcard for your{" "}
-												{formatDeckName(deck)} deck
+												Create a new flashcard for your {formatDeckName(deck)}{" "}
+												deck
 											</DialogDescription>
 										</DialogHeader>
 										<div className="space-y-4 py-4">

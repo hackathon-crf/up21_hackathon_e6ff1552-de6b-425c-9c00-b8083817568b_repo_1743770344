@@ -9,7 +9,7 @@ import {
 	Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Badge } from "~/components/ui/badge";

@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 import React, { useEffect } from "react";
 import type { AppRouter } from "~/server/api/root";
 import { api } from "~/trpc/react";
-import Page from "../page";
-import type { ChatPageProps } from "../page";
+// Import the ChatPageWrapper from the correct file
+import { ChatPageWrapper } from "../chat-page-content";
 
 // Define session type based on the database structure
 type Session = {
@@ -68,6 +68,8 @@ export default function ChatSessionPage() {
 		}
 	}, [session_id]);
 
-	// Now we can pass the session_id as initialSessionId
-	return <Page initialSessionId={session_id} />;
+	// Render the ChatPageWrapper component and pass the session_id
+	// The default export 'Page' from '../page' doesn't accept props.
+	// Use the imported ChatPageWrapper component here
+	return <ChatPageWrapper initialSessionId={session_id} />;
 }

@@ -34,6 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [session, setSession] = useState<Session | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const [initialAuthCheckComplete, setInitialAuthCheckComplete] =
+		useState(false);
 	const router = useRouter();
 
 	// Create the Supabase client
@@ -147,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			setSession(null);
 		} finally {
 			setIsLoading(false);
+			setInitialAuthCheckComplete(true);
 		}
 	}, [supabase.auth]);
 
@@ -165,9 +168,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			// from the Supabase Auth server using getUser()
 			await getAuthState();
 
-			// Handle specific events
+			// Only handle navigation in specific cases:
+			// 1. When user explicitly signs out
+			// 2. When user explicitly signs in (but not on initial load)
 			if (event === "SIGNED_OUT") {
+				console.log("🔒 AUTH FLOW: User signed out, redirecting to home");
 				router.push("/");
+			} else if (event === "SIGNED_IN" && initialAuthCheckComplete) {
+				// Only redirect on explicit sign-in events (not initial page load auth checks)
+				console.log("🔒 AUTH FLOW: User signed in, redirecting to dashboard");
+				router.push("/dashboard");
 			}
 		});
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, Users } from "lucide-react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react"; // Added useCallback
 
 import { Button } from "~/components/ui/button";
@@ -111,15 +111,7 @@ export default function GameGamePage() {
 					console.error("Error after game completion promise:", err);
 				});
 		}
-	}, [
-		currentQuestion,
-		totalQuestions,
-		toast,
-		promise,
-		score,
-		router,
-		id,
-	]);
+	}, [currentQuestion, totalQuestions, toast, promise, score, router, id]);
 	// ----------------------------------------------------
 
 	// Display a welcome toast when the game starts

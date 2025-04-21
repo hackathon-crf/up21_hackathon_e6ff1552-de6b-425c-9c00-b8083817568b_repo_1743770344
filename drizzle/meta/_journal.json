@@ -43,6 +43,20 @@
 			"when": 1745168667088,
 			"tag": "0005_supreme_mystique",
 			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "7",
+			"when": 1745249727895,
+			"tag": "0006_bright_dakota_north",
+			"breakpoints": true
+		},
+		{
+			"idx": 7,
+			"version": "7",
+			"when": 1745258618478,
+			"tag": "0007_premium_tinkerer",
+			"breakpoints": true
 		}
 	]
 }

@@ -45,8 +45,12 @@ export function AppSidebar() {
 				<div className="-left-10 -bottom-8 absolute h-20 w-20 rounded-full bg-primary/10 blur-3xl" />
 
 				<div className="relative flex items-center gap-3">
-					<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-md shadow-primary/20">
-						<Shield className="h-5 w-5 text-white" aria-hidden="true" />
+					<div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl">
+						<img
+							src="/mascot.svg"
+							alt="Red Cross Mascot"
+							className="h-full w-full object-cover"
+						/>
 					</div>
 					<div className="flex flex-col">
 						<span className="font-bold text-foreground text-lg tracking-tight">
