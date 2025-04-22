@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
 	Activity,
 	BookOpen,
@@ -12,7 +13,7 @@ import {
 	Stethoscope,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "~/components/auth/AuthProvider";
 import { DashboardHeader } from "~/components/dashboard-header";
@@ -49,42 +50,38 @@ const DynamicDashboardChart = dynamic(
 );
 
 export default function DashboardPage() {
-	// State for client-side rendering and dashboard data
+	// State for client-side rendering
 	const [isClient, setIsClient] = useState(false);
-	const [dashboardData, setDashboardData] = useState<DashboardData | null>(
-		null,
-	);
-	const [dataLoading, setDataLoading] = useState(true);
 
-	// Use the AuthProvider's context instead of creating a separate auth state
+	// Use the AuthProvider's context
 	const { user, isLoading: authLoading } = useAuth();
 
+	// Use React Query for data fetching with caching and proper error handling
+	const { data: dashboardData, isLoading: dataLoading } = useQuery({
+		queryKey: ["dashboardData", user?.id],
+		queryFn: async () => {
+			if (!user?.id) return null;
+			try {
+				console.log("📊 DASHBOARD: Fetching data for user:", user.id);
+				return await fetchDashboardData(user.id);
+			} catch (error) {
+				console.error("📊 DASHBOARD: Error fetching dashboard data:", error);
+				throw error;
+			}
+		},
+		enabled: !!user?.id, // Only run query if user id exists
+		staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+		gcTime: 10 * 60 * 1000, // Keep data in cache for 10 minutes (renamed from cacheTime in React Query v4+)
+		refetchOnWindowFocus: false, // Don't refetch when window regains focus
+		refetchOnReconnect: false, // Don't refetch on network reconnection
+		refetchOnMount: false, // Don't refetch when component remounts
+		retry: false, // Don't retry on error
+	});
+
+	// Set client-side rendering flag
 	useEffect(() => {
 		setIsClient(true);
-
-		// Only fetch dashboard data if we have a user
-		const fetchData = async () => {
-			if (!user?.id) return;
-
-			try {
-				setDataLoading(true);
-				console.log("Fetching dashboard data for user:", user.id);
-				const data = await fetchDashboardData(user.id);
-				setDashboardData(data);
-			} catch (error) {
-				console.error("Failed to fetch dashboard data:", error);
-			} finally {
-				setDataLoading(false);
-			}
-		};
-
-		// When auth state changes and we have a user, fetch data
-		if (user?.id) {
-			fetchData();
-		} else {
-			setDataLoading(false);
-		}
-	}, [user]);
+	}, []);
 
 	// Helper function to render the appropriate icon
 	const renderIcon = (iconName: string) => {
@@ -133,8 +130,21 @@ export default function DashboardPage() {
 		);
 	}
 
-	// Loading state
-	if (!isClient || authLoading || dataLoading || !dashboardData) {
+	// Store previous dashboard data in a ref to prevent showing loading spinner when switching tabs
+	const previousDashboardData = useRef(dashboardData);
+
+	// Update the ref when we have new data
+	useEffect(() => {
+		if (dashboardData) {
+			previousDashboardData.current = dashboardData;
+		}
+	}, [dashboardData]);
+
+	// Use previous data or current data
+	const displayData = dashboardData || previousDashboardData.current;
+
+	// Only show loading state on initial load, not when switching tabs
+	if (!isClient || (authLoading && !displayData)) {
 		return (
 			<div className="container">
 				<DashboardHeader
@@ -149,15 +159,20 @@ export default function DashboardPage() {
 		);
 	}
 
-	// Destructure the data with safe fallbacks
+	// Destructure the data with safe fallbacks from displayData (which includes previous data)
 	const {
-		summaryCards,
+		summaryCards = {
+			trainingStreak: { value: 0, changeText: "No streak yet" },
+			cardsReviewed: { value: 0, changeText: "No cards reviewed" },
+			gameScore: { value: 0, changeText: "No games played" },
+			aiChats: { value: 0, changeText: "No chat sessions" },
+		},
 		weeklyProgress = [],
 		learningProgress = [],
 		upcomingReviews = [],
 		recentActivity = [],
 		trainingRecommendations = [],
-	} = dashboardData;
+	} = displayData || {};
 
 	return (
 		<div className="container">

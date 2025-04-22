@@ -3,136 +3,128 @@ import postgres from "postgres";
 
 import { env } from "~/env";
 
-// Instead of using the connection string directly, we'll parse it manually
-// to avoid the URL parsing errors
-function parseConnectionString(connectionString: string) {
-	try {
-		console.log("Manually parsing database connection string");
+// Global connection state tracking
+let connectionAttempts = 0;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
 
-		// Log the masked connection string for debugging (hide password)
-		const maskedConnString = connectionString.replace(/:[^@]+@/, ":********@");
-		console.log("Connection string format (masked):", maskedConnString);
-
-		// Extract components using regex to avoid URL parsing
-		// Format: postgresql://username:password@host:port/database
-		const regex = /postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/;
-		const match = connectionString.match(regex);
-
-		if (!match) {
-			console.error(
-				"Regex match failed. Connection string doesn't match expected format.",
-			);
-			throw new Error("Invalid connection string format");
-		}
-
-		// Extract connection parameters without decoding
-		const [, username, encodedPassword, host, port, database] = match;
-
-		// Ensure all extracted values are defined
-		if (!username || !encodedPassword || !host || !port || !database) {
-			throw new Error("Connection string is missing required components");
-		}
-
-		// Log each extracted parameter (mask password)
-		console.log("Extracted connection parameters:");
-		console.log("- Username:", username);
-		console.log(
-			"- Password:",
-			encodedPassword.length > 0 ? "********" : "empty",
-		);
-		console.log("- Password length:", encodedPassword.length);
-		console.log("- Host:", host);
-		console.log("- Port:", port);
-		console.log("- Database:", database);
-
-		// Check specifically for problematic characters in password
-		if (encodedPassword.includes("%")) {
+// Create connection with retry logic
+async function createConnection() {
+	while (connectionAttempts < MAX_RETRIES) {
+		try {
+			connectionAttempts++;
 			console.log(
-				"Warning: Password contains '%' character which may need special handling",
+				`[DB] Initializing database connection (attempt ${connectionAttempts}/${MAX_RETRIES})`,
 			);
-		}
 
-		// Return the parsed components (without decoding the password)
-		return {
-			username,
-			password: encodedPassword as string, // Keep as-is, no decoding
-			host,
-			port: Number.parseInt(port, 10),
-			database,
-		};
-	} catch (error) {
-		console.error("Error parsing connection string:", error);
-		throw error;
+			// Ensure DATABASE_URL is defined
+			if (!env.DATABASE_URL) {
+				throw new Error("DATABASE_URL environment variable is not defined");
+			}
+
+			console.log("[DB] Creating postgres client");
+
+			// Let postgres handle the connection string parsing directly
+			const sqlClient = postgres(env.DATABASE_URL, {
+				max: 3, // Number of connections
+				idle_timeout: 30, // Seconds to close idle connections
+				connect_timeout: 15, // Seconds to attempt connection before failing
+				ssl:
+					env.NODE_ENV === "production"
+						? { rejectUnauthorized: false }
+						: undefined,
+			});
+
+			// Test the connection immediately with a simple query
+			const testResult = await sqlClient`SELECT 1 AS test`;
+			console.log(
+				"[DB] Connection test successful:",
+				testResult[0]?.test === 1,
+			);
+
+			// Create the Drizzle ORM instance
+			const dbInstance = drizzle(sqlClient);
+			console.log("[DB] Database connection initialized successfully");
+
+			return { sql: sqlClient, db: dbInstance };
+		} catch (error) {
+			console.error(
+				`[DB] Failed to initialize database connection (attempt ${connectionAttempts}/${MAX_RETRIES}):`,
+				error,
+			);
+
+			if (connectionAttempts < MAX_RETRIES) {
+				console.log(`[DB] Retrying in ${RETRY_DELAY}ms...`);
+				// Wait before retrying
+				await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+			} else {
+				console.error(
+					"[DB] Max retries reached. Database initialization failed.",
+				);
+				throw error;
+			}
+		}
 	}
+
+	// If we reached here, all attempts failed
+	throw new Error(
+		`Failed to initialize database connection after ${MAX_RETRIES} attempts`,
+	);
 }
 
-// Parse connection params instead of using raw connection string
-let sqlClient: ReturnType<typeof postgres> | null = null;
-let dbInstance: ReturnType<typeof drizzle> | null = null;
+// Singleton pattern - only create one connection
+let connectionPromise: Promise<{
+	sql: ReturnType<typeof postgres>;
+	db: ReturnType<typeof drizzle>;
+}> | null = null;
 
-try {
-	console.log("Initializing database connection");
+// Get or create the database connection
+function getConnection() {
+	// Only create the connection once
+	if (!connectionPromise) {
+		connectionPromise = createConnection().catch((err) => {
+			// Reset the promise on failure so next call will try again
+			connectionPromise = null;
+			throw err;
+		});
+	}
+	return connectionPromise;
+}
 
-	// Get connection parameters
-	const connectionParams = parseConnectionString(env.DATABASE_URL);
-	console.log("Successfully parsed connection parameters");
+// For direct compatibility with existing code
+let _db: ReturnType<typeof drizzle> | null = null;
 
-	// Set connection options
-	const connectionOptions = {
-		host: connectionParams.host,
-		port: connectionParams.port,
-		database: connectionParams.database,
-		user: connectionParams.username,
-		pass: connectionParams.password as string, // Use the password as-is, without decoding
-		max: 1,
-		ssl:
-			env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
-		idle_timeout: 20,
-		connect_timeout: 10,
-	};
-
-	console.log("Creating postgres connection with parsed parameters");
-
-	// Create connection directly with parameters instead of connection string
-	sqlClient = postgres({
-		...connectionOptions,
+// Initialize the connection immediately
+getConnection()
+	.then((connection) => {
+		_db = connection.db;
+		console.log("[DB] Cached database connection successfully");
+	})
+	.catch((err) => {
+		console.error("[DB] Failed to cache database connection:", err);
 	});
 
-	console.log("Postgres connection created successfully");
+// Public API: export the database client with proper error handling
+export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+	get: (_target, prop) => {
+		if (!_db) {
+			console.error("[DB] Accessing db before connection is ready");
+			throw new Error(
+				"Database connection is not yet initialized. Please ensure the connection is established.",
+			);
+		}
+		return _db[prop as keyof typeof _db];
+	},
+});
 
-	// Create the ORM instance
-	dbInstance = drizzle(sqlClient);
-
-	console.log("Database connection initialized successfully");
-} catch (error) {
-	console.error("Failed to initialize database connection:", error);
-	console.error(
-		"Error type:",
-		error instanceof Error ? error.constructor.name : typeof error,
-	);
-	console.error(
-		"Error message:",
-		error instanceof Error ? error.message : String(error),
-	);
-	console.error(
-		"Error stack:",
-		error instanceof Error ? error.stack : "No stack trace available",
-	);
+// Export the async getter for cases where waiting for the connection is needed
+export async function getDb() {
+	const connection = await getConnection();
+	return connection.db;
 }
 
-// Export the database client and ORM instance
-export const sql =
-	sqlClient ||
-	((() => {
-		throw new Error(
-			"Database connection failed. Please check your DATABASE_URL.",
-		);
-	}) as unknown as ReturnType<typeof postgres>);
-
-export const db =
-	dbInstance ||
-	((() => {
-		throw new Error(
-			"Database connection failed. Please check your DATABASE_URL.",
-		);
-	}) as unknown as ReturnType<typeof drizzle>);
+// Optionally export SQL for raw queries if needed
+export const sql = async () => {
+	const connection = await getConnection();
+	return connection.sql;
+};

@@ -66,6 +66,39 @@ export async function POST(request: NextRequest) {
 		const userId = session.user.id;
 		console.log(`[stream] Authenticated user: ${userId.slice(0, 8)}...`);
 
+		// Check if user exists in database and create if not (auto-sync)
+		try {
+			const { users } = await import("~/server/db/schema");
+			const { eq } = await import("drizzle-orm");
+
+			// Check if user exists in our database
+			const existingUser = await db
+				.select()
+				.from(users)
+				.where(eq(users.id, userId))
+				.limit(1)
+				.then((rows) => rows[0] || null);
+
+			if (!existingUser) {
+				console.log(
+					`[stream] User ${userId.slice(0, 8)}... not found in database, auto-creating`,
+				);
+				// Create user record
+				await db.insert(users).values({
+					id: userId,
+					email: session.user.email || "",
+				});
+				console.log(
+					`[stream] User ${userId.slice(0, 8)}... created successfully`,
+				);
+			}
+		} catch (error) {
+			console.error(
+				`[stream] Error syncing user: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			// Continue despite user sync error - this is non-critical
+		}
+
 		// Parse request
 		const {
 			session_id,

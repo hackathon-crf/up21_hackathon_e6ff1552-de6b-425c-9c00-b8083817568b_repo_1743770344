@@ -43,6 +43,39 @@ export async function middleware(request: NextRequest) {
 		data: { session },
 	} = await supabase.auth.getSession();
 
+	// Auto-sync authenticated users with database
+	if (user) {
+		try {
+			// Import the database client and schema
+			const { db } = await import("~/server/db");
+			const { users } = await import("~/server/db/schema");
+			const { eq } = await import("drizzle-orm");
+
+			// Check if user exists in our database
+			const existingUser = await db
+				.select()
+				.from(users)
+				.where(eq(users.id, user.id))
+				.limit(1)
+				.then((rows) => rows[0] || null);
+
+			if (!existingUser) {
+				// Create the user record if it doesn't exist
+				console.log(
+					`[middleware] Creating missing user record for ${user.id.slice(0, 8)}...`,
+				);
+				await db.insert(users).values({
+					id: user.id,
+					email: user.email ?? "",
+				});
+				console.log("[middleware] User record created successfully");
+			}
+		} catch (error) {
+			console.error("[middleware] Error syncing user with database:", error);
+			// Continue without failing - we don't want auth errors to break the app
+		}
+	}
+
 	// Handle auth redirects
 	const path = request.nextUrl.pathname;
 
@@ -78,7 +111,11 @@ export async function middleware(request: NextRequest) {
 
 	// Also redirect authenticated users from root path to dashboard
 	// Only do this if not explicitly bypassing redirects with a query param
-	if (path === "/" && user && !request.nextUrl.searchParams.has("no_redirect")) {
+	if (
+		path === "/" &&
+		user &&
+		!request.nextUrl.searchParams.has("no_redirect")
+	) {
 		console.log("Authenticated user at root path, redirecting to dashboard");
 		return NextResponse.redirect(new URL("/dashboard", request.url));
 	}
