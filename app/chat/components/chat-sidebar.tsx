@@ -534,15 +534,14 @@ export function ChatSidebar() {
 	).length;
 
 	return (
-		<div className="flex h-full w-72 flex-col border-zinc-800 border-r bg-zinc-900/70">
-			{/* Header with search, filter, and sort on the same line */}
-			<div className="space-y-2 border-zinc-800 border-b p-3">
+		<div className="flex h-full w-72 flex-col border-border border-r bg-background/70">
+			<div className="space-y-2 border-border border-b p-3">
 				<div className="flex items-center gap-2">
 					<div className="relative flex-1">
 						<Search className="-translate-y-1/2 absolute top-1/2 left-2 h-4 w-4 transform text-muted-foreground" />
 						<Input
 							placeholder="Search..."
-							className="h-9 border-zinc-700 bg-zinc-800/50 pl-8"
+							className="h-9 bg-muted/50 pl-8"
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
@@ -553,8 +552,8 @@ export function ChatSidebar() {
 								variant="ghost"
 								size="icon"
 								className={cn(
-									"relative h-9 w-9 flex-shrink-0 bg-zinc-800/50",
-									activeFilterCount > 0 && "text-primary",
+									"relative h-9 w-9 flex-shrink-0 bg-muted/50",
+									activeFilterCount > 0 && "text-primary"
 								)}
 							>
 								<Filter className="h-4 w-4" />
@@ -771,7 +770,7 @@ export function ChatSidebar() {
 				<Button
 					variant="outline"
 					size="sm"
-					className="w-full border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700/50"
+					className="w-full bg-muted/50 hover:bg-muted"
 					onClick={handleCreateChat}
 					disabled={creating}
 				>
@@ -786,7 +785,7 @@ export function ChatSidebar() {
 			</div>
 
 			{/* Tab Navigation */}
-			<div className="border-zinc-800 border-b">
+			<div className="border-border border-b">
 				<Tabs
 					defaultValue="all"
 					value={activeTab}
@@ -843,28 +842,21 @@ export function ChatSidebar() {
 								key={session.id}
 								href={`/chat/${session.id}`}
 								className={cn(
-									"group block rounded-md p-3 hover:bg-zinc-800/50",
-									session.id === currentSessionId &&
-										"bg-primary/10 hover:bg-primary/15",
+									"group block rounded-md p-3 hover:bg-muted/50",
+									session.id === currentSessionId && "bg-primary/10 hover:bg-primary/15"
 								)}
 							>
-								<div
-									className={cn(
-										"relative flex flex-col",
-										session.is_pinned && "-ml-2 border-primary border-l-2 pl-2",
-									)}
-								>
+								<div className={cn(
+									"relative flex flex-col",
+									session.is_pinned && "-ml-2 border-primary border-l-2 pl-2"
+								)}>
 									{/* Top row: title and timestamp */}
 									<div className="mb-1 flex items-center justify-between">
 										<div className="flex items-center gap-1.5">
-											<span
-												className={cn(
-													"truncate font-medium text-sm",
-													session.id === currentSessionId
-														? "text-primary"
-														: "text-zinc-200",
-												)}
-											>
+											<span className={cn(
+												"truncate font-medium text-sm",
+												session.id === currentSessionId ? "text-primary" : "text-foreground"
+											)}>
 												{session.title || "New Chat"}
 											</span>
 											{/* Unread indicator - just a demo, not functional */}
@@ -905,23 +897,21 @@ export function ChatSidebar() {
 											{/* Pin button as quick access */}
 											<button
 												type="button"
-												className="text-zinc-400 hover:text-zinc-200"
+												className="text-muted-foreground hover:text-foreground"
 												onClick={(e) => handleTogglePin(e, session)}
 												title={session.is_pinned ? "Unpin" : "Pin"}
 											>
-												<Pin
-													className={cn(
-														"h-3.5 w-3.5",
-														session.is_pinned && "fill-primary text-primary",
-													)}
-												/>
+												<Pin className={cn(
+													"h-3.5 w-3.5",
+													session.is_pinned && "fill-primary text-primary"
+												)} />
 											</button>
 
 											{/* More options menu */}
 											<div className="relative">
 												<button
 													type="button"
-													className="text-zinc-400 hover:text-zinc-200"
+													className="text-muted-foreground hover:text-foreground"
 													onClick={(e) => {
 														e.stopPropagation();
 														toggleMenu(e, session.id);
@@ -935,7 +925,7 @@ export function ChatSidebar() {
 												{/* Dropdown menu with other actions */}
 												<div
 													id={`menu-${session.id}`}
-													className="absolute top-full right-0 z-10 mt-1 hidden w-32 rounded-md bg-zinc-800 p-1 shadow-lg"
+													className="absolute top-full right-0 z-10 mt-1 hidden w-32 rounded-md bg-popover p-1 shadow-lg"
 													onMouseLeave={() => {
 														// Close the menu when mouse leaves this area
 														const menu = document.getElementById(
@@ -952,12 +942,11 @@ export function ChatSidebar() {
 														className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
 														onClick={(e) => handleTogglePin(e, session)}
 													>
-														<Pin
-															className={cn(
-																"h-3.5 w-3.5",
-																session.is_pinned &&
-																	"fill-primary text-primary",
-															)}
+														<Pin className={cn(
+															"h-3.5 w-3.5",
+															session.is_pinned &&
+																"fill-primary text-primary",
+														)}
 														/>
 														<span>{session.is_pinned ? "Unpin" : "Pin"}</span>
 													</button>

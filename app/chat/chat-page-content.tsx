@@ -615,20 +615,16 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 	};
 
 	return (
-		<div
-			className={cn(
-				"flex h-screen flex-col",
-				"bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))]",
-				"from-zinc-900/80 via-zinc-900/90 to-zinc-900",
-				"bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTEyIDEyaDEydjEySDEyem0yNCAwaDEydjEySDM2em0tMjQgMjRoMTJ2MTJIMTIiIGZpbGw9ImN1cnJlbnRDb2xvciIvPjwvc3ZnPg==')]",
-			)}
-		>
-			<div
-				className={cn(
-					"sticky top-0 z-10 border-b backdrop-blur-sm",
-					"border-zinc-800/70 bg-zinc-900/90 shadow-zinc-950/20",
-				)}
-			>
+		<div className={cn(
+			"flex h-screen flex-col",
+			"bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))]",
+			"from-background/80 via-background/90 to-background",
+			"bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTEwIDEwaDR2MTBoMTB2NGgtMTB2MTBoLTR2LTEwaC0xMHYtNGgxMHogTTQwIDQwaDR2MTBoMTB2NGgtMTB2MTBoLTR2LTEwaC0xMHYtNGgxMHoiIGZpbGw9ImN1cnJlbnRDb2xvciIvPjwvc3ZnPg==')]",
+		)}>
+			<div className={cn(
+				"sticky top-0 z-10 border-b backdrop-blur-sm",
+				"border-border/50 bg-background/90 shadow-sm"
+			)}>
 				<ChatHeader
 					title="AI Assistant"
 					description="Ask questions and get personalized first aid guidance"
@@ -636,6 +632,7 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 			</div>
 
 			<div className="flex flex-1 flex-col overflow-hidden p-2 sm:p-6">
+				{/* Welcome banner */}
 				{showWelcomeBanner && (
 					<motion.div
 						initial={{ opacity: 0, y: -20 }}
@@ -643,7 +640,8 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 						transition={{ duration: 0.3 }}
 						className={cn(
 							"relative mb-4 rounded-2xl p-5 shadow-md",
-							"border border-red-900/20 bg-gradient-to-br from-red-950/30 to-red-900/10",
+							"border border-red-500/20 bg-gradient-to-br from-red-100 to-red-50",
+							"dark:border-red-900/20 dark:from-red-950/30 dark:to-red-900/10",
 						)}
 					>
 						<Button
@@ -665,10 +663,10 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 								<Heart className="h-7 w-7" strokeWidth={2.5} />
 							</div>
 							<div>
-								<h3 className="mb-1.5 font-semibold text-xl">
+								<h3 className="mb-1.5 font-semibold text-foreground text-xl">
 									Welcome to Red Cross AI Assistant
 								</h3>
-								<p className="text-muted-foreground leading-relaxed">
+								<p className="text-foreground/90 leading-relaxed">
 									I can help you with first aid procedures, emergency response
 									protocols, and CPR techniques. Ask me anything about safety
 									training and medical emergencies!
@@ -678,18 +676,13 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 					</motion.div>
 				)}
 
-				<Card
-					className={cn(
-						"flex flex-1 flex-col overflow-hidden rounded-2xl shadow-xl",
-						"border-zinc-800/50 bg-zinc-900/60 backdrop-blur-sm",
-					)}
-				>
+				<Card className={cn(
+					"flex flex-1 flex-col overflow-hidden rounded-2xl shadow-xl",
+					"border-border/50 bg-card/60 backdrop-blur-sm"
+				)}>
 					<CardContent className="flex-1 overflow-hidden p-0">
 						<div className="flex h-full flex-col">
-							<div
-								ref={containerRef}
-								className="hide-scrollbar flex-1 space-y-7 overflow-y-auto p-3 sm:p-5"
-							>
+							<div ref={containerRef} className="hide-scrollbar flex-1 space-y-7 overflow-y-auto p-3 sm:p-5">
 								<AnimatePresence initial={false}>
 									{messages.map((message) => (
 										<motion.div
@@ -713,10 +706,9 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 														damping: 20,
 													}}
 													className={cn(
-														"flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-xl shadow-md",
-														message.role === "user"
-															? "bg-primary/90 text-primary-foreground shadow-primary/10"
-															: "border border-red-800/30 bg-gradient-to-br from-red-800/40 to-red-700/30 text-red-200 shadow-red-900/5",
+														"flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-xl shadow-md border",															message.role === "user"
+															? "border-slate-400/50 bg-gradient-to-br from-slate-200/90 to-slate-100/90 text-slate-700 shadow-slate-500/5 dark:border-slate-800/30 dark:from-slate-900/40 dark:to-slate-800/30 dark:text-slate-100"
+															: "border-red-200/50 bg-gradient-to-br from-red-100/90 to-red-50/90 text-red-700 shadow-red-500/5 dark:border-red-800/30 dark:from-red-900/40 dark:to-red-800/30 dark:text-red-200",
 													)}
 												>
 													{message.role === "user" ? (
@@ -742,10 +734,10 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 														animate={{ opacity: 1, y: 0 }}
 														transition={{ duration: 0.2 }}
 														className={cn(
-															"rounded-2xl px-5 py-4 shadow-sm",
+															"rounded-2xl px-5 py-4 shadow-sm border",
 															message.role === "user"
-																? "bg-gradient-to-r from-primary/90 to-primary/80 text-primary-foreground shadow-primary/10"
-																: "border border-zinc-700/40 bg-zinc-800/90 text-zinc-100 shadow-zinc-950/5",
+																? "border-slate-400/50 bg-gradient-to-r from-slate-200/90 to-slate-100/90 text-slate-900 shadow-slate-500/5 dark:border-slate-800/30 dark:bg-gradient-to-r dark:from-slate-900/40 dark:to-slate-800/30 dark:text-slate-100 dark:shadow-slate-950/10"
+																: "border-red-200/50 bg-gradient-to-r from-red-100/90 to-red-50/90 text-foreground shadow-red-500/5 dark:border-red-800/30 dark:bg-gradient-to-r dark:from-red-900/40 dark:to-red-800/30 dark:text-red-100 dark:shadow-red-950/10",
 														)}
 													>
 														{message.isLoading ? (
@@ -761,7 +753,12 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 
 													{/* Sources button row */}
 													<div className="flex items-center justify-between px-1">
-														<div className="flex items-center gap-1.5 rounded-full bg-zinc-800/60 px-1.5 py-0.5 font-medium text-muted-foreground text-xs">
+														<div className={cn(
+															"flex items-center gap-1.5 rounded-full px-1.5 py-0.5 font-medium text-xs",
+															message.role === "user"
+																? "bg-gradient-to-r from-slate-200/50 to-slate-100/50 text-slate-700 dark:bg-gradient-to-r dark:from-slate-900/40 dark:to-slate-800/30 dark:text-slate-300"
+																: "bg-gradient-to-r from-red-100/50 to-red-50/50 text-red-700/70 dark:bg-gradient-to-r dark:from-red-900/40 dark:to-red-800/30 dark:text-red-200"
+														)}>
 															<div
 																className={cn(
 																	"h-1.5 w-1.5 rounded-full",
@@ -912,9 +909,9 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 								</AnimatePresence>
 							</div>
 
-							<Separator className="my-0 bg-zinc-700/50" />
+							<Separator className="my-0 bg-border/50" />
 
-							<div className="bg-zinc-800/70 p-4 backdrop-blur-sm sm:p-5">
+							<div className="bg-muted/70 p-4 backdrop-blur-sm sm:p-5">
 								<div className="relative">
 									<Input
 										ref={inputRef}
@@ -922,7 +919,7 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 										value={input}
 										onChange={(e) => setInput(e.target.value)}
 										onKeyDown={handleKeyDown}
-										className="rounded-xl border-zinc-700/60 bg-zinc-900/80 py-6 pr-24 text-base shadow-sm transition-all duration-200 focus-visible:border-zinc-600 focus-visible:ring-zinc-700/40 focus-visible:ring-offset-0"
+										className="rounded-xl border-border/60 bg-background/80 py-6 pr-24 text-base shadow-sm transition-all duration-200 focus-visible:border-ring focus-visible:ring-ring/40 focus-visible:ring-offset-0"
 									/>
 									<div className="absolute top-1.5 right-1.5 flex items-center gap-1.5">
 										<TooltipProvider>
@@ -984,7 +981,7 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 									</div>
 								</div>
 								<div className="mt-3.5 flex items-center justify-between px-1">
-									<div className="flex items-center gap-1 rounded-lg bg-zinc-700/60 px-2 py-1 font-medium text-xs text-zinc-300">
+									<div className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1 font-medium text-xs text-muted-foreground">
 										{isTyping ? (
 											<motion.span
 												className="flex items-center"
@@ -1002,9 +999,9 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 										)}
 									</div>
 
-									<div className="hidden items-center gap-2 rounded-md bg-zinc-700/60 px-2 py-1 text-[11px] text-zinc-300 sm:flex">
+									<div className="hidden items-center gap-2 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground sm:flex">
 										<div className="flex items-center">
-											<kbd className="rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-400">
+											<kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-muted-foreground">
 												Enter
 											</kbd>
 											<span className="mx-1.5 text-muted-foreground">
@@ -1012,7 +1009,7 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 											</span>
 										</div>
 										<div className="flex items-center">
-											<kbd className="rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-400">
+											<kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-muted-foreground">
 												Shift+Enter
 											</kbd>
 											<span className="ml-1.5 text-muted-foreground">

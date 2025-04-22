@@ -314,13 +314,14 @@ export default function AIAssistantSettingsPage() {
 	]);
 
 	return (
-		<div className="flex min-h-screen flex-col bg-gradient-to-b from-background to-background/80">
+		<div className="flex h-screen flex-col bg-gradient-to-b from-background to-background/80">
 			<DashboardHeader
 				title="AI Assistant Settings"
 				description="Configure your AI assistant's behavior and capabilities"
+				className="flex-none"
 			/>
 
-			<main className="flex-1 p-4 sm:p-6">
+			<main className="flex-1 overflow-y-auto p-4 sm:p-6">
 				<div className="mx-auto max-w-5xl space-y-6">
 					<div className="flex items-center justify-between">
 						<Button variant="ghost" size="sm" asChild className="group mb-4">

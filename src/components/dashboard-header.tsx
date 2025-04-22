@@ -6,11 +6,12 @@ import { Button } from "~/components/ui/button";
 interface DashboardHeaderProps {
 	title: string;
 	description?: string;
+	className?: string;
 }
 
-export function DashboardHeader({ title, description }: DashboardHeaderProps) {
+export function DashboardHeader({ title, description, className }: DashboardHeaderProps) {
 	return (
-		<div className="sticky top-0 z-10 border-b bg-background">
+		<div className={`sticky top-0 z-10 border-b bg-background ${className ?? ''}`}>
 			<div className="flex flex-col px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
 				<div className="mb-2 sm:mb-0">
 					<h1 className="font-bold text-xl sm:text-2xl">{title}</h1>
