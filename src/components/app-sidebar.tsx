@@ -6,6 +6,7 @@ import {
 	BookOpen,
 	BookX,
 	ChevronDown,
+	ChevronRight,
 	Gamepad2,
 	Home,
 	LogOut,
@@ -88,11 +89,31 @@ export function AppSidebar() {
 				<Button
 					variant="ghost"
 					size="icon"
-					className="fixed top-4 left-4 z-50 h-10 w-10 rounded-xl"
+					className={cn(
+						"fixed top-1/2 -translate-y-1/2 -left-1 z-50",
+						"h-[84px] w-6 pr-1.5",
+						"bg-[rgb(255,252,250,0.75)]",
+						// Simple vertical tab
+						"rounded-[6px_16px_16px_6px]",
+						// Subtle border
+						"border-y border-l border-black/[0.008]",
+						// Hover effects
+						"transition-transform duration-300 ease-out",
+						"hover:-left-0.5",
+						"group data-[state=open]:translate-x-64",
+						isOpen && "translate-x-64"
+					)}
 					onClick={() => setIsOpen(!isOpen)}
 					aria-label={isOpen ? "Close menu" : "Open menu"}
 				>
-					{isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+					<ChevronRight 
+						className={cn(
+							"h-4 w-4 text-black/40",
+							"transition-transform duration-300 ease-out",
+							"group-hover:-translate-x-0.5",
+							isOpen && "rotate-180"
+						)}
+					/>
 				</Button>
 			)}
 

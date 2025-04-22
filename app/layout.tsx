@@ -24,7 +24,7 @@ export default function RootLayout({
 	const isAuthPage = pathname?.startsWith("/auth") || pathname === "/";
 
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="en">
 			<body className={inter.className}>
 				<TRPCReactProvider>
 					<ThemeProvider
