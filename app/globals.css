@@ -152,6 +152,26 @@
 	.animate-accordion-up {
 		animation: accordion-up 0.2s ease-out;
 	}
+
+	/* Custom scrollbar styling for chat conversations list */
+	.chat-scrollbar {
+		/* Firefox */
+		scrollbar-width: thin;
+		scrollbar-color: var(--muted-foreground) transparent;
+	}
+	.chat-scrollbar::-webkit-scrollbar {
+		width: 8px;
+	}
+	.chat-scrollbar::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.chat-scrollbar::-webkit-scrollbar-thumb {
+		background-color: var(--muted-foreground);
+		border-radius: 4px;
+	}
+	.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+		background-color: var(--foreground);
+	}
 }
 
 @keyframes accordion-down {

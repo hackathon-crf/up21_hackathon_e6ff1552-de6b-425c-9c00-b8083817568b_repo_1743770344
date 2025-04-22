@@ -324,10 +324,10 @@ export default function AIAssistantSettingsPage() {
 			<main className="flex-1 overflow-y-auto p-4 sm:p-6">
 				<div className="mx-auto max-w-5xl space-y-6">
 					<div className="flex items-center justify-between">
-						<Button variant="ghost" size="sm" asChild className="group mb-4">
+						<Button variant="ghost" size="sm" asChild className="group">
 							<Link href="/chat">
-								<ArrowLeft className="group-hover:-translate-x-1 mr-2 h-4 w-4 transition-transform" />
-								Back to Chat
+								<ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+								<span className="ml-2 hidden sm:inline">Back to Chat</span>
 							</Link>
 						</Button>
 
@@ -409,38 +409,38 @@ export default function AIAssistantSettingsPage() {
 					</div>
 
 					<Tabs defaultValue="model" className="space-y-4">
-						<TabsList className="grid grid-cols-2 bg-muted/50 p-1 backdrop-blur-sm md:grid-cols-4">
+						<TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 backdrop-blur-sm">
 							<TabsTrigger
 								value="model"
-								className="flex items-center gap-2 data-[state=active]:bg-background"
+								className="flex items-center justify-center gap-2 data-[state=active]:bg-background"
 							>
 								<Brain className="h-4 w-4" />
-								<span className="hidden md:inline">Model Settings</span>
-								<span className="md:hidden">Model</span>
+								<span className="hidden sm:inline">Model Settings</span>
+								<span className="sm:hidden">Model</span>
 							</TabsTrigger>
 							<TabsTrigger
 								value="prompt"
-								className="flex items-center gap-2 data-[state=active]:bg-background"
+								className="flex items-center justify-center gap-2 data-[state=active]:bg-background"
 							>
 								<MessageSquare className="h-4 w-4" />
-								<span className="hidden md:inline">Prompt Settings</span>
-								<span className="md:hidden">Prompt</span>
+								<span className="hidden sm:inline">Prompt Settings</span>
+								<span className="sm:hidden">Prompt</span>
 							</TabsTrigger>
 							<TabsTrigger
 								value="rag"
-								className="flex items-center gap-2 data-[state=active]:bg-background"
+								className="flex items-center justify-center gap-2 data-[state=active]:bg-background"
 							>
 								<Database className="h-4 w-4" />
-								<span className="hidden md:inline">RAG Settings</span>
-								<span className="md:hidden">RAG</span>
+								<span className="hidden sm:inline">RAG Settings</span>
+								<span className="sm:hidden">RAG</span>
 							</TabsTrigger>
 							<TabsTrigger
 								value="other"
-								className="flex items-center gap-2 data-[state=active]:bg-background"
+								className="flex items-center justify-center gap-2 data-[state=active]:bg-background"
 							>
 								<Settings className="h-4 w-4" />
-								<span className="hidden md:inline">Other Settings</span>
-								<span className="md:hidden">Other</span>
+								<span className="hidden sm:inline">Other Settings</span>
+								<span className="sm:hidden">Other</span>
 							</TabsTrigger>
 						</TabsList>
 

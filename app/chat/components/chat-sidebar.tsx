@@ -45,6 +45,7 @@ import {
 } from "~/components/ui/popover";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { toast } from "~/hooks/use-toast";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -98,6 +99,7 @@ type FilterOptions = {
 export function ChatSidebar() {
 	const pathname = usePathname();
 	const router = useRouter();
+	const isMobile = useIsMobile();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeTab, setActiveTab] = useState("all");
 	const [showDialog, setShowDialog] = useState(false);
@@ -534,289 +536,71 @@ export function ChatSidebar() {
 	).length;
 
 	return (
-		<div className="flex h-full w-72 flex-col border-border border-r bg-background/70">
-			<div className="space-y-2 border-border border-b p-3">
-				<div className="flex items-center gap-2">
-					<div className="relative flex-1">
-						<Search className="-translate-y-1/2 absolute top-1/2 left-2 h-4 w-4 transform text-muted-foreground" />
-						<Input
-							placeholder="Search..."
-							className="h-9 bg-muted/50 pl-8"
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-						/>
-					</div>
-					<Popover open={showFilterPopover} onOpenChange={setShowFilterPopover}>
-						<PopoverTrigger asChild>
-							<Button
-								variant="ghost"
-								size="icon"
-								className={cn(
-									"relative h-9 w-9 flex-shrink-0 bg-muted/50",
-									activeFilterCount > 0 && "text-primary"
-								)}
-							>
-								<Filter className="h-4 w-4" />
-								{activeFilterCount > 0 && (
-									<span className="-top-1 -right-1 absolute flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-										{activeFilterCount}
-									</span>
-								)}
-							</Button>
-						</PopoverTrigger>
-						<PopoverContent className="w-56" align="end">
-							<div className="space-y-4">
-								<h4 className="font-medium text-sm">Filter Chats</h4>
-
-								<div className="space-y-2">
-									<div className="flex items-center space-x-2">
-										<Checkbox
-											id="pinned"
-											checked={filterOptions.pinned}
-											onCheckedChange={(checked) =>
-												handleFilterChange("pinned", checked === true)
-											}
-										/>
-										<Label htmlFor="pinned" className="text-sm">
-											Pinned chats
-										</Label>
-									</div>
-
-									<div className="flex items-center space-x-2">
-										<Checkbox
-											id="archived"
-											checked={filterOptions.archived}
-											onCheckedChange={(checked) =>
-												handleFilterChange("archived", checked === true)
-											}
-										/>
-										<Label htmlFor="archived" className="text-sm">
-											Archived chats
-										</Label>
-									</div>
-
-									<div className="flex items-center space-x-2">
-										<Checkbox
-											id="unread"
-											checked={filterOptions.unread}
-											onCheckedChange={(checked) =>
-												handleFilterChange("unread", checked === true)
-											}
-										/>
-										<Label htmlFor="unread" className="text-sm">
-											Unread messages
-										</Label>
-									</div>
-								</div>
-
-								<div className="space-y-2">
-									<h5 className="text-muted-foreground text-xs">Date range</h5>
-									<div className="grid gap-1">
-										{[
-											{ label: "All time", value: "all" },
-											{ label: "Today", value: "today" },
-											{ label: "This week", value: "week" },
-											{ label: "This month", value: "month" },
-											{ label: "Custom", value: "custom" },
-										].map((option) => (
-											<Button
-												key={option.value}
-												variant="ghost"
-												size="sm"
-												className={cn(
-													"justify-start font-normal",
-													filterOptions.date === option.value && "bg-zinc-800",
-												)}
-												onClick={() => handleFilterChange("date", option.value)}
-											>
-												{option.label}
-												{filterOptions.date === option.value && (
-													<Check className="ml-auto h-4 w-4" />
-												)}
-											</Button>
-										))}
-
-										{/* Custom date range calendar pickers */}
-										{filterOptions.date === "custom" && (
-											<div className="space-y-3 pt-2">
-												<div className="space-y-1">
-													<h6 className="font-medium text-xs">From</h6>
-													<DatePickerAdapter
-														date={filterOptions.startDate}
-														setDate={(date) =>
-															handleFilterChange("startDate", date)
-														}
-														placeholder="Start date"
-														className="h-8 text-xs"
-													/>
-												</div>
-
-												<div className="space-y-1">
-													<h6 className="font-medium text-xs">To</h6>
-													<DatePickerAdapter
-														date={filterOptions.endDate}
-														setDate={(date) =>
-															handleFilterChange("endDate", date)
-														}
-														placeholder="End date"
-														className="h-8 text-xs"
-													/>
-												</div>
-											</div>
-										)}
-									</div>
-								</div>
-
-								<div className="flex items-center justify-between border-zinc-800 border-t pt-2">
-									<Button
-										variant="ghost"
-										size="sm"
-										className="text-xs"
-										onClick={resetFilters}
-									>
-										<X className="mr-1 h-3.5 w-3.5" />
-										Clear filters
-									</Button>
-									<Button
-										size="sm"
-										className="text-xs"
-										onClick={() => setShowFilterPopover(false)}
-									>
-										Apply
-									</Button>
-								</div>
-							</div>
-						</PopoverContent>
-					</Popover>
-					<Popover open={showSortPopover} onOpenChange={setShowSortPopover}>
-						<PopoverTrigger asChild>
-							<Button
-								variant="ghost"
-								size="icon"
-								className="h-9 w-9 flex-shrink-0 bg-zinc-800/50"
-							>
-								<ArrowUpDown className="h-4 w-4" />
-							</Button>
-						</PopoverTrigger>
-						<PopoverContent className="w-56" align="end">
-							<div className="space-y-4">
-								<h4 className="font-medium text-sm">Sort Chats</h4>
-								<div className="space-y-2">
-									<h5 className="text-muted-foreground text-xs">Sort by</h5>
-									<div className="grid gap-1">
-										{[
-											{ label: "Last updated", value: "updated_at" },
-											{ label: "Date created", value: "created_at" },
-											{ label: "Position", value: "position" },
-										].map((option) => (
-											<Button
-												key={option.value}
-												variant="ghost"
-												size="sm"
-												className={cn(
-													"justify-start font-normal",
-													sortField === option.value && "bg-zinc-800",
-												)}
-												onClick={() =>
-													setSortField(
-														option.value as
-															| "updated_at"
-															| "created_at"
-															| "position",
-													)
-												}
-											>
-												{option.label}
-												{sortField === option.value && (
-													<Check className="ml-auto h-4 w-4" />
-												)}
-											</Button>
-										))}
-									</div>
-								</div>
-								<div className="space-y-2">
-									<h5 className="text-muted-foreground text-xs">Order</h5>
-									<div className="grid gap-1">
-										{[
-											{ label: "Ascending", value: "asc" },
-											{ label: "Descending", value: "desc" },
-										].map((option) => (
-											<Button
-												key={option.value}
-												variant="ghost"
-												size="sm"
-												className={cn(
-													"justify-start font-normal",
-													sortOrder === option.value && "bg-zinc-800",
-												)}
-												onClick={() =>
-													setSortOrder(option.value as "asc" | "desc")
-												}
-											>
-												{option.label}
-												{sortOrder === option.value && (
-													<Check className="ml-auto h-4 w-4" />
-												)}
-											</Button>
-										))}
-									</div>
-								</div>
-							</div>
-						</PopoverContent>
-					</Popover>
-				</div>
-
-				{/* New chat button below the search row */}
-				<Button
-					variant="outline"
-					size="sm"
-					className="w-full bg-muted/50 hover:bg-muted"
-					onClick={handleCreateChat}
-					disabled={creating}
-				>
-					<Plus className="mr-2 h-4 w-4" />
-					New Chat
-					{creating && (
-						<div className="absolute inset-0 flex items-center justify-center">
-							<div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+		<div
+			className={cn(
+				"flex h-full w-full flex-col gap-2",
+				"bg-background p-4",
+				isMobile ? "min-w-0 max-w-[100vw]" : "w-[360px] min-w-[360px]",
+			)}
+		>
+			<div className="-mx-4 flex flex-col gap-2 px-4">
+				{/* Search and New Chat full-width block */}
+				<div className="relative w-full">
+					<div className="-mx-4 flex w-[calc(100%+2rem)] flex-col gap-2 px-4">
+						<div className="relative">
+							<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+							<Input
+								placeholder="Search conversations..."
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
+								className="w-full pl-8"
+							/>
 						</div>
-					)}
-				</Button>
+
+						<Button
+							onClick={handleCreateChat}
+							className="w-full justify-center gap-2"
+						>
+							<Plus className="h-4 w-4" />
+							New Chat
+						</Button>
+					</div>
+				</div>
 			</div>
 
-			{/* Tab Navigation */}
-			<div className="border-border border-b">
+			{/* Existing tabs navigation and content (full-width tabs) */}
+			<div className="border-border border-b px-4">
 				<Tabs
 					defaultValue="all"
 					value={activeTab}
 					onValueChange={setActiveTab}
 					className="w-full"
 				>
-					<TabsList className="grid h-10 grid-cols-3 p-0">
+					<TabsList className="-mx-4 grid h-10 w-[calc(100%+2rem)] grid-cols-3 p-0">
 						<TabsTrigger
 							value="all"
-							className="rounded-none data-[state=active]:border-primary data-[state=active]:border-b-2 data-[state=active]:bg-transparent"
+							className="flex w-full items-center justify-center rounded-none data-[state=active]:border-primary data-[state=active]:border-b-2 data-[state=active]:bg-transparent"
 						>
 							All
 						</TabsTrigger>
 						<TabsTrigger
 							value="pinned"
-							className="rounded-none data-[state=active]:border-primary data-[state=active]:border-b-2 data-[state=active]:bg-transparent"
+							className="flex w-full items-center justify-center rounded-none data-[state=active]:border-primary data-[state=active]:border-b-2 data-[state=active]:bg-transparent"
 						>
-							<Pin className="mr-1 h-3.5 w-3.5" /> Pinned
+							{!isMobile && <Pin className="mr-1 h-3.5 w-3.5" />}Pinned
 						</TabsTrigger>
 						<TabsTrigger
 							value="archived"
-							className="rounded-none data-[state=active]:border-primary data-[state=active]:border-b-2 data-[state=active]:bg-transparent"
+							className="flex w-full items-center justify-center rounded-none data-[state=active]:border-primary data-[state=active]:border-b-2 data-[state=active]:bg-transparent"
 						>
-							<Archive className="mr-1 h-3.5 w-3.5" /> Archived
+							{!isMobile && <Archive className="mr-1 h-3.5 w-3.5" />}Archived
 						</TabsTrigger>
 					</TabsList>
 				</Tabs>
 			</div>
 
 			{/* Conversations List */}
-			<div className="flex-1 overflow-auto">
+			<div className="chat-scrollbar max-h-screen flex-1 overflow-y-auto">
 				{isLoading ? (
 					<div className="space-y-3 p-3">
 						{["sk-1", "sk-2", "sk-3", "sk-4", "sk-5"].map((id) => (
@@ -843,20 +627,27 @@ export function ChatSidebar() {
 								href={`/chat/${session.id}`}
 								className={cn(
 									"group block rounded-md p-3 hover:bg-muted/50",
-									session.id === currentSessionId && "bg-primary/10 hover:bg-primary/15"
+									session.id === currentSessionId &&
+										"bg-primary/10 hover:bg-primary/15",
 								)}
 							>
-								<div className={cn(
-									"relative flex flex-col",
-									session.is_pinned && "-ml-2 border-primary border-l-2 pl-2"
-								)}>
+								<div
+									className={cn(
+										"relative flex flex-col",
+										session.is_pinned && "-ml-2 border-primary border-l-2 pl-2",
+									)}
+								>
 									{/* Top row: title and timestamp */}
 									<div className="mb-1 flex items-center justify-between">
 										<div className="flex items-center gap-1.5">
-											<span className={cn(
-												"truncate font-medium text-sm",
-												session.id === currentSessionId ? "text-primary" : "text-foreground"
-											)}>
+											<span
+												className={cn(
+													"truncate font-medium text-sm",
+													session.id === currentSessionId
+														? "text-primary"
+														: "text-foreground",
+												)}
+											>
 												{session.title || "New Chat"}
 											</span>
 											{/* Unread indicator - just a demo, not functional */}
@@ -901,10 +692,12 @@ export function ChatSidebar() {
 												onClick={(e) => handleTogglePin(e, session)}
 												title={session.is_pinned ? "Unpin" : "Pin"}
 											>
-												<Pin className={cn(
-													"h-3.5 w-3.5",
-													session.is_pinned && "fill-primary text-primary"
-												)} />
+												<Pin
+													className={cn(
+														"h-3.5 w-3.5",
+														session.is_pinned && "fill-primary text-primary",
+													)}
+												/>
 											</button>
 
 											{/* More options menu */}
@@ -942,11 +735,12 @@ export function ChatSidebar() {
 														className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
 														onClick={(e) => handleTogglePin(e, session)}
 													>
-														<Pin className={cn(
-															"h-3.5 w-3.5",
-															session.is_pinned &&
-																"fill-primary text-primary",
-														)}
+														<Pin
+															className={cn(
+																"h-3.5 w-3.5",
+																session.is_pinned &&
+																	"fill-primary text-primary",
+															)}
 														/>
 														<span>{session.is_pinned ? "Unpin" : "Pin"}</span>
 													</button>

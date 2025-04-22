@@ -615,16 +615,20 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 	};
 
 	return (
-		<div className={cn(
-			"flex h-screen flex-col",
-			"bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))]",
-			"from-background/80 via-background/90 to-background",
-			"bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTEwIDEwaDR2MTBoMTB2NGgtMTB2MTBoLTR2LTEwaC0xMHYtNGgxMHogTTQwIDQwaDR2MTBoMTB2NGgtMTB2MTBoLTR2LTEwaC0xMHYtNGgxMHoiIGZpbGw9ImN1cnJlbnRDb2xvciIvPjwvc3ZnPg==')]",
-		)}>
-			<div className={cn(
-				"sticky top-0 z-10 border-b backdrop-blur-sm",
-				"border-border/50 bg-background/90 shadow-sm"
-			)}>
+		<div
+			className={cn(
+				"flex h-screen flex-col",
+				"bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))]",
+				"from-background/80 via-background/90 to-background",
+				"bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTEwIDEwaDR2MTBoMTB2NGgtMTB2MTBoLTR2LTEwaC0xMHYtNGgxMHogTTQwIDQwaDR2MTBoMTB2NGgtMTB2MTBoLTR2LTEwaC0xMHYtNGgxMHoiIGZpbGw9ImN1cnJlbnRDb2xvciIvPjwvc3ZnPg==')]",
+			)}
+		>
+			<div
+				className={cn(
+					"sticky top-0 z-10 border-b backdrop-blur-sm",
+					"border-border/50 bg-background/90 shadow-sm",
+				)}
+			>
 				<ChatHeader
 					title="AI Assistant"
 					description="Ask questions and get personalized first aid guidance"
@@ -676,13 +680,18 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 					</motion.div>
 				)}
 
-				<Card className={cn(
-					"flex flex-1 flex-col overflow-hidden rounded-2xl shadow-xl",
-					"border-border/50 bg-card/60 backdrop-blur-sm"
-				)}>
+				<Card
+					className={cn(
+						"flex flex-1 flex-col overflow-hidden rounded-2xl shadow-xl",
+						"border-border/50 bg-card/60 backdrop-blur-sm",
+					)}
+				>
 					<CardContent className="flex-1 overflow-hidden p-0">
 						<div className="flex h-full flex-col">
-							<div ref={containerRef} className="hide-scrollbar flex-1 space-y-7 overflow-y-auto p-3 sm:p-5">
+							<div
+								ref={containerRef}
+								className="hide-scrollbar flex-1 space-y-7 overflow-y-auto p-3 sm:p-5"
+							>
 								<AnimatePresence initial={false}>
 									{messages.map((message) => (
 										<motion.div
@@ -706,7 +715,8 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 														damping: 20,
 													}}
 													className={cn(
-														"flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-xl shadow-md border",															message.role === "user"
+														"flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-xl border shadow-md",
+														message.role === "user"
 															? "border-slate-400/50 bg-gradient-to-br from-slate-200/90 to-slate-100/90 text-slate-700 shadow-slate-500/5 dark:border-slate-800/30 dark:from-slate-900/40 dark:to-slate-800/30 dark:text-slate-100"
 															: "border-red-200/50 bg-gradient-to-br from-red-100/90 to-red-50/90 text-red-700 shadow-red-500/5 dark:border-red-800/30 dark:from-red-900/40 dark:to-red-800/30 dark:text-red-200",
 													)}
@@ -734,7 +744,7 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 														animate={{ opacity: 1, y: 0 }}
 														transition={{ duration: 0.2 }}
 														className={cn(
-															"rounded-2xl px-5 py-4 shadow-sm border",
+															"rounded-2xl border px-5 py-4 shadow-sm",
 															message.role === "user"
 																? "border-slate-400/50 bg-gradient-to-r from-slate-200/90 to-slate-100/90 text-slate-900 shadow-slate-500/5 dark:border-slate-800/30 dark:bg-gradient-to-r dark:from-slate-900/40 dark:to-slate-800/30 dark:text-slate-100 dark:shadow-slate-950/10"
 																: "border-red-200/50 bg-gradient-to-r from-red-100/90 to-red-50/90 text-foreground shadow-red-500/5 dark:border-red-800/30 dark:bg-gradient-to-r dark:from-red-900/40 dark:to-red-800/30 dark:text-red-100 dark:shadow-red-950/10",
@@ -753,12 +763,14 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 
 													{/* Sources button row */}
 													<div className="flex items-center justify-between px-1">
-														<div className={cn(
-															"flex items-center gap-1.5 rounded-full px-1.5 py-0.5 font-medium text-xs",
-															message.role === "user"
-																? "bg-gradient-to-r from-slate-200/50 to-slate-100/50 text-slate-700 dark:bg-gradient-to-r dark:from-slate-900/40 dark:to-slate-800/30 dark:text-slate-300"
-																: "bg-gradient-to-r from-red-100/50 to-red-50/50 text-red-700/70 dark:bg-gradient-to-r dark:from-red-900/40 dark:to-red-800/30 dark:text-red-200"
-														)}>
+														<div
+															className={cn(
+																"flex items-center gap-1.5 rounded-full px-1.5 py-0.5 font-medium text-xs",
+																message.role === "user"
+																	? "bg-gradient-to-r from-slate-200/50 to-slate-100/50 text-slate-700 dark:bg-gradient-to-r dark:from-slate-900/40 dark:to-slate-800/30 dark:text-slate-300"
+																	: "bg-gradient-to-r from-red-100/50 to-red-50/50 text-red-700/70 dark:bg-gradient-to-r dark:from-red-900/40 dark:to-red-800/30 dark:text-red-200",
+															)}
+														>
 															<div
 																className={cn(
 																	"h-1.5 w-1.5 rounded-full",
@@ -981,7 +993,7 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 									</div>
 								</div>
 								<div className="mt-3.5 flex items-center justify-between px-1">
-									<div className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1 font-medium text-xs text-muted-foreground">
+									<div className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1 font-medium text-muted-foreground text-xs">
 										{isTyping ? (
 											<motion.span
 												className="flex items-center"
