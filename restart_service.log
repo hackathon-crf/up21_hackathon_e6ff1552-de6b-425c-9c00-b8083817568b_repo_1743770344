@@ -1,0 +1,19 @@
+ForgeAI Services Restart Script
+================================
+Restarting services for application: hackathon
+Frontend port: 12189
+Backend port: 12190
+Stopping existing processes...
+No process found on frontend port 12189
+No process found on backend port 12190
+Starting backend...
+Installing requirements...
+Using backend file: main_back.py
+Setting root_path to: /up21/hackathon
+Backend started with PID: 218
+Starting frontend...
+Using frontend file: main_front.py
+Using path-based URL: up21/hackathon
+Frontend started with PID: 219
+Services restarted successfully!
+================================
