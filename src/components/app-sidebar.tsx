@@ -33,6 +33,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
 
 // Dynamically import ChatSidebar to avoid SSR issues
 const ChatSidebar = dynamic(
@@ -49,6 +50,19 @@ export function AppSidebar() {
 	const isMobile = useIsMobile();
 	const [isOpen, setIsOpen] = useState(!isMobile);
 	const [showChat, setShowChat] = useState(false);
+
+	// Fetch user profile data
+	const { data: profile, isLoading: profileLoading } = api.user.getProfile.useQuery();
+
+	// Get user initials for avatar fallback
+	const initials = profile?.email 
+		? profile.email.split("@")[0]?.substring(0, 2)?.toUpperCase() || "??"
+		: "??";
+
+	// Get display name from email
+	const displayName = profile?.email 
+		? profile.email.split("@")[0]?.replace(/[^a-zA-Z0-9]/g, " ") || "Loading..."
+		: "Loading...";
 
 	// Close sidebar on mobile when route changes
 	useEffect(() => {
@@ -262,16 +276,22 @@ export function AppSidebar() {
 												<Avatar className="h-9 w-9 border-2 border-background shadow-sm">
 													<AvatarImage
 														src="/avatar.svg?height=36&width=36"
-														alt=""
+														alt={profile?.email || "User avatar"}
 													/>
 													<AvatarFallback className="bg-primary/10 text-primary">
-														JD
+														{initials}
 													</AvatarFallback>
 												</Avatar>
 												<div className="flex flex-col items-start text-left">
-													<span className="font-medium text-sm">John Doe</span>
+													<span className="font-medium text-sm">
+														{displayName}
+													</span>
 													<span className="text-muted-foreground text-xs">
-														Instructor
+														{profileLoading
+															? "Loading..."
+															: profile?.emailVerified
+															? "Verified Member"
+															: "Pending Verification"}
 													</span>
 												</div>
 											</div>

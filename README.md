@@ -1,6 +1,19 @@
 # Red Cross Training Platform
 
-A modern interactive training application for Red Cross volunteers and staff, featuring spaced repetition flashcards, AI-powered learning assistance, multiplayer quiz modes, and intelligent chat interface.
+A modern interactive t3. Set up environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Fill in the required values in `.env.local`, including Supabase credentials and API keys.
+
+> **Tip:** Use [dotenv-safe](https://www.npmjs.com/package/dotenv-safe) to automatically validate required environment variables and prevent deployment with missing configs.
+
+4. Initialize the database:
+   ```bash
+   pnpm db:push
+   ```
+
+> **Warning:** Always backup your database before running migrations in production. Use `pg_dump` or Supabase's backup features to prevent data loss.ion for Red Cross volunteers and staff, featuring spaced repetition flashcards, AI-powered learning assistance, multiplayer quiz modes, and intelligent chat interface.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.2.2-blue.svg)
@@ -57,6 +70,12 @@ A modern interactive training application for Red Cross volunteers and staff, fe
    ```
    Fill in the required values in `.env.local`, including Supabase credentials and API keys.
 
+> **Warning:** Never commit `.env.local` to version control. Ensure it’s listed in `.gitignore` and avoid exposing it in CI/CD logs.
+
+> **Tip:** Use [dotenv-safe](https://www.npmjs.com/package/dotenv-safe) or [direnv](https://direnv.net/) to automatically manage and validate required environment variables.
+
+> **Caution:** Whenever you introduce new environment variables, update `.env.example` so that all contributors and automations remain in sync.
+
 4. Initialize the database:
    ```bash
    pnpm db:push
@@ -90,6 +109,8 @@ We follow TypeScript best practices and use Biome for code formatting and lintin
 - Use camelCase for variables, functions, and object keys
 - Prefer `async/await` for asynchronous code
 - Follow Next.js App Router conventions for routing and data fetching
+
+> **Tip:** Run `pnpm check` before committing to ensure your code follows our style guide. Configure your editor's Biome extension for real-time formatting.
 
 ## 📂 Project Structure
 
@@ -193,15 +214,30 @@ Key routers:
 
 ### Production Setup
 
+> **Warning:** Always run security audits before deployment using `pnpm audit` and ensure all dependencies are up to date.
+
 1. Build the application:
    ```bash
    pnpm build
    ```
 
+> **Tip:** Use [PM2](https://pm2.keymetrics.io/) for process management and zero-downtime deployments:
+```bash
+# Install PM2 globally if not already installed
+npm install -g pm2
+# Start the production server with PM2
+pm2 start npm --name cr-hackathon-secours -- start
+# Save the process list and configure startup scripts
+pm2 save
+pm2 startup
+```
+
 2. Start the production server:
    ```bash
    pnpm start
    ```
+
+> **Caution:** Configure proper logging and monitoring before going live. Use PM2's monitoring features or integrate with services like Sentry for error tracking.
 
 ### Environment Configuration
 
