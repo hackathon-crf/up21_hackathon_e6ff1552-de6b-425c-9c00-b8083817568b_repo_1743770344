@@ -1,29 +1,238 @@
-# Create T3 App
+# Red Cross Training Platform
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+A modern interactive training application for Red Cross volunteers and staff, featuring spaced repetition flashcards, AI-powered learning assistance, multiplayer quiz modes, and intelligent chat interface.
 
-## What's next? How do I make an app with this?
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![TypeScript](https://img.shields.io/badge/typescript-5.2.2-blue.svg)
+![Next.js](https://img.shields.io/badge/next.js-15.0-black.svg)
+![Tailwind CSS](https://img.shields.io/badge/tailwind-4.0-38bdf8.svg)
+![tRPC](https://img.shields.io/badge/tRPC-10.45.0-2596be.svg)
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+## 🌟 Features
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+- **Adaptive Flashcard Learning**: Spaced repetition system (SRS) with customizable study schedules
+- **AI-Powered Assistance**: Intelligent chat interface with context-aware responses
+- **Multiplayer Quiz Modes**: Competitive and collaborative learning sessions
+- **Responsive Design**: Optimized for desktop and mobile devices
+- **User Authentication**: Secure login system with OTP verification
+- **Real-Time Communication**: Live chat and voice options during multiplayer sessions
+- **Modern Tech Stack**: Built with Next.js, tRPC, Tailwind CSS, and Supabase
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+## 📋 Table of Contents
 
-## Learn More
+- [Installation](#-installation)
+- [Development](#-development)
+- [Project Structure](#-project-structure)
+- [Technology Stack](#-technology-stack)
+- [Authentication](#-authentication)
+- [Database Schema](#-database-schema)
+- [API Architecture](#-api-architecture)
+- [Deployment](#-deployment)
+- [License](#-license)
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## 🚀 Installation
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+### Prerequisites
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+- [Node.js](https://nodejs.org/) (v18.x or higher)
+- [pnpm](https://pnpm.io/) (v10.5.2 or higher)
+- [PostgreSQL](https://www.postgresql.org/) (via Supabase or local)
 
-## How do I deploy this?
+### Setup
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/cr-hackathon-secours.git
+   cd cr-hackathon-secours
+   ```
+
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Fill in the required values in `.env.local`, including Supabase credentials and API keys.
+
+4. Initialize the database:
+   ```bash
+   pnpm db:push
+   ```
+
+5. Start the development server:
+   ```bash
+   pnpm dev
+   ```
+
+## 💻 Development
+
+### Key Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server |
+| `pnpm build` | Build for production |
+| `pnpm start` | Start production server |
+| `pnpm check` | Run Biome linting |
+| `pnpm check:write` | Fix linting issues automatically |
+| `pnpm typecheck` | Run TypeScript type checking |
+| `pnpm db:push` | Apply schema changes to database |
+| `pnpm db:studio` | Open Drizzle Studio for database management |
+
+### Code Style
+
+We follow TypeScript best practices and use Biome for code formatting and linting:
+
+- Use PascalCase for React components
+- Use camelCase for variables, functions, and object keys
+- Prefer `async/await` for asynchronous code
+- Follow Next.js App Router conventions for routing and data fetching
+
+## 📂 Project Structure
+
+```
+/
+├── app/                    # Next.js App Router pages and layouts
+│   ├── api/                # API routes (auth, chat streaming)
+│   ├── auth/               # Authentication pages
+│   ├── chat/               # Chat interface
+│   ├── dashboard/          # User dashboard
+│   ├── flashcards/         # Flashcard study, creation, management
+│   ├── game/               # Solo game modes
+│   └── multiplayer/        # Multiplayer game modes
+├── drizzle/                # Database migrations
+├── public/                 # Static assets
+├── src/
+│   ├── components/         # Reusable UI components
+│   ├── hooks/              # Custom React hooks
+│   ├── lib/                # Utility functions
+│   ├── server/             # Server-side code
+│   │   ├── api/            # tRPC API routers
+│   │   └── db/             # Database schema and connection
+│   ├── stores/             # Global state management
+│   ├── styles/             # Global styles
+│   └── trpc/               # tRPC client configuration
+└── package.json            # Project dependencies and scripts
+```
+
+## 🔧 Technology Stack
+
+### Frontend
+- **Next.js** (v15.x): React framework with App Router for server components
+- **Tailwind CSS** (v4.0): Utility-first CSS framework
+- **Shadcn/UI**: Component library built on Radix UI primitives
+- **TanStack Query**: Data fetching and caching
+- **Zustand**: State management for client-side UI state
+
+### Backend
+- **tRPC**: End-to-end typesafe APIs
+- **Drizzle ORM**: Type-safe SQL query builder
+- **Supabase**: Backend-as-a-Service for PostgreSQL, Authentication, and Realtime
+- **Mistral AI**: AI integration for chat and flashcard generation
+
+### DevOps
+- **Biome**: Modern linting and formatting
+- **TypeScript**: Static type checking
+- **pnpm**: Fast, disk-efficient package manager
+
+## 🔐 Authentication
+
+We use Supabase Auth with the following features:
+
+- **Email/Password** authentication with secure password hashing
+- **OTP Verification** for email validation
+- **Route Protection** via middleware for authenticated routes
+- **Session Management** with automatic token refreshing
+
+## 🗄️ Database Schema
+
+### Core Tables
+- **User Management**:
+  - `user`: Profile with email and authentication details
+  - `user_preference`: JSON settings for application preferences
+
+- **Flashcards**:
+  - `flashcard_deck`: Collections of cards with owner, name, description
+  - `flashcard`: Card data with SRS fields (repetitions, ease_factor, interval)
+  - `study_stat`: Learning metrics (streaks, counts, dates)
+
+- **Chat**:
+  - `chat_session`: Conversation containers with user and title
+  - `chat_message`: Individual messages with role, content, metrics
+  - `feedback`: User ratings and comments on responses
+
+- **Multiplayer**:
+  - `game_lobby`: Session management with join code and host
+  - `game_player`: Participant tracking with scores
+  - `game_round`: Question sequences with timing
+  - `game_answer`: Player responses with timing and scoring
+
+## 🌐 API Architecture
+
+We use tRPC for end-to-end typesafe APIs:
+
+- **Routers**: Modular API routers for different features
+- **Procedures**: Type-safe procedures with Zod input validation
+- **Middleware**: Authentication checks and error handling
+- **Context**: Request context with session information
+
+Key routers:
+- `user.ts`: User profiles and preferences
+- `flashcard.ts`: Flashcard CRUD and study algorithms
+- `chat.ts`: Chat sessions and message handling
+- `ai.ts`: AI model integration for chat and flashcards
+
+## 🚢 Deployment
+
+### Production Setup
+
+1. Build the application:
+   ```bash
+   pnpm build
+   ```
+
+2. Start the production server:
+   ```bash
+   pnpm start
+   ```
+
+### Environment Configuration
+
+Ensure these environment variables are set in production:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+DATABASE_URL=your-database-url
+MISTRAL_API_KEY=your-mistral-api-key
+```
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+## 🚧 Current Status
+
+The platform is in active development with the following status:
+
+- **Core Database**: ✅ Completed (100%)
+- **Backend API**: ✅ Mostly complete (90%)
+- **Frontend Components**: ✅ Mostly complete (80%)
+- **Multiplayer Features**: ⏳ UI complete, backend pending (50%)
+- **Mobile Optimization**: ✅ Significantly improved
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Run `pnpm check` and `pnpm typecheck` to ensure code quality
+4. Commit your changes (`git commit -m 'Add some amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request

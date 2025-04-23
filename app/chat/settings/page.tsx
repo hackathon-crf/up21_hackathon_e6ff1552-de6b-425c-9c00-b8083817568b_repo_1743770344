@@ -326,7 +326,7 @@ export default function AIAssistantSettingsPage() {
 					<div className="flex items-center justify-between">
 						<Button variant="ghost" size="sm" asChild className="group">
 							<Link href="/chat">
-								<ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+								<ArrowLeft className="group-hover:-translate-x-1 h-4 w-4 transition-transform" />
 								<span className="ml-2 hidden sm:inline">Back to Chat</span>
 							</Link>
 						</Button>
