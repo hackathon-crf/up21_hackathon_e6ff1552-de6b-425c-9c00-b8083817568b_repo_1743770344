@@ -18,8 +18,11 @@
     "image_url": "https://files.catbox.moe/n5k9cy.png",
     "created_at": "2025-04-05T16:14:25.550976",
     "tags": [],
-    "repetitions": 0,
-    "ease_factor": 2.5
+    "repetitions": 1,
+    "ease_factor": 2.35,
+    "interval": 1,
+    "next_review": "2025-04-06T14:39:33.781117",
+    "last_review": "2025-04-05T14:39:33.781185"
   },
   {
     "id": "72ac7d19-bb15-4bb1-962b-b7c1acad7e00",
@@ -40,7 +43,10 @@
     "image_url": "",
     "created_at": "2025-04-05T16:16:44.774675",
     "tags": [],
-    "repetitions": 0,
-    "ease_factor": 2.5
+    "repetitions": 1,
+    "ease_factor": 2.65,
+    "interval": 3,
+    "next_review": "2025-04-08T14:39:41.426915",
+    "last_review": "2025-04-05T14:39:41.426936"
   }
 ]
