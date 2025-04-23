@@ -11,7 +11,7 @@ import {
 	sql,
 } from "drizzle-orm";
 import { z } from "zod";
-import { flashcardDecks, flashcards } from "~/server/db/schema";
+import { flashcardDecks, flashcards, studyStats } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 /**
@@ -652,4 +652,93 @@ export const flashcardRouter = createTRPCRouter({
 				});
 			}
 		}),
+
+	/**
+	 * Update study statistics
+	 */
+	updateStudyStats: protectedProcedure
+		.input(
+			z.object({
+				totalReviewed: z.number().int().min(1),
+				isCorrect: z.boolean(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { totalReviewed, isCorrect } = input;
+			const now = new Date();
+
+			try {
+				// Get or create study stats for today
+				const existingStats = await ctx.db
+					.select()
+					.from(studyStats)
+					.where(
+						and(
+							eq(studyStats.userId, ctx.auth.user.id),
+							sql`DATE(${studyStats.lastStudyDate}) = DATE(${now})`,
+						),
+					)
+					.limit(1)
+					.then((rows) => rows[0]);
+
+				if (existingStats) {
+					// Update existing stats for today
+					return await ctx.db
+						.update(studyStats)
+						.set({
+							studiedToday: existingStats.studiedToday + 1,
+							totalStudied: existingStats.totalStudied + 1,
+							correctToday: isCorrect
+								? existingStats.correctToday + 1
+								: existingStats.correctToday,
+							totalCorrect: isCorrect
+								? existingStats.totalCorrect + 1
+								: existingStats.totalCorrect,
+							lastStudyDate: now,
+						})
+						.where(eq(studyStats.id, existingStats.id))
+						.returning();
+				} else {
+					// Create new stats entry
+					return await ctx.db.insert(studyStats).values({
+						userId: ctx.auth.user.id,
+						studiedToday: 1,
+						totalStudied: 1,
+						correctToday: isCorrect ? 1 : 0,
+						totalCorrect: isCorrect ? 1 : 0,
+						streak: 1,
+						lastStudyDate: now,
+					}).returning();
+				}
+			} catch (error) {
+				console.error("Error updating study stats:", error);
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to update study statistics",
+				});
+			}
+		}),
+
+	/**
+	 * Get study statistics for the current user
+	 */
+	getStudyStats: protectedProcedure.query(async ({ ctx }) => {
+		try {
+			const stats = await ctx.db
+				.select()
+				.from(studyStats)
+				.where(eq(studyStats.userId, ctx.auth.user.id))
+				.orderBy(desc(studyStats.lastStudyDate))
+				.limit(1)
+				.then((rows) => rows[0] || null);
+
+			return stats;
+		} catch (error) {
+			console.error("Error fetching study stats:", error);
+			throw new TRPCError({
+				code: "INTERNAL_SERVER_ERROR",
+				message: "Failed to fetch study statistics",
+			});
+		}
+	}),
 });

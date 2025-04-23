@@ -1,16 +1,6 @@
 "use client";
 
 import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
-import {
 	ArrowLeft,
 	Award,
 	Brain,
@@ -28,6 +18,16 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import React from "react";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 
 // Define the full flashcard interface with all properties we need
 interface Flashcard {
@@ -89,7 +89,8 @@ export default function StudyDeckPage({
 	const [studyStats, setStudyStats] = useState({
 		easyCards: 0,
 		hardCards: 0,
-		totalReviewed: 0,
+		totalReviewed: 0, // unique cards reviewed
+		totalReviewsCount: 0, // total number of reviews (including repeats)
 		studyStartTime: Date.now(),
 	});
 	const [showConfetti, setShowConfetti] = useState(false);
@@ -134,6 +135,9 @@ export default function StudyDeckPage({
 			deckId: deckId,
 		});
 
+	// Fetch current study stats
+	const { data: dbStudyStats } = api.flashcard.getStudyStats.useQuery();
+
 	// Record study results
 	const recordStudyResult = api.flashcard.recordStudyResult.useMutation({
 		onSuccess: () => {
@@ -143,6 +147,22 @@ export default function StudyDeckPage({
 			toast({
 				title: "Error",
 				description: error.message || "Failed to save your progress",
+				variant: "destructive",
+			});
+		},
+	});
+
+	// Update study statistics in the database
+	const utils = api.useUtils();
+	const updateStudyStats = api.flashcard.updateStudyStats.useMutation({
+		onSuccess: () => {
+			// Invalidate the study stats query to refresh the UI
+			utils.flashcard.getStudyStats.invalidate();
+		},
+		onError: (error) => {
+			toast({
+				title: "Error",
+				description: "Failed to update study statistics",
 				variant: "destructive",
 			});
 		},
@@ -322,15 +342,14 @@ export default function StudyDeckPage({
 	};
 
 	const handleCardRating = (rating: 1 | 2 | 3 | 4) => {
-		if (!cards[currentCard]) return;
-
-		// Update study statistics
+		if (!cards[currentCard]) return; // Update study statistics
 		const isEasy = rating >= 3;
 		const newStats = {
 			...studyStats,
 			easyCards: isEasy ? studyStats.easyCards + 1 : studyStats.easyCards,
 			hardCards: !isEasy ? studyStats.hardCards + 1 : studyStats.hardCards,
 			totalReviewed: studyStats.totalReviewed + 1,
+			totalReviewsCount: studyStats.totalReviewsCount + 1,
 		};
 		setStudyStats(newStats);
 
@@ -352,6 +371,7 @@ export default function StudyDeckPage({
 		setProgress(newProgress);
 
 		// Record the study result in the database and update progress
+		// Record both the study result and update stats
 		recordStudyResult.mutate(
 			{
 				flashcardId: cards[currentCard].id,
@@ -378,6 +398,12 @@ export default function StudyDeckPage({
 						((masteredCount + learningCount * 0.5) / updatedCards.length) * 100,
 					);
 					setProgress(newProgress);
+
+					// Update study statistics in the database
+					updateStudyStats.mutate({
+						totalReviewed: studyStats.totalReviewsCount + 1,
+						isCorrect: rating >= 3
+					});
 				},
 			},
 		);
@@ -404,7 +430,9 @@ export default function StudyDeckPage({
 			setShowConfetti(true);
 			setShowCompletionDialog(true);
 			// Record the final duration
-			const finalDuration = Math.floor((Date.now() - studyStats.studyStartTime) / 1000);
+			const finalDuration = Math.floor(
+				(Date.now() - studyStats.studyStartTime) / 1000,
+			);
 			setStudyDuration(finalDuration);
 		}
 	};
@@ -621,7 +649,7 @@ export default function StudyDeckPage({
 							<div className="flex items-center gap-1.5 rounded-md bg-secondary/40 px-3 py-1.5">
 								<Brain className="h-4 w-4 text-primary/70" />
 								<span className="font-medium">
-									{studyStats.totalReviewed} reviewed
+									{dbStudyStats?.studiedToday || 0} today
 								</span>
 							</div>
 							<div className="flex items-center gap-1.5 rounded-md bg-secondary/40 px-3 py-1.5">
@@ -961,7 +989,10 @@ export default function StudyDeckPage({
 			</main>
 
 			{/* Session Completion Dialog */}
-			<AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+			<AlertDialog
+				open={showCompletionDialog}
+				onOpenChange={setShowCompletionDialog}
+			>
 				<AlertDialogContent className="sm:max-w-md">
 					<AlertDialogHeader>
 						<AlertDialogTitle className="flex items-center gap-2">
@@ -971,26 +1002,43 @@ export default function StudyDeckPage({
 						<AlertDialogDescription className="space-y-4">
 							<div className="mt-4 grid grid-cols-2 gap-4">
 								<div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-center">
-									<div className="font-medium text-2xl text-primary">{studyStats.easyCards}</div>
-									<div className="text-sm text-muted-foreground">Cards Mastered</div>
+									<div className="font-medium text-2xl text-primary">
+										{dbStudyStats?.studiedToday || 0}
+									</div>
+									<div className="text-muted-foreground text-sm">
+										Cards Reviewed Today
+									</div>
 								</div>
 								<div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-center">
-									<div className="font-medium text-2xl text-amber-500">{studyStats.hardCards}</div>
-									<div className="text-sm text-muted-foreground">Need Review</div>
+									<div className="font-medium text-2xl text-amber-500">
+										{dbStudyStats?.totalStudied || 0}
+									</div>
+									<div className="text-muted-foreground text-sm">
+										Total Lifetime Reviews
+									</div>
 								</div>
 								<div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-center">
 									<div className="font-medium text-2xl">{accuracy}%</div>
-									<div className="text-sm text-muted-foreground">Success Rate</div>
+									<div className="text-muted-foreground text-sm">
+										Success Rate
+									</div>
 								</div>
 								<div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-center">
-									<div className="font-medium text-2xl">{formatDuration(studyDuration)}</div>
-									<div className="text-sm text-muted-foreground">Total Time</div>
+									<div className="font-medium text-2xl">
+										{formatDuration(studyDuration)}
+									</div>
+									<div className="text-muted-foreground text-sm">
+										Total Time
+									</div>
 								</div>
 							</div>
-							
-							<div className="text-center text-sm text-muted-foreground">
-								Average time per card: {studyStats.totalReviewed > 0 
-									? formatDuration(Math.floor(studyDuration / studyStats.totalReviewed)) 
+
+							<div className="text-center text-muted-foreground text-sm">
+								Average time per card:{" "}
+								{studyStats.totalReviewed > 0
+									? formatDuration(
+											Math.floor(studyDuration / studyStats.totalReviewed),
+										)
 									: "0:00"}
 							</div>
 						</AlertDialogDescription>

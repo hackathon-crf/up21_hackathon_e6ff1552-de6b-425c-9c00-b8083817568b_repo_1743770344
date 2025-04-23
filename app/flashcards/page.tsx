@@ -137,28 +137,30 @@ export default function FlashcardsPage() {
 													{deck.description || "No description provided"}
 												</CardDescription>
 											</CardHeader>
-											<CardContent>													<div className="space-y-4">
-														<div className="text-muted-foreground text-sm">
-															<div className="flex items-center justify-between py-1">
-																<span className="flex items-center gap-1.5">
-																	<BookOpen className="h-3.5 w-3.5 text-primary/80" />
-																	Total cards:
-																</span>
-																<span className="font-medium">
-																	{deck.cardCount}
-																</span>
-															</div>
-															<div className="flex items-center justify-between py-1">
-																<span className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400">
-																	<Clock className="h-3.5 w-3.5" />
-																	Due today:
-																</span>
-																<span className="font-medium text-amber-500 dark:text-amber-400">
-																	{dueCardsCount}
-																</span>
-															</div>
+											<CardContent>
+												{" "}
+												<div className="space-y-4">
+													<div className="text-muted-foreground text-sm">
+														<div className="flex items-center justify-between py-1">
+															<span className="flex items-center gap-1.5">
+																<BookOpen className="h-3.5 w-3.5 text-primary/80" />
+																Total cards:
+															</span>
+															<span className="font-medium">
+																{deck.cardCount}
+															</span>
+														</div>
+														<div className="flex items-center justify-between py-1">
+															<span className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400">
+																<Clock className="h-3.5 w-3.5" />
+																Due today:
+															</span>
+															<span className="font-medium text-amber-500 dark:text-amber-400">
+																{dueCardsCount}
+															</span>
 														</div>
 													</div>
+												</div>
 											</CardContent>
 											<CardFooter className="flex justify-between gap-2 border-t bg-muted/30 px-6 py-4">
 												<Button
@@ -181,7 +183,9 @@ export default function FlashcardsPage() {
 														className="flex items-center"
 													>
 														<BookOpen className="mr-2 h-4 w-4" />
-														Study Now
+														{dueCardsCount > 0
+															? "Review Due Cards"
+															: "Study Deck"}
 													</Link>
 												</Button>
 											</CardFooter>
@@ -288,7 +292,9 @@ export default function FlashcardsPage() {
 														className="flex items-center justify-center"
 													>
 														<BookOpen className="mr-2 h-4 w-4" />
-														Continue Studying
+														{getDueCardsForDeck(deck.id) > 0
+															? "Review Due Cards"
+															: "Study Deck"}
 													</Link>
 												</Button>
 											</CardFooter>
@@ -433,7 +439,7 @@ export default function FlashcardsPage() {
 																	className="flex items-center justify-center"
 																>
 																	<BookOpen className="mr-2 h-4 w-4" />
-																	Study Now
+																	Review Due Cards
 																</Link>
 															</Button>
 														</CardFooter>
