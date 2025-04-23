@@ -52,15 +52,16 @@ export function AppSidebar() {
 	const [showChat, setShowChat] = useState(false);
 
 	// Fetch user profile data
-	const { data: profile, isLoading: profileLoading } = api.user.getProfile.useQuery();
+	const { data: profile, isLoading: profileLoading } =
+		api.user.getProfile.useQuery();
 
 	// Get user initials for avatar fallback
-	const initials = profile?.email 
+	const initials = profile?.email
 		? profile.email.split("@")[0]?.substring(0, 2)?.toUpperCase() || "??"
 		: "??";
 
 	// Get display name from email
-	const displayName = profile?.email 
+	const displayName = profile?.email
 		? profile.email.split("@")[0]?.replace(/[^a-zA-Z0-9]/g, " ") || "Loading..."
 		: "Loading...";
 
@@ -290,8 +291,8 @@ export function AppSidebar() {
 														{profileLoading
 															? "Loading..."
 															: profile?.emailVerified
-															? "Verified Member"
-															: "Pending Verification"}
+																? "Verified Member"
+																: "Pending Verification"}
 													</span>
 												</div>
 											</div>

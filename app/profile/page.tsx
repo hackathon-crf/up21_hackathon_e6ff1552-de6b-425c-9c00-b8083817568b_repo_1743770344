@@ -1,6 +1,5 @@
 "use client";
 
-import type React from "react";
 import {
 	Award,
 	BookOpen,
@@ -13,6 +12,7 @@ import {
 	Shield,
 } from "lucide-react";
 import Link from "next/link";
+import type React from "react";
 import { useState } from "react";
 
 import { DashboardHeader } from "~/components/dashboard-header";
@@ -79,7 +79,7 @@ export default function ProfilePage() {
 							<Card className="md:col-span-1">
 								<CardContent className="pt-6">
 									<div className="flex flex-col items-center text-center">
-										<div className="animate-pulse rounded-full bg-muted h-24 w-24" />
+										<div className="h-24 w-24 animate-pulse rounded-full bg-muted" />
 										<div className="mt-4 h-6 w-32 animate-pulse rounded bg-muted" />
 										<div className="mt-2 h-4 w-24 animate-pulse rounded bg-muted" />
 									</div>
@@ -109,10 +109,14 @@ export default function ProfilePage() {
 										<AvatarImage src="/avatar.svg" alt={profile?.email} />
 										<AvatarFallback>{initials}</AvatarFallback>
 									</Avatar>
-									<h2 className="text-2xl font-bold">{profile?.email}</h2>
-									<p className="text-sm text-muted-foreground">First Responder</p>
+									<h2 className="font-bold text-2xl">{profile?.email}</h2>
+									<p className="text-muted-foreground text-sm">
+										First Responder
+									</p>
 									<UIBadge className="mt-2">
-										{profile?.emailVerified ? "Verified Member" : "Pending Verification"}
+										{profile?.emailVerified
+											? "Verified Member"
+											: "Pending Verification"}
 									</UIBadge>
 
 									<div className="mt-6 w-full space-y-2">
@@ -134,10 +138,10 @@ export default function ProfilePage() {
 									<Separator className="my-6" />
 
 									<div className="w-full text-left">
-										<h3 className="mb-2 text-sm font-medium">About</h3>
-										<p className="text-sm text-muted-foreground">
-											Red Cross volunteer dedicated to helping others and teaching
-											life-saving skills.
+										<h3 className="mb-2 font-medium text-sm">About</h3>
+										<p className="text-muted-foreground text-sm">
+											Red Cross volunteer dedicated to helping others and
+											teaching life-saving skills.
 										</p>
 									</div>
 
@@ -203,26 +207,26 @@ export default function ProfilePage() {
 						<CardContent>
 							<div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
 								<div className="flex flex-col items-center justify-center rounded-lg bg-muted p-3 sm:p-4">
-									<div className="text-xl font-bold sm:text-3xl">
+									<div className="font-bold text-xl sm:text-3xl">
 										{profile?.stats.coursesCompleted ?? 0}
 									</div>
-									<p className="text-xs text-muted-foreground sm:text-sm">
+									<p className="text-muted-foreground text-xs sm:text-sm">
 										Courses Completed
 									</p>
 								</div>
 								<div className="flex flex-col items-center justify-center rounded-lg bg-muted p-3 sm:p-4">
-									<div className="text-xl font-bold sm:text-3xl">
+									<div className="font-bold text-xl sm:text-3xl">
 										{profile?.stats.trainingHours ?? 0}
 									</div>
-									<p className="text-xs text-muted-foreground sm:text-sm">
+									<p className="text-muted-foreground text-xs sm:text-sm">
 										Training Hours
 									</p>
 								</div>
 								<div className="flex flex-col items-center justify-center rounded-lg bg-muted p-3 sm:p-4">
-									<div className="text-xl font-bold sm:text-3xl">
+									<div className="font-bold text-xl sm:text-3xl">
 										{profile?.stats.badgesEarned ?? 0}
 									</div>
-									<p className="text-xs text-muted-foreground sm:text-sm">
+									<p className="text-muted-foreground text-xs sm:text-sm">
 										Badges Earned
 									</p>
 								</div>

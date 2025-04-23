@@ -44,12 +44,6 @@ export default function FlashcardsPage() {
 			deck.description?.toLowerCase().includes(searchQuery.toLowerCase()),
 	);
 
-	// Calculate mastery percentage for a deck (this could be enhanced with real calculation logic)
-	const calculateMastery = (deck: NonNullable<typeof decks>[number]) => {
-		// This is a placeholder - in a real app, you might calculate this based on SRS data
-		return Math.floor(Math.random() * 100); // Placeholder random value
-	};
-
 	// Calculate due cards for each deck
 	const getDueCardsForDeck = (deckId: string) => {
 		if (!dueCards) return 0;
@@ -128,7 +122,6 @@ export default function FlashcardsPage() {
 						) : filteredDecks && filteredDecks.length > 0 ? (
 							<div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
 								{filteredDecks.map((deck) => {
-									const mastery = calculateMastery(deck);
 									const dueCardsCount = getDueCardsForDeck(deck.id);
 
 									return (
@@ -136,15 +129,6 @@ export default function FlashcardsPage() {
 											key={deck.id}
 											className="group overflow-hidden border shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-md"
 										>
-											<div className="absolute top-3 right-3">
-												<Badge
-													variant="secondary"
-													className="flex items-center gap-1 font-medium"
-												>
-													<TrendingUp className="h-3 w-3" />
-													{mastery}% Mastery
-												</Badge>
-											</div>
 											<CardHeader className="pb-2">
 												<CardTitle className="flex items-center transition-colors group-hover:text-primary">
 													{deck.name}
@@ -153,36 +137,28 @@ export default function FlashcardsPage() {
 													{deck.description || "No description provided"}
 												</CardDescription>
 											</CardHeader>
-											<CardContent>
-												<div className="space-y-4">
-													<div className="text-muted-foreground text-sm">
-														<div className="flex items-center justify-between py-1">
-															<span className="flex items-center gap-1.5">
-																<BookOpen className="h-3.5 w-3.5 text-primary/80" />
-																Total cards:
-															</span>
-															<span className="font-medium">
-																{deck.cardCount}
-															</span>
-														</div>
-														<div className="flex items-center justify-between py-1">
-															<span className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400">
-																<Clock className="h-3.5 w-3.5" />
-																Due today:
-															</span>
-															<span className="font-medium text-amber-500 dark:text-amber-400">
-																{dueCardsCount}
-															</span>
+											<CardContent>													<div className="space-y-4">
+														<div className="text-muted-foreground text-sm">
+															<div className="flex items-center justify-between py-1">
+																<span className="flex items-center gap-1.5">
+																	<BookOpen className="h-3.5 w-3.5 text-primary/80" />
+																	Total cards:
+																</span>
+																<span className="font-medium">
+																	{deck.cardCount}
+																</span>
+															</div>
+															<div className="flex items-center justify-between py-1">
+																<span className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400">
+																	<Clock className="h-3.5 w-3.5" />
+																	Due today:
+																</span>
+																<span className="font-medium text-amber-500 dark:text-amber-400">
+																	{dueCardsCount}
+																</span>
+															</div>
 														</div>
 													</div>
-													<div className="space-y-1.5">
-														<div className="flex items-center justify-between text-xs">
-															<span>Mastery progress</span>
-															<span>{mastery}%</span>
-														</div>
-														<Progress value={mastery} className="h-2" />
-													</div>
-												</div>
 											</CardContent>
 											<CardFooter className="flex justify-between gap-2 border-t bg-muted/30 px-6 py-4">
 												<Button

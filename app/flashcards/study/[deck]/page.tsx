@@ -1,6 +1,16 @@
 "use client";
 
 import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
+import {
 	ArrowLeft,
 	Award,
 	Brain,
@@ -67,13 +77,15 @@ import { api } from "~/trpc/react";
 export default function StudyDeckPage({
 	params,
 }: { params: Promise<{ deck: string }> }) {
-	// Unwrap params using React.use()
 	const resolvedParams = React.use(params);
 	const deckId = resolvedParams.deck;
-
 	const { toast } = useToast();
+
+	// State declarations
 	const [flipped, setFlipped] = useState(false);
 	const [currentCard, setCurrentCard] = useState(0);
+	const [cards, setCards] = useState<Flashcard[]>([]);
+	const [progress, setProgress] = useState(0);
 	const [studyStats, setStudyStats] = useState({
 		easyCards: 0,
 		hardCards: 0,
@@ -82,7 +94,33 @@ export default function StudyDeckPage({
 	});
 	const [showConfetti, setShowConfetti] = useState(false);
 	const [studyDuration, setStudyDuration] = useState(0);
-	const [cards, setCards] = useState<Flashcard[]>([]);
+	const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+
+	// Derived state
+	const totalCards = cards.length;
+
+	// Utility function to calculate mastery
+	const calculateMasteryProgress = (cards: Flashcard[]) => {
+		const masteredCards = cards.filter(
+			(card) =>
+				card.repetitions &&
+				card.repetitions > 1 &&
+				card.easeFactor &&
+				card.easeFactor >= 2.5,
+		).length;
+
+		const learningCards = cards.filter(
+			(card) =>
+				card.repetitions &&
+				card.repetitions > 0 &&
+				card.easeFactor &&
+				card.easeFactor < 2.5,
+		).length;
+
+		return cards.length
+			? Math.round(((masteredCards + learningCards * 0.5) / cards.length) * 100)
+			: 0;
+	};
 
 	// Fetch deck information
 	const { data: deck, isLoading: deckLoading } =
@@ -113,8 +151,8 @@ export default function StudyDeckPage({
 	// Set up cards once data is loaded
 	useEffect(() => {
 		if (dueCards && dueCards.length > 0) {
-			// Add console log to see the actual structure of the first card
-			console.log("First card structure:", dueCards[0]);
+			// Remove debug console log
+			// Initialize cards with proper SRS data
 
 			// Map the data and ensure all required properties are present with default values
 			const mappedCards = dueCards.map((card) => {
@@ -173,19 +211,49 @@ export default function StudyDeckPage({
 			});
 
 			setCards(mappedCards);
+			// Initialize progress when cards are first loaded
+			const initialProgress = calculateMasteryProgress(mappedCards);
+			setProgress(initialProgress);
 		}
 	}, [dueCards]);
 
-	// Update the duration every second
+	// Update the duration and progress
 	useEffect(() => {
+		// Don't start/continue the timer if the completion dialog is shown
+		if (showCompletionDialog) {
+			return;
+		}
+
 		const timer = setInterval(() => {
 			setStudyDuration(
 				Math.floor((Date.now() - studyStats.studyStartTime) / 1000),
 			);
 		}, 1000);
 
+		// Calculate and update progress whenever cards change
+		if (cards.length > 0) {
+			const masteredCount = cards.filter(
+				(card) =>
+					card.repetitions &&
+					card.repetitions > 1 &&
+					card.easeFactor &&
+					card.easeFactor >= 2.5,
+			).length;
+			const learningCount = cards.filter(
+				(card) =>
+					card.repetitions &&
+					card.repetitions > 0 &&
+					card.easeFactor &&
+					card.easeFactor < 2.5,
+			).length;
+			const newProgress = Math.round(
+				((masteredCount + learningCount * 0.5) / cards.length) * 100,
+			);
+			setProgress(newProgress);
+		}
+
 		return () => clearInterval(timer);
-	}, [studyStats.studyStartTime]);
+	}, [studyStats.studyStartTime, cards]);
 
 	// Add keyboard navigation
 	useEffect(() => {
@@ -227,10 +295,6 @@ export default function StudyDeckPage({
 		}
 	}, [showConfetti]);
 
-	// Calculate total cards
-	const totalCards = cards.length;
-	const progress = totalCards ? ((currentCard + 1) / totalCards) * 100 : 0;
-
 	// Calculate study statistics
 	const accuracy =
 		studyStats.totalReviewed > 0
@@ -270,6 +334,54 @@ export default function StudyDeckPage({
 		};
 		setStudyStats(newStats);
 
+		// Update the card's SRS data immediately in state
+		const updatedCard = { ...cards[currentCard] };
+		updatedCard.repetitions = (updatedCard.repetitions || 0) + 1;
+		updatedCard.easeFactor =
+			rating >= 3
+				? (updatedCard.easeFactor || 2.5) + 0.15
+				: Math.max(1.3, (updatedCard.easeFactor || 2.5) - 0.15);
+
+		// Update the cards array and recalculate progress
+		const updatedCards = [...cards];
+		updatedCards[currentCard] = updatedCard;
+		setCards(updatedCards);
+
+		// Update progress immediately
+		const newProgress = calculateMasteryProgress(updatedCards);
+		setProgress(newProgress);
+
+		// Record the study result in the database and update progress
+		recordStudyResult.mutate(
+			{
+				flashcardId: cards[currentCard].id,
+				rating: rating,
+			},
+			{
+				onSuccess: () => {
+					// Calculate and update progress after successful rating
+					const masteredCount = updatedCards.filter(
+						(card) =>
+							card.repetitions &&
+							card.repetitions > 1 &&
+							card.easeFactor &&
+							card.easeFactor >= 2.5,
+					).length;
+					const learningCount = updatedCards.filter(
+						(card) =>
+							card.repetitions &&
+							card.repetitions > 0 &&
+							card.easeFactor &&
+							card.easeFactor < 2.5,
+					).length;
+					const newProgress = Math.round(
+						((masteredCount + learningCount * 0.5) / updatedCards.length) * 100,
+					);
+					setProgress(newProgress);
+				},
+			},
+		);
+
 		// Show rating toast with different messages based on rating
 		const messages = {
 			1: "This was hard! We'll show it more often.",
@@ -284,34 +396,16 @@ export default function StudyDeckPage({
 			variant: isEasy ? "success" : "warning",
 		});
 
-		// Record the study result in the database
-		recordStudyResult.mutate({
-			flashcardId: cards[currentCard].id,
-			rating: rating,
-		});
-
 		// Automatically move to the next card if available
 		if (currentCard < totalCards - 1) {
 			handleNext();
 		} else {
-			// Show completion celebration
+			// Show completion celebration and dialog
 			setShowConfetti(true);
-
-			// Replace toast sequence
-			toast({
-				title: "Saving progress",
-				description: "Updating your study statistics...",
-				variant: "info",
-			});
-
-			// Simulate saving progress
-			setTimeout(() => {
-				toast({
-					title: "Deck completed! 🎉",
-					description: `You've reviewed all ${totalCards} cards. ${newStats.easyCards} marked as known, ${newStats.hardCards} marked for review.`,
-					variant: "success",
-				});
-			}, 1000);
+			setShowCompletionDialog(true);
+			// Record the final duration
+			const finalDuration = Math.floor((Date.now() - studyStats.studyStartTime) / 1000);
+			setStudyDuration(finalDuration);
 		}
 	};
 
@@ -448,6 +542,19 @@ export default function StudyDeckPage({
 		);
 	}
 
+	const now = new Date();
+
+	// Calculate cards due for review
+	const calculateDueCards = (cardList: Flashcard[]) => {
+		return cardList.filter((card) => {
+			if (!card.nextReview) return true; // New cards are due
+			const nextReview = new Date(card.nextReview);
+			return nextReview <= now;
+		}).length;
+	};
+
+	const dueCardsCount = calculateDueCards(cards);
+
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-b from-background via-background to-secondary/10">
 			{showConfetti && (
@@ -530,44 +637,7 @@ export default function StudyDeckPage({
 			<main className="container mx-auto flex flex-1 flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
 				<div className="w-full max-w-4xl space-y-8">
 					{/* Enhanced progress tracking with better visuals */}
-					<div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-						<div className="space-y-2.5 rounded-xl border bg-card p-5 shadow-md transition-shadow hover:shadow-lg dark:bg-card/80 dark:backdrop-blur-sm">
-							<div className="flex items-center justify-between">
-								<span className="flex items-center gap-2 font-semibold text-sm">
-									<ListTodo className="h-4 w-4 text-primary" />
-									Study Progress
-								</span>
-								<span className="bg-gradient-to-r from-green-600 to-amber-600 bg-clip-text font-bold text-sm text-transparent">
-									{Math.round(progress)}%
-								</span>
-							</div>
-							<Progress
-								value={progress}
-								className="h-2.5 rounded-full"
-								style={{
-									background:
-										"linear-gradient(to right, #22c55e 0%, #eab308 50%, #ef4444 100%)",
-								}}
-							/>
-							<p className="flex items-center gap-1.5 text-muted-foreground text-xs">
-								{totalCards - (currentCard + 1) > 0 ? (
-									<>
-										<Info className="h-3.5 w-3.5 text-primary/60" />
-										<span>
-											{totalCards - (currentCard + 1)} cards remaining
-										</span>
-									</>
-								) : (
-									<>
-										<Sparkles className="h-3.5 w-3.5 text-amber-500" />
-										<span className="font-medium text-amber-600 dark:text-amber-400">
-											Last card!
-										</span>
-									</>
-								)}
-							</p>
-						</div>
-
+					<div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
 						<div className="space-y-2.5 rounded-xl border bg-card p-5 shadow-md transition-shadow hover:shadow-lg dark:bg-card/80 dark:backdrop-blur-sm">
 							<div className="flex items-center justify-between">
 								<span className="flex items-center gap-2 font-semibold text-sm">
@@ -889,6 +959,54 @@ export default function StudyDeckPage({
 					</div>
 				</div>
 			</main>
+
+			{/* Session Completion Dialog */}
+			<AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+				<AlertDialogContent className="sm:max-w-md">
+					<AlertDialogHeader>
+						<AlertDialogTitle className="flex items-center gap-2">
+							<span className="text-2xl">🎉</span>
+							<span>Study Session Complete!</span>
+						</AlertDialogTitle>
+						<AlertDialogDescription className="space-y-4">
+							<div className="mt-4 grid grid-cols-2 gap-4">
+								<div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-center">
+									<div className="font-medium text-2xl text-primary">{studyStats.easyCards}</div>
+									<div className="text-sm text-muted-foreground">Cards Mastered</div>
+								</div>
+								<div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-center">
+									<div className="font-medium text-2xl text-amber-500">{studyStats.hardCards}</div>
+									<div className="text-sm text-muted-foreground">Need Review</div>
+								</div>
+								<div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-center">
+									<div className="font-medium text-2xl">{accuracy}%</div>
+									<div className="text-sm text-muted-foreground">Success Rate</div>
+								</div>
+								<div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-center">
+									<div className="font-medium text-2xl">{formatDuration(studyDuration)}</div>
+									<div className="text-sm text-muted-foreground">Total Time</div>
+								</div>
+							</div>
+							
+							<div className="text-center text-sm text-muted-foreground">
+								Average time per card: {studyStats.totalReviewed > 0 
+									? formatDuration(Math.floor(studyDuration / studyStats.totalReviewed)) 
+									: "0:00"}
+							</div>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel asChild>
+							<Button variant="outline" asChild>
+								<Link href="/flashcards">Return to Decks</Link>
+							</Button>
+						</AlertDialogCancel>
+						<AlertDialogAction onClick={() => window.location.reload()}>
+							Study Again
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			<style jsx global>{`
         @keyframes fall {

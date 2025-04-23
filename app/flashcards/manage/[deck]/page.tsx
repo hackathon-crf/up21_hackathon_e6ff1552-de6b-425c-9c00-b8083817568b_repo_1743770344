@@ -635,13 +635,19 @@ export default function ManageDeckPage() {
 												? `${Math.floor(
 														(filteredCards.filter(
 															(card) =>
-																card.repetitions && card.repetitions > 1,
+																card.repetitions &&
+																card.repetitions > 1 &&
+																card.easeFactor >= 2.5,
 														).length /
 															filteredCards.length) *
 															100,
 													)}%`
 												: "0%"}
 										</div>
+										<p className="mt-1 text-muted-foreground text-sm">
+											Based on cards with multiple successful reviews and good
+											retention
+										</p>
 										<p className="text-muted-foreground text-xs">
 											Based on card repetition data
 										</p>

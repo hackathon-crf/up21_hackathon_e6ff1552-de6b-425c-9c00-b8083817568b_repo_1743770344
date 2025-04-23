@@ -76,7 +76,7 @@ export const userRouter = createTRPCRouter({
 			z.object({
 				email: z.string().email().optional(),
 				emailVerified: z.boolean().optional(),
-			})
+			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.auth.user.id;
@@ -98,7 +98,7 @@ export const userRouter = createTRPCRouter({
 				return updated[0];
 			} catch (error) {
 				throw new Error(
-					`Failed to update profile: ${error instanceof Error ? error.message : "Unknown error"}`
+					`Failed to update profile: ${error instanceof Error ? error.message : "Unknown error"}`,
 				);
 			}
 		}),
