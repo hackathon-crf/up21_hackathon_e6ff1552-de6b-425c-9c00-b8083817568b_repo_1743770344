@@ -170,6 +170,10 @@ We use Supabase Auth with the following features:
   - `game_round`: Question sequences with timing
   - `game_answer`: Player responses with timing and scoring
 
+### Database Diagram
+
+![Database Schema Diagram](public/db.svg)
+
 ## 🌐 API Architecture
 
 We use tRPC for end-to-end typesafe APIs:
