@@ -666,6 +666,7 @@ export const flashcardRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { totalReviewed, isCorrect } = input;
 			const now = new Date();
+			const today = now.toISOString().split('T')[0]; // Get YYYY-MM-DD format
 
 			try {
 				// Get or create study stats for today
@@ -675,7 +676,7 @@ export const flashcardRouter = createTRPCRouter({
 					.where(
 						and(
 							eq(studyStats.userId, ctx.auth.user.id),
-							sql`DATE(${studyStats.lastStudyDate}) = DATE(${now})`,
+							sql`DATE(last_study_date) = ${today}`,
 						),
 					)
 					.limit(1)
@@ -700,6 +701,7 @@ export const flashcardRouter = createTRPCRouter({
 						.returning();
 				} else {
 					// Create new stats entry
+					// Create new stats entry for today
 					return await ctx.db.insert(studyStats).values({
 						userId: ctx.auth.user.id,
 						studiedToday: 1,
@@ -707,7 +709,7 @@ export const flashcardRouter = createTRPCRouter({
 						correctToday: isCorrect ? 1 : 0,
 						totalCorrect: isCorrect ? 1 : 0,
 						streak: 1,
-						lastStudyDate: now,
+						lastStudyDate: sql`CURRENT_TIMESTAMP`,
 					}).returning();
 				}
 			} catch (error) {
