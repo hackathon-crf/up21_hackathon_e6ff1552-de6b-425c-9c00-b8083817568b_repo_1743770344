@@ -402,7 +402,7 @@ export default function StudyDeckPage({
 					// Update study statistics in the database
 					updateStudyStats.mutate({
 						totalReviewed: studyStats.totalReviewsCount + 1,
-						isCorrect: rating >= 3
+						isCorrect: rating >= 3,
 					});
 				},
 			},

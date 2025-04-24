@@ -666,7 +666,7 @@ export const flashcardRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { totalReviewed, isCorrect } = input;
 			const now = new Date();
-			const today = now.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+			const today = now.toISOString().split("T")[0]; // Get YYYY-MM-DD format
 
 			try {
 				// Get or create study stats for today
@@ -702,15 +702,18 @@ export const flashcardRouter = createTRPCRouter({
 				} else {
 					// Create new stats entry
 					// Create new stats entry for today
-					return await ctx.db.insert(studyStats).values({
-						userId: ctx.auth.user.id,
-						studiedToday: 1,
-						totalStudied: 1,
-						correctToday: isCorrect ? 1 : 0,
-						totalCorrect: isCorrect ? 1 : 0,
-						streak: 1,
-						lastStudyDate: sql`CURRENT_TIMESTAMP`,
-					}).returning();
+					return await ctx.db
+						.insert(studyStats)
+						.values({
+							userId: ctx.auth.user.id,
+							studiedToday: 1,
+							totalStudied: 1,
+							correctToday: isCorrect ? 1 : 0,
+							totalCorrect: isCorrect ? 1 : 0,
+							streak: 1,
+							lastStudyDate: sql`CURRENT_TIMESTAMP`,
+						})
+						.returning();
 				}
 			} catch (error) {
 				console.error("Error updating study stats:", error);
