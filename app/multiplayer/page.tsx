@@ -1,10 +1,11 @@
 "use client";
 
-import { Crown, Gamepad2, Users } from "lucide-react";
+import { Crown, Gamepad2, QrCode, Share2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DashboardHeader } from "~/components/dashboard-header";
+import QRCodeModal from "~/components/qr-code-modal";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -26,6 +27,86 @@ function MultiplayerContent() {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [gameCode, setGameCode] = useState("");
+	const [isJoining, setIsJoining] = useState(false);
+	const [creatingGameType, setCreatingGameType] = useState<string | null>(null);
+	const [showQRCode, setShowQRCode] = useState(false);
+	const [createdGameData, setCreatedGameData] = useState<{
+		code: string;
+		id: number | string;
+	} | null>(null);
+	const baseUrl =
+		typeof window !== "undefined"
+			? `${window.location.protocol}//${window.location.host}`
+			: "";
+
+	const handleJoinGame = async () => {
+		if (!gameCode.trim()) {
+			toast({
+				title: "Error",
+				description: "Please enter a game code",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		try {
+			setIsJoining(true);
+
+			toast({
+				title: "Joining session",
+				description: `Connecting to training session ${gameCode}...`,
+			});
+
+			const response = await fetch("/api/multiplayer/join", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					code: gameCode.trim(),
+				}),
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.error || "Failed to join game");
+			}
+
+			// Redirect to the lobby page
+			router.push(`/multiplayer/lobby/${data.id}`);
+		} catch (error) {
+			console.error("Error joining game:", error);
+			toast({
+				title: "Error",
+				description:
+					error instanceof Error ? error.message : "Invalid game code",
+				variant: "destructive",
+			});
+		} finally {
+			setIsJoining(false);
+		}
+	};
+
+	// Check for QR code join parameter in URL
+	useEffect(() => {
+		// Get the URL parameters
+		const params = new URLSearchParams(window.location.search);
+		const joinCode = params.get("join");
+
+		if (joinCode) {
+			setGameCode(joinCode);
+
+			// Auto-join with a slight delay to ensure the component is fully loaded
+			const timer = setTimeout(() => {
+				handleJoinGame();
+				// Remove the parameter from URL to prevent repeated joins on refresh
+				router.replace("/multiplayer");
+			}, 500);
+
+			return () => clearTimeout(timer);
+		}
+	}, [router, toast, gameCode, setGameCode, handleJoinGame]);
 
 	const handleCopyCode = (code: string) => {
 		if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -38,49 +119,62 @@ function MultiplayerContent() {
 		}
 	};
 
-	const handleCreateGame = (mode: string) => {
-		// In a real app, this would create a new game with a unique ID
-		// For now, we'll simulate by redirecting to a lobby with a fixed ID
-		const gameId = "new-game-123";
+	const handleCreateGame = async (mode: string, showQR = false) => {
+		try {
+			setCreatingGameType(mode);
 
-		toast({
-			title: `${mode} created`,
-			description: `Your ${mode.toLowerCase()} session has been created`,
-		});
+			const response = await fetch("/api/multiplayer", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					title:
+						mode === "Rapid Response"
+							? "Rapid Response Challenge"
+							: "Card Clash Challenge",
+					mode: mode.toLowerCase().replace(" ", "-"),
+				}),
+			});
 
-		// Redirect to the lobby page
-		if (router) {
-			router.push(`/multiplayer/lobby/${gameId}`);
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.error || "Failed to create game");
+			}
+
+			toast({
+				title: `${mode} created`,
+				description: `Your session has been created with code: ${data.code}`,
+			});
+
+			if (showQR) {
+				// Store the created game data and show QR code
+				setCreatedGameData({ code: data.code, id: data.id });
+				setShowQRCode(true);
+				// Don't redirect immediately, let user share QR code first
+			} else {
+				// Redirect to the lobby page immediately
+				router.push(`/multiplayer/lobby/${data.id}`);
+			}
+		} catch (error) {
+			console.error("Error creating game:", error);
+			toast({
+				title: "Error",
+				description:
+					error instanceof Error ? error.message : "Failed to create game",
+				variant: "destructive",
+			});
+		} finally {
+			setCreatingGameType(null);
 		}
 	};
 
-	const handleJoinGame = () => {
-		if (!gameCode.trim()) {
-			toast({
-				title: "Error",
-				description: "Please enter a game code",
-				variant: "destructive",
-			});
-			return;
-		}
-
-		// For the demo, if the code is FIRST123, we'll simulate joining a game
-		if (gameCode.toUpperCase() === "FIRST123") {
-			toast({
-				title: "Joining session",
-				description: `Connecting to training session ${gameCode}...`,
-			});
-
-			// Redirect to the lobby page
-			if (router) {
-				router.push("/multiplayer/lobby/demo-game-123");
-			}
-		} else {
-			toast({
-				title: "Error",
-				description: "Invalid game code. Try FIRST123 for the demo.",
-				variant: "destructive",
-			});
+	// Handle continuing to lobby after showing QR code
+	const continueToLobby = () => {
+		if (createdGameData) {
+			setShowQRCode(false);
+			router.push(`/multiplayer/lobby/${createdGameData.id}`);
 		}
 	};
 
@@ -90,6 +184,20 @@ function MultiplayerContent() {
 				title="Multiplayer"
 				description="Challenge your team and test your first aid knowledge together"
 			/>
+
+			{/* QR Code Modal */}
+			{createdGameData && (
+				<QRCodeModal
+					open={showQRCode}
+					onOpenChange={(open) => {
+						setShowQRCode(open);
+						if (!open) continueToLobby();
+					}}
+					baseUrl={baseUrl}
+					gameCode={createdGameData.code}
+					lobbyId={createdGameData.id}
+				/>
+			)}
 
 			<main className="flex-1 p-6">
 				<Tabs defaultValue="join" className="mx-auto max-w-4xl">
@@ -110,7 +218,7 @@ function MultiplayerContent() {
 							<CardContent className="space-y-4">
 								<div className="space-y-2">
 									<Input
-										placeholder="Enter session code (e.g., FIRST123)"
+										placeholder="Enter 6-character session code"
 										value={gameCode}
 										onChange={(e) => setGameCode(e.target.value)}
 										onKeyDown={(e) => {
@@ -119,12 +227,29 @@ function MultiplayerContent() {
 											}
 										}}
 									/>
+									<p className="mt-2 text-muted-foreground text-xs">
+										Ask the session host for the code. Codes are 6 characters
+										long and contain only uppercase letters and numbers.
+									</p>
 								</div>
 							</CardContent>
 							<CardFooter>
-								<Button className="w-full" onClick={handleJoinGame}>
-									<Gamepad2 className="mr-2 h-4 w-4" />
-									Join Session
+								<Button
+									className="w-full"
+									onClick={handleJoinGame}
+									disabled={isJoining}
+								>
+									{isJoining ? (
+										<>
+											<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+											Joining...
+										</>
+									) : (
+										<>
+											<Gamepad2 className="mr-2 h-4 w-4" />
+											Join Session
+										</>
+									)}
 								</Button>
 							</CardFooter>
 						</Card>
@@ -196,32 +321,42 @@ function MultiplayerContent() {
 								<CardContent>
 									<div className="space-y-4">
 										<div className="rounded-lg border bg-muted/50 p-4">
-											<div className="flex items-center justify-between">
+											<div className="flex items-center">
 												<div>
-													<p className="font-medium text-sm">
-														Your Session Code
-													</p>
-													<p className="mt-1 font-bold text-2xl tracking-wider">
-														RAPID123
+													<p className="font-medium text-sm">Session Details</p>
+													<p className="mt-1 text-muted-foreground text-sm">
+														A unique game code will be generated when you create
+														this session
 													</p>
 												</div>
-												<Button
-													variant="outline"
-													size="icon"
-													onClick={() => handleCopyCode("RAPID123")}
-												>
-													Copy
-												</Button>
 											</div>
 										</div>
 									</div>
 								</CardContent>
-								<CardFooter>
+								<CardFooter className="flex flex-col gap-2">
 									<Button
 										className="w-full"
 										onClick={() => handleCreateGame("Rapid Response")}
+										disabled={creatingGameType !== null}
 									>
-										Create Rapid Response
+										{creatingGameType === "Rapid Response" ? (
+											<>
+												<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+												Creating session...
+											</>
+										) : (
+											<>Create & Host Rapid Response</>
+										)}
+									</Button>
+
+									<Button
+										variant="outline"
+										className="w-full"
+										onClick={() => handleCreateGame("Rapid Response", true)}
+										disabled={creatingGameType !== null}
+									>
+										<QrCode className="mr-2 h-4 w-4" />
+										Create with QR Code
 									</Button>
 								</CardFooter>
 							</Card>
@@ -242,32 +377,42 @@ function MultiplayerContent() {
 								<CardContent>
 									<div className="space-y-4">
 										<div className="rounded-lg border bg-muted/50 p-4">
-											<div className="flex items-center justify-between">
+											<div className="flex items-center">
 												<div>
-													<p className="font-medium text-sm">
-														Your Session Code
-													</p>
-													<p className="mt-1 font-bold text-2xl tracking-wider">
-														CLASH123
+													<p className="font-medium text-sm">Session Details</p>
+													<p className="mt-1 text-muted-foreground text-sm">
+														A unique game code will be generated when you create
+														this session
 													</p>
 												</div>
-												<Button
-													variant="outline"
-													size="icon"
-													onClick={() => handleCopyCode("CLASH123")}
-												>
-													Copy
-												</Button>
 											</div>
 										</div>
 									</div>
 								</CardContent>
-								<CardFooter>
+								<CardFooter className="flex flex-col gap-2">
 									<Button
 										className="w-full"
 										onClick={() => handleCreateGame("Card Clash")}
+										disabled={creatingGameType !== null}
 									>
-										Create Card Clash
+										{creatingGameType === "Card Clash" ? (
+											<>
+												<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+												Creating session...
+											</>
+										) : (
+											<>Create & Host Card Clash</>
+										)}
+									</Button>
+
+									<Button
+										variant="outline"
+										className="w-full"
+										onClick={() => handleCreateGame("Card Clash", true)}
+										disabled={creatingGameType !== null}
+									>
+										<QrCode className="mr-2 h-4 w-4" />
+										Create with QR Code
 									</Button>
 								</CardFooter>
 							</Card>

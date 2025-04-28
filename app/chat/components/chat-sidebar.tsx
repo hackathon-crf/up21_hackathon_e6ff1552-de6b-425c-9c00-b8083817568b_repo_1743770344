@@ -732,7 +732,7 @@ export function ChatSidebar() {
 													{/* Pin/Unpin option */}
 													<button
 														type="button"
-														className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-foreground dark:text-zinc-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-zinc-700"
+														className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-foreground text-xs hover:bg-accent hover:text-accent-foreground dark:text-zinc-200 dark:hover:bg-zinc-700"
 														onClick={(e) => handleTogglePin(e, session)}
 													>
 														<Pin
@@ -748,7 +748,7 @@ export function ChatSidebar() {
 													{/* Rename option */}
 													<button
 														type="button"
-														className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-foreground dark:text-zinc-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-zinc-700"
+														className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-foreground text-xs hover:bg-accent hover:text-accent-foreground dark:text-zinc-200 dark:hover:bg-zinc-700"
 														onClick={(e) => openRenameDialog(e, session)}
 													>
 														<Pencil className="h-3.5 w-3.5" />
@@ -758,7 +758,7 @@ export function ChatSidebar() {
 													{/* Archive/Unarchive option */}
 													<button
 														type="button"
-														className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-foreground dark:text-zinc-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-zinc-700"
+														className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-foreground text-xs hover:bg-accent hover:text-accent-foreground dark:text-zinc-200 dark:hover:bg-zinc-700"
 														onClick={(e) => handleToggleArchive(e, session)}
 													>
 														{session.status === "archived" ? (
@@ -775,7 +775,7 @@ export function ChatSidebar() {
 													</button>
 
 													{/* Separator between non-destructive and destructive actions */}
-													<div className="my-1 border-border dark:border-zinc-700 border-t" />
+													<div className="my-1 border-border border-t dark:border-zinc-700" />
 
 													{/* Delete option */}
 													<button

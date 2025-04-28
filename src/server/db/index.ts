@@ -1,7 +1,10 @@
 import { drizzle } from "drizzle-orm/postgres-js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-
 import { env } from "~/env";
+
+// Import the schema for querying
+import * as schema from "./schema";
 
 // Global connection state tracking
 let connectionAttempts = 0;
@@ -42,8 +45,8 @@ async function createConnection() {
 				testResult[0]?.test === 1,
 			);
 
-			// Create the Drizzle ORM instance
-			const dbInstance = drizzle(sqlClient);
+			// Create the Drizzle ORM instance with query support
+			const dbInstance = drizzle(sqlClient, { schema });
 			console.log("[DB] Database connection initialized successfully");
 
 			return { sql: sqlClient, db: dbInstance };
@@ -75,7 +78,7 @@ async function createConnection() {
 // Singleton pattern - only create one connection
 let connectionPromise: Promise<{
 	sql: ReturnType<typeof postgres>;
-	db: ReturnType<typeof drizzle>;
+	db: PostgresJsDatabase<typeof schema>;
 }> | null = null;
 
 // Get or create the database connection
@@ -92,7 +95,7 @@ function getConnection() {
 }
 
 // For direct compatibility with existing code
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: PostgresJsDatabase<typeof schema> | null = null;
 
 // Initialize the connection immediately
 getConnection()
@@ -105,7 +108,7 @@ getConnection()
 	});
 
 // Public API: export the database client with proper error handling
-export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
 	get: (_target, prop) => {
 		if (!_db) {
 			console.error("[DB] Accessing db before connection is ready");

@@ -17,10 +17,10 @@ import {
 	User,
 	X,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import type React from "react";
 
 import { useEffect, useRef, useState } from "react";
@@ -110,13 +110,13 @@ export function AppSidebar() {
 						"-translate-y-1/2 -left-1 fixed top-1/2 z-50",
 						"h-[84px] w-6 pr-1.5",
 						// Use black background for light theme, keep original for dark
-						theme === 'dark' 
-							? "bg-[rgb(255,252,250,0.75)]"  
+						theme === "dark"
+							? "bg-[rgb(255,252,250,0.75)]"
 							: "bg-[rgb(0,0,0,0.75)]",
 						// Simple vertical tab
 						"rounded-[6px_16px_16px_6px]",
 						// Subtle border
-						theme === 'dark'
+						theme === "dark"
 							? "border-white/[0.008] border-y border-l"
 							: "border-black/[0.008] border-y border-l",
 						// Hover effects
@@ -130,8 +130,8 @@ export function AppSidebar() {
 				>
 					<ChevronRight
 						className={cn(
-							"h-4 w-4", 
-							theme === 'dark' ? "text-black/40" : "text-white/90",
+							"h-4 w-4",
+							theme === "dark" ? "text-black/40" : "text-white/90",
 							"transition-transform duration-300 ease-out",
 							"group-hover:-translate-x-0.5",
 							isOpen && "rotate-180",

@@ -5,7 +5,9 @@ import {
 	Heart,
 	MessageSquare,
 	Play,
+	QrCode,
 	Settings,
+	Share2,
 	Shield,
 	Users,
 	X,
@@ -15,6 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type React from "react";
 
+import QRCodeModal from "~/components/qr-code-modal";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -26,89 +29,51 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
-import { useToast } from "~/hooks/use-toast"; // Assuming useToast returns { toast } or similar
-import { cn } from "~/lib/utils"; // Assuming cn is correctly imported
+import { useToast } from "~/hooks/use-toast";
+import { cn } from "~/lib/utils";
 import { ConnectionStatus } from "../../components/connection-status";
 import { GameChat } from "../../components/game-chat";
-import { PlayerList } from "../../components/player-list";
+import {
+	PlayerList,
+	type Player as PlayerListPlayer,
+} from "../../components/player-list";
 import { VoiceChatControls } from "../../components/voice-chat-controls";
 
-// Define types (keep these outside or in a separate types file)
-type PlayerRole = "host" | "player" | "moderator" | "observer";
-type PlayerStatus = "idle" | "typing" | "away" | undefined;
+// Define types for our API data
+type PlayerStatus =
+	| "joined"
+	| "ready"
+	| "playing"
+	| "left"
+	| "idle"
+	| "typing"
+	| "away"
+	| undefined;
+
 type Player = {
-	id: number | string;
-	name: string;
-	avatar: string;
+	id: number;
+	userId: string;
+	nickname: string;
+	avatar?: string;
 	isHost: boolean;
 	isReady: boolean;
 	isCurrentUser?: boolean;
-	role?: PlayerRole;
 	status?: PlayerStatus;
-};
-type LobbyParams = {
-	id: string;
+	score?: number;
 };
 
-// --- MOVE MOCK DATA BASE OUTSIDE ---
-const mockSessionBase = {
-	// Assuming id comes from props/params later
-	code: "FIRST123",
-	title: "CPR & AED Challenge",
-	host: "John Doe",
-	topic: "CPR & AED",
-	difficulty: "Intermediate",
-	questions: 10,
-	timePerQuestion: 30,
-	players: [
-		{
-			id: 1,
-			name: "John Doe",
-			avatar: "/avatar.svg?height=40&width=40",
-			isHost: true,
-			isReady: true,
-			isCurrentUser: true,
-			role: "host" as PlayerRole,
-		},
-		{
-			id: 2,
-			name: "Sarah Johnson",
-			avatar: "/avatar.svg?height=40&width=40",
-			isHost: false,
-			isReady: true,
-			status: "idle" as PlayerStatus,
-			role: "player" as PlayerRole,
-		},
-		{
-			id: 3,
-			name: "Michael Smith",
-			avatar: "/avatar.svg?height=40&width=40",
-			isHost: false,
-			isReady: false,
-			status: "typing" as PlayerStatus,
-			role: "player" as PlayerRole,
-		},
-		{
-			id: 4,
-			name: "Emily Davis",
-			avatar: "/avatar.svg?height=40&width=40",
-			isHost: false,
-			isReady: true,
-			status: "idle" as PlayerStatus,
-			role: "player" as PlayerRole,
-		},
-		{
-			id: 5,
-			name: "Robert Wilson",
-			avatar: "/avatar.svg?height=40&width=40",
-			isHost: false,
-			isReady: false,
-			status: "away" as PlayerStatus,
-			role: "observer" as PlayerRole,
-		},
-	] as Player[],
+type LobbyData = {
+	id: number;
+	code: string;
+	hostUserId: string;
+	status: string;
+	title: string;
+	topic: string;
+	difficulty: string;
+	questions: number;
+	timePerQuestion: number;
+	players: Player[];
 };
-// -----------------------------
 
 export default function LobbyPage() {
 	// Use the useParams hook to get route parameters
@@ -118,77 +83,131 @@ export default function LobbyPage() {
 
 function LobbyContent({ gameId }: { gameId: string }) {
 	const router = useRouter();
-	const { toast } = useToast(); // Destructure toast function from the hook
-	const [isHost, setIsHost] = useState(true); // This likely needs to be derived from real user/session data
+	const { toast } = useToast();
+	const [isHost, setIsHost] = useState(false);
 	const [isReady, setIsReady] = useState(false);
 	const [gameMode, setGameMode] = useState<"rapid" | "clash">("rapid");
 	const [chatCollapsed, setChatCollapsed] = useState(false);
 	const [showVoiceChat, setShowVoiceChat] = useState(false);
 	const [isStarting, setIsStarting] = useState(false);
 	const [connectionError, setConnectionError] = useState<string | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
+	const [session, setSession] = useState<LobbyData | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
+	const [showQRCode, setShowQRCode] = useState(false);
+	const baseUrl =
+		typeof window !== "undefined"
+			? `${window.location.protocol}//${window.location.host}`
+			: "";
 
-	// --- Use Stable Session Data ---
-	// Merge the stable base with the dynamic gameId using useMemo
-	const session = useMemo(() => {
-		// Find the current user player and mark them
-		const playersWithCurrentUser = mockSessionBase.players.map((p) => ({
-			...p,
-			// Assuming player ID 1 is the current user for this mock setup
-			// In a real app, you'd compare against the actual logged-in user ID
-			isCurrentUser: p.id === 1,
+	// Convert API players to PlayerList component format
+	const formattedPlayers = useMemo<PlayerListPlayer[]>(() => {
+		if (!session) return [];
+
+		return session.players.map((player) => ({
+			id: player.id,
+			name: player.nickname,
+			avatar: player.avatar || "/avatar.svg?height=40&width=40",
+			isHost: player.isHost,
+			isCurrentUser: player.isCurrentUser,
+			isReady: player.isReady,
+			status: player.status as any, // Convert status type
+			role: player.isHost ? "host" : "player",
 		}));
+	}, [session]);
 
-		return {
-			...mockSessionBase,
-			id: gameId || "default-id",
-			players: playersWithCurrentUser,
-			// Update isHost based on the player marked as current user
-			// host: playersWithCurrentUser.find(p => p.isHost)?.name || mockSessionBase.host // Optional: derive host name
-		};
-	}, [gameId]);
+	// Derived values
+	const readyCount = useMemo(
+		() => session?.players.filter((player) => player.isReady).length || 0,
+		[session],
+	);
+	const totalPlayers = useMemo(() => session?.players.length || 0, [session]);
+	const allReady = useMemo(
+		() => readyCount === totalPlayers && totalPlayers > 0,
+		[readyCount, totalPlayers],
+	);
 
-	// Update isHost state based on the session data (only if it changes)
-	useEffect(() => {
-		const currentUser = session.players.find((p) => p.isCurrentUser);
-		if (currentUser) {
-			setIsHost(currentUser.isHost);
-			// Optionally set initial ready state based on data
-			// setIsReady(currentUser.isReady);
+	// Fetch lobby data
+	const fetchLobbyData = useCallback(async () => {
+		try {
+			if (!gameId) return;
+
+			const response = await fetch(`/api/multiplayer/${gameId}`);
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to fetch lobby data");
+			}
+
+			const data = await response.json();
+			setSession(data);
+
+			// Find the current user to determine if they're the host
+			const currentUser = data.players.find((p: Player) => p.isCurrentUser);
+			if (currentUser) {
+				setIsHost(currentUser.isHost);
+				setIsReady(currentUser.isReady);
+			}
+		} catch (error) {
+			console.error("Error fetching lobby:", error);
+			setError(error instanceof Error ? error.message : "Failed to load lobby");
+
+			toast({
+				title: "Error",
+				description:
+					error instanceof Error ? error.message : "Failed to load lobby",
+				variant: "destructive",
+			});
+		} finally {
+			setIsLoading(false);
 		}
-	}, [session.players]);
-	// ---------------------------
+	}, [gameId, toast]);
+
+	// Initial data fetch
+	useEffect(() => {
+		fetchLobbyData();
+
+		// Set up polling for updates
+		const interval = setInterval(() => {
+			fetchLobbyData();
+		}, 5000); // Poll every 5 seconds
+
+		setPollInterval(interval);
+
+		// Cleanup polling on unmount
+		return () => {
+			if (interval) clearInterval(interval);
+		};
+	}, [fetchLobbyData]);
 
 	// Show welcome notification on mount
 	useEffect(() => {
 		toast({
-			// Use the object syntax
-			variant: "success", // Make sure your toast component supports variants like this
+			variant: "success",
 			title: "Welcome to the lobby!",
 			description: "Wait for all players to be ready before starting the game.",
 			duration: 8000,
 		});
-	}, [toast]); // Effect runs once on mount
+	}, [toast]);
 
-	// --- Wrap handlers in useCallback ---
+	// Function to copy the game code to clipboard
 	const handleCopyCode = useCallback(() => {
+		if (!session) return;
+
 		if (typeof navigator !== "undefined" && navigator.clipboard) {
 			navigator.clipboard.writeText(session.code);
 			toast({
-				variant: "success",
-				title: "Session code copied",
-				description:
-					"Share this code with your team to join the training session",
-			});
-		} else {
-			toast({
-				variant: "destructive", // Changed from 'error' to 'destructive'
-				title: "Failed to copy",
-				description: "Clipboard access is not available.",
+				title: "Game code copied",
+				description: "Share this code with your team to join the session",
+				duration: 3000,
 			});
 		}
-	}, [session.code, toast]);
+	}, [session, toast]);
 
 	const handleStartGame = useCallback(async () => {
+		if (!gameId || !session) return;
+
 		setConnectionError(null);
 		setIsStarting(true);
 		toast({
@@ -199,17 +218,18 @@ function LobbyContent({ gameId }: { gameId: string }) {
 		});
 
 		try {
-			// Simulate network request with potential failure
-			await new Promise((resolve, reject) => {
-				setTimeout(() => {
-					// Simulate a 20% chance of failure
-					if (Math.random() > 0.8) {
-						reject(new Error("Failed to connect to game server"));
-					} else {
-						resolve(true);
-					}
-				}, 2000);
+			const response = await fetch(`/api/multiplayer/${gameId}/start`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ forceStart: false }),
 			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to start game");
+			}
 
 			// Success path
 			toast({
@@ -221,16 +241,13 @@ function LobbyContent({ gameId }: { gameId: string }) {
 
 			// Redirect to the appropriate game mode
 			setTimeout(() => {
-				if (router) {
-					// Ensure router is available
-					if (gameMode === "rapid") {
-						router.push(`/multiplayer/rapid/${gameId}`);
-					} else {
-						router.push(`/multiplayer/clash/${gameId}`);
-					}
+				if (gameMode === "rapid") {
+					router.push(`/multiplayer/rapid/${gameId}`);
+				} else {
+					router.push(`/multiplayer/clash/${gameId}`);
 				}
 			}, 1000);
-		} catch (error: unknown) {
+		} catch (error) {
 			console.error("Failed to start game:", error);
 			let errorMessage = "Failed to start the game. Please try again.";
 			if (error instanceof Error) {
@@ -247,9 +264,11 @@ function LobbyContent({ gameId }: { gameId: string }) {
 		} finally {
 			setIsStarting(false);
 		}
-	}, [toast, gameId, gameMode, router]); // Dependencies used inside the handler
+	}, [toast, gameId, gameMode, router, session]);
 
 	const handleForceStart = useCallback(async () => {
+		if (!gameId || !session) return;
+
 		setConnectionError(null);
 		setIsStarting(true);
 		toast({
@@ -260,17 +279,18 @@ function LobbyContent({ gameId }: { gameId: string }) {
 		});
 
 		try {
-			// Simulate network request with potential failure
-			await new Promise((resolve, reject) => {
-				setTimeout(() => {
-					// Simulate a 20% chance of failure
-					if (Math.random() > 0.8) {
-						reject(new Error("Failed to connect to game server"));
-					} else {
-						resolve(true);
-					}
-				}, 2000);
+			const response = await fetch(`/api/multiplayer/${gameId}/start`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ forceStart: true }),
 			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to start game");
+			}
 
 			// Success path
 			toast({
@@ -282,16 +302,13 @@ function LobbyContent({ gameId }: { gameId: string }) {
 
 			// Redirect to the appropriate game mode
 			setTimeout(() => {
-				if (router) {
-					// Ensure router is available
-					if (gameMode === "rapid") {
-						router.push(`/multiplayer/rapid/${gameId}`);
-					} else {
-						router.push(`/multiplayer/clash/${gameId}`);
-					}
+				if (gameMode === "rapid") {
+					router.push(`/multiplayer/rapid/${gameId}`);
+				} else {
+					router.push(`/multiplayer/clash/${gameId}`);
 				}
 			}, 1000);
-		} catch (error: unknown) {
+		} catch (error) {
 			console.error("Failed to force start game:", error);
 			let errorMessage = "Failed to start the game. Please try again.";
 			if (error instanceof Error) {
@@ -308,55 +325,147 @@ function LobbyContent({ gameId }: { gameId: string }) {
 		} finally {
 			setIsStarting(false);
 		}
-	}, [toast, gameId, gameMode, router]); // Dependencies used inside the handler
+	}, [toast, gameId, gameMode, router, session]);
 
-	const handleToggleReady = useCallback(() => {
-		const newReadyState = !isReady;
-		setIsReady(newReadyState);
-		// Here you would typically also send this update to the server
-		toast({
-			variant: "info",
-			title: newReadyState ? "You are now ready" : "Ready status canceled",
-			description: newReadyState
-				? "Waiting for other players to be ready"
-				: "You can change your mind at any time",
-			duration: 3000,
-		});
-	}, [isReady, toast]);
+	const handleToggleReady = useCallback(async () => {
+		if (!gameId) return;
 
-	const handleKickPlayer = useCallback(
-		(playerId: number | string) => {
-			// Add actual kick logic here (e.g., send request to server)
-			console.log("Kicking player:", playerId);
+		try {
+			const response = await fetch(`/api/multiplayer/${gameId}/player`, {
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ action: "toggleReady" }),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to update ready status");
+			}
+
+			const data = await response.json();
+			const newReadyState = data.status === "ready";
+			setIsReady(newReadyState);
+
+			toast({
+				variant: "info",
+				title: newReadyState ? "You are now ready" : "Ready status canceled",
+				description: newReadyState
+					? "Waiting for other players to be ready"
+					: "You can change your mind at any time",
+				duration: 3000,
+			});
+
+			// Refresh lobby data
+			fetchLobbyData();
+		} catch (error) {
+			console.error("Failed to toggle ready status:", error);
 			toast({
 				variant: "destructive",
-				title: "Player kicked",
-				description: `Player ${playerId} has been removed (simulation).`,
+				title: "Error",
+				description:
+					error instanceof Error
+						? error.message
+						: "Failed to update ready status",
+				duration: 3000,
 			});
+		}
+	}, [gameId, fetchLobbyData, toast]);
+
+	const handleKickPlayer = useCallback(
+		async (playerId: number | string) => {
+			if (!gameId) return;
+
+			try {
+				const response = await fetch(`/api/multiplayer/${gameId}/player`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						action: "kickPlayer",
+						playerId: Number(playerId),
+					}),
+				});
+
+				if (!response.ok) {
+					const errorData = await response.json();
+					throw new Error(errorData.error || "Failed to kick player");
+				}
+
+				toast({
+					variant: "destructive",
+					title: "Player kicked",
+					description: "Player has been removed from the lobby",
+				});
+
+				// Refresh lobby data
+				fetchLobbyData();
+			} catch (error) {
+				console.error("Failed to kick player:", error);
+				toast({
+					variant: "destructive",
+					title: "Error",
+					description:
+						error instanceof Error ? error.message : "Failed to kick player",
+				});
+			}
 		},
-		[toast],
+		[gameId, fetchLobbyData, toast],
 	);
 
 	const handlePromotePlayer = useCallback(
-		(playerId: number | string) => {
-			// Add actual promote logic here (e.g., send request to server)
-			console.log("Promoting player:", playerId);
-			toast({
-				variant: "success",
-				title: "Player promoted",
-				description: `Player ${playerId} is now a host (simulation).`,
-			});
+		async (playerId: number | string) => {
+			if (!gameId) return;
+
+			try {
+				const response = await fetch(`/api/multiplayer/${gameId}/player`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						action: "promotePlayer",
+						playerId: Number(playerId),
+					}),
+				});
+
+				if (!response.ok) {
+					const errorData = await response.json();
+					throw new Error(errorData.error || "Failed to promote player");
+				}
+
+				toast({
+					variant: "success",
+					title: "Player promoted",
+					description: "Player is now the host of the lobby",
+				});
+
+				// Refresh lobby data
+				fetchLobbyData();
+			} catch (error) {
+				console.error("Failed to promote player:", error);
+				toast({
+					variant: "destructive",
+					title: "Error",
+					description:
+						error instanceof Error ? error.message : "Failed to promote player",
+				});
+			}
 		},
-		[toast],
+		[gameId, fetchLobbyData, toast],
 	);
 
 	const handleEditSettings = useCallback(() => {
-		router.push(`/multiplayer/settings/${gameId}`);
+		if (gameId) {
+			router.push(`/multiplayer/settings/${gameId}`);
+		}
 	}, [router, gameId]);
 
 	const handleSetGameMode = useCallback((mode: "rapid" | "clash") => {
 		setGameMode(mode);
-	}, []); // No dependencies needed as it only calls setGameMode
+	}, []);
 
 	// Helper function for keyboard events
 	const handleKeyDown = (
@@ -376,23 +485,48 @@ function LobbyContent({ gameId }: { gameId: string }) {
 	const handleToggleShowVoiceChat = useCallback(() => {
 		setShowVoiceChat((prev) => !prev);
 	}, []);
-	// ---------------------------------
 
-	// --- Derived values ---
-	// These calculations are cheap, useMemo is likely overkill unless players array is huge
-	const readyCount = useMemo(
-		() => session.players.filter((player) => player.isReady).length,
-		[session.players],
-	);
-	const totalPlayers = session.players.length;
-	const allReady = useMemo(
-		() => readyCount === totalPlayers,
-		[readyCount, totalPlayers],
-	);
-	// --------------------
+	// Show loading state
+	if (isLoading) {
+		return (
+			<div className="flex min-h-screen flex-col items-center justify-center">
+				<div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+				<p>Loading lobby...</p>
+			</div>
+		);
+	}
+
+	// Show error state
+	if (error || !session) {
+		return (
+			<div className="flex min-h-screen flex-col items-center justify-center">
+				<div className="mb-4 text-destructive">
+					<X className="mx-auto h-12 w-12" />
+				</div>
+				<h1 className="mb-2 font-bold text-xl">Error Loading Lobby</h1>
+				<p className="text-muted-foreground">
+					{error || "Could not load lobby data"}
+				</p>
+				<Button className="mt-4" onClick={() => router.push("/multiplayer")}>
+					Back to Multiplayer
+				</Button>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex min-h-screen flex-col">
+			{/* QR Code Modal */}
+			{session && (
+				<QRCodeModal
+					open={showQRCode}
+					onOpenChange={setShowQRCode}
+					baseUrl={baseUrl}
+					gameCode={session.code}
+					lobbyId={session.id}
+				/>
+			)}
+
 			{/* Header Section */}
 			<div className="border-b p-3 sm:p-4">
 				<div className="mx-auto flex max-w-5xl flex-col justify-between sm:flex-row sm:items-center">
@@ -402,8 +536,7 @@ function LobbyContent({ gameId }: { gameId: string }) {
 							<p className="text-muted-foreground text-xs sm:text-sm">
 								Waiting for all players to be ready
 							</p>
-							<ConnectionStatus />{" "}
-							{/* Ensure this component handles its own state or receives stable props */}
+							<ConnectionStatus />
 						</div>
 					</div>
 					<div className="flex items-center gap-2 sm:gap-4">
@@ -425,22 +558,21 @@ function LobbyContent({ gameId }: { gameId: string }) {
 				<div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
 					{/* Left Column (Player List, Voice Chat, Actions, Game Chat) */}
 					<div className="space-y-4 sm:space-y-6 md:col-span-2">
-						{/* Pass stable props derived from the memoized session and state */}
 						<PlayerList
-							players={session.players} // Stable prop
+							players={formattedPlayers}
 							showReadyStatus={true}
-							showControls={isHost} // Stable state
-							onKickPlayer={handleKickPlayer} // Stable callback
-							onPromotePlayer={handlePromotePlayer} // Stable callback
-							onToggleReady={handleToggleReady} // Stable callback (for non-hosts)
-							isCurrentUserReady={isReady} // Stable state
-							isCurrentUserHost={isHost} // Stable state
+							showControls={isHost}
+							onKickPlayer={handleKickPlayer}
+							onPromotePlayer={handlePromotePlayer}
+							onToggleReady={handleToggleReady}
+							isCurrentUserReady={isReady}
+							isCurrentUserHost={isHost}
 						/>
 
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<VoiceChatControls />
 
-							<Card className="h-32 gap-0 py-0 pt-0 pb-0">
+							<Card className="h-auto gap-0 py-0 pt-0 pb-0">
 								<CardHeader className="gap-0 p-3 pt-2 pb-1">
 									<CardTitle className="text-base">Quick Actions</CardTitle>
 								</CardHeader>
@@ -466,6 +598,14 @@ function LobbyContent({ gameId }: { gameId: string }) {
 											onClick={handleCopyCode}
 										>
 											Copy Code
+										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => setShowQRCode(true)}
+										>
+											<QrCode className="mr-2 h-4 w-4" />
+											QR Code
 										</Button>
 										{isHost && (
 											<Button
@@ -507,10 +647,9 @@ function LobbyContent({ gameId }: { gameId: string }) {
 						{/* Conditionally render GameChat */}
 						{!chatCollapsed && (
 							<GameChat
-								sessionId={session.id} // Stable prop
-								onToggleCollapse={handleToggleChatCollapsed} // Stable callback
+								sessionId={String(session.id)}
+								onToggleCollapse={handleToggleChatCollapsed}
 								className="transition-opacity duration-300 ease-in-out"
-								// Ensure GameChat fetches/manages its own messages or receives stable message props
 							/>
 						)}
 					</div>
@@ -532,18 +671,39 @@ function LobbyContent({ gameId }: { gameId: string }) {
 												{session.code}
 											</p>
 										</div>
-										<Button
-											variant="outline"
-											size="icon"
-											onClick={handleCopyCode}
-										>
-											<Copy className="h-4 w-4" />
-											<span className="sr-only">Copy code</span>
-										</Button>
+										<div className="flex gap-2">
+											<Button
+												variant="outline"
+												size="icon"
+												onClick={handleCopyCode}
+												title="Copy code"
+											>
+												<Copy className="h-4 w-4" />
+												<span className="sr-only">Copy code</span>
+											</Button>
+											<Button
+												variant="outline"
+												size="icon"
+												onClick={() => setShowQRCode(true)}
+												title="Show QR code"
+											>
+												<QrCode className="h-4 w-4" />
+												<span className="sr-only">Show QR code</span>
+											</Button>
+										</div>
 									</div>
 									<p className="mt-2 text-muted-foreground text-xs">
 										Share this code with your team to join the session
 									</p>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setShowQRCode(true)}
+										className="mt-2 w-full"
+									>
+										<Share2 className="mr-2 h-4 w-4" />
+										Share Invite QR Code
+									</Button>
 								</div>
 
 								{/* Other Session Details */}
@@ -606,11 +766,11 @@ function LobbyContent({ gameId }: { gameId: string }) {
 							</CardHeader>
 							<CardContent className="p-4 pt-2">
 								<div className="space-y-4">
-									{/* Rapid Response Option - Changed div to button */}
+									{/* Rapid Response Option */}
 									<button
-										type="button" // Added type="button"
+										type="button"
 										className={cn(
-											"w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all", // Added text-left and w-full for button styling
+											"w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all",
 											gameMode === "rapid"
 												? "border-primary bg-primary/5"
 												: "border-muted hover:border-muted-foreground/50",
@@ -633,11 +793,11 @@ function LobbyContent({ gameId }: { gameId: string }) {
 										</div>
 									</button>
 
-									{/* Card Clash Option - Changed div to button */}
+									{/* Card Clash Option */}
 									<button
-										type="button" // Added type="button"
+										type="button"
 										className={cn(
-											"w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all", // Added text-left and w-full for button styling
+											"w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all",
 											gameMode === "clash"
 												? "border-primary bg-primary/5"
 												: "border-muted hover:border-muted-foreground/50",
@@ -719,10 +879,6 @@ function LobbyContent({ gameId }: { gameId: string }) {
 				>
 					<MessageSquare className="h-5 w-5" />
 					<span className="font-medium">Chat</span>
-					{/* Add a real notification count if available */}
-					{/* <Badge variant="destructive" className="ml-1 absolute -top-1 -right-1 px-1.5 py-0.5 text-xs">
-            5
-          </Badge> */}
 				</Button>
 			)}
 		</div>
