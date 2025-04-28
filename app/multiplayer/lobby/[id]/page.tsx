@@ -249,6 +249,67 @@ function LobbyContent({ gameId }: { gameId: string }) {
 		}
 	}, [toast, gameId, gameMode, router]); // Dependencies used inside the handler
 
+	const handleForceStart = useCallback(async () => {
+		setConnectionError(null);
+		setIsStarting(true);
+		toast({
+			variant: "warning",
+			title: "Force starting session",
+			description: "Starting the session before all players are ready...",
+			duration: 3000,
+		});
+
+		try {
+			// Simulate network request with potential failure
+			await new Promise((resolve, reject) => {
+				setTimeout(() => {
+					// Simulate a 20% chance of failure
+					if (Math.random() > 0.8) {
+						reject(new Error("Failed to connect to game server"));
+					} else {
+						resolve(true);
+					}
+				}, 2000);
+			});
+
+			// Success path
+			toast({
+				variant: "success",
+				title: "Session started!",
+				description: "Redirecting to game...",
+				duration: 2000,
+			});
+
+			// Redirect to the appropriate game mode
+			setTimeout(() => {
+				if (router) {
+					// Ensure router is available
+					if (gameMode === "rapid") {
+						router.push(`/multiplayer/rapid/${gameId}`);
+					} else {
+						router.push(`/multiplayer/clash/${gameId}`);
+					}
+				}
+			}, 1000);
+		} catch (error: unknown) {
+			console.error("Failed to force start game:", error);
+			let errorMessage = "Failed to start the game. Please try again.";
+			if (error instanceof Error) {
+				errorMessage = error.message;
+			}
+			setConnectionError(errorMessage);
+			toast({
+				variant: "destructive",
+				title: "Failed to start session",
+				description:
+					"There was a problem connecting to the game server. Please try again.",
+				duration: 5000,
+			});
+		} finally {
+			setIsStarting(false);
+		}
+	}, [toast, gameId, gameMode, router]); // Dependencies used inside the handler
+
 	const handleToggleReady = useCallback(() => {
 		const newReadyState = !isReady;
 		setIsReady(newReadyState);
@@ -603,25 +664,37 @@ function LobbyContent({ gameId }: { gameId: string }) {
 							{/* Start/Ready Button */}
 							<CardFooter className="p-4 pt-2">
 								{isHost ? (
-									<Button
-										className="w-full"
-										onClick={handleStartGame}
-										disabled={!allReady || isStarting}
-									>
-										{isStarting ? (
-											<>
-												<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-												Starting...
-											</>
-										) : (
-											<>
+									<div className="w-full space-y-2">
+										<Button
+											className="w-full"
+											onClick={handleStartGame}
+											disabled={!allReady || isStarting}
+										>
+											{isStarting ? (
+												<>
+													<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+													Starting...
+												</>
+											) : (
+												<>
+													<Play className="mr-2 h-4 w-4" />
+													{allReady
+														? "Start Session"
+														: `Waiting for ${totalPlayers - readyCount} more...`}
+												</>
+											)}
+										</Button>
+										{!allReady && !isStarting && (
+											<Button
+												className="w-full"
+												variant="destructive"
+												onClick={handleForceStart}
+											>
 												<Play className="mr-2 h-4 w-4" />
-												{allReady
-													? "Start Session"
-													: `Waiting for ${totalPlayers - readyCount} more...`}
-											</>
+												Force Start Session
+											</Button>
 										)}
-									</Button>
+									</div>
 								) : (
 									<Button
 										className="w-full"

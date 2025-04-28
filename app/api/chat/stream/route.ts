@@ -371,6 +371,7 @@ export async function POST(request: NextRequest) {
 				"Content-Type": "text/event-stream",
 				"Cache-Control": "no-cache",
 				Connection: "keep-alive",
+				"X-Accel-Buffering": "no", // Tells Nginx not to buffer this response
 			},
 		});
 	} catch (error) {
