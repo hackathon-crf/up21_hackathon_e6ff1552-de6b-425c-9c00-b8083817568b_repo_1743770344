@@ -5,109 +5,111 @@ import { db } from "~/server/db";
 import { gameLobbies, users } from "~/server/db/schema";
 
 export async function GET(
-	request: NextRequest,
-	{ params }: { params: { id: string } },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-	try {
-		const cookieStore = await cookies();
-		const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-		const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  try {
+    // Resolve dynamic route parameter
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: "Invalid lobby ID" }, { status: 400 });
+    }
 
-		const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-			cookies: {
-				get: (name) => cookieStore.get(name)?.value ?? "",
-				set: () => {}, // Not needed for this endpoint
-				remove: () => {}, // Not needed for this endpoint
-			},
-		});
+    const cookieStore = await cookies();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
-		const {
-			data: { session },
-		} = await supabase.auth.getSession();
-		if (!session?.user) {
-			return NextResponse.json(
-				{ error: "Authentication required" },
-				{ status: 401 },
-			);
-		}
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        get: (name) => cookieStore.get(name)?.value ?? "",
+        set: () => {}, // Not needed for this endpoint
+        remove: () => {}, // Not needed for this endpoint
+      },
+    });
 
-		const id = Number.parseInt(params.id);
-		if (isNaN(id)) {
-			return NextResponse.json({ error: "Invalid lobby ID" }, { status: 400 });
-		}
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
 
-		// Fetch lobby with players and check permissions
-		const lobby = await db.query.gameLobbies.findFirst({
-			where: (gameLobbies, { eq }) => eq(gameLobbies.id, id),
-			with: {
-				players: {
-					with: {
-						user: {
-							columns: {
-								id: true,
-								email: true,
-							},
-						},
-					},
-				},
-				flashcardDeck: true,
-				host: {
-					columns: {
-						id: true,
-						email: true,
-					},
-				},
-			},
-		});
+    // Fetch lobby with players and check permissions
+    const lobby = await db.query.gameLobbies.findFirst({
+      where: (gameLobbies, { eq }) => eq(gameLobbies.id, id),
+      with: {
+        players: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+        flashcardDeck: true,
+        host: {
+          columns: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+    });
 
-		if (!lobby) {
-			return NextResponse.json({ error: "Lobby not found" }, { status: 404 });
-		}
+    if (!lobby) {
+      return NextResponse.json({ error: "Lobby not found" }, { status: 404 });
+    }
 
-		// Check if user is in this lobby
-		const isParticipant = lobby.players.some(
-			(player) => player.userId === session.user.id,
-		);
-		if (!isParticipant && lobby.hostUserId !== session.user.id) {
-			return NextResponse.json(
-				{ error: "You are not a participant in this lobby" },
-				{ status: 403 },
-			);
-		}
+    // Check if user is in this lobby
+    const isParticipant = lobby.players.some(
+      (player) => player.userId === session.user.id,
+    );
+    if (!isParticipant && lobby.hostUserId !== session.user.id) {
+      return NextResponse.json(
+        { error: "You are not a participant in this lobby" },
+        { status: 403 },
+      );
+    }
 
-		// Format player data to include current user
-		const formattedPlayers = lobby.players.map((player) => ({
-			id: player.id,
-			userId: player.userId,
-			nickname: player.nickname,
-			score: player.score,
-			isHost: player.userId === lobby.hostUserId,
-			isReady: player.status === "ready",
-			isCurrentUser: player.userId === session.user.id,
-			status: player.status,
-			avatar: "/avatar.svg?height=40&width=40", // Default avatar for now
-		}));
+    // Format player data to include current user
+    const formattedPlayers = lobby.players.map((player) => ({
+      id: player.id,
+      userId: player.userId,
+      nickname: player.nickname,
+      score: player.score,
+      isHost: player.userId === lobby.hostUserId,
+      isReady: player.status === "ready",
+      isCurrentUser: player.userId === session.user.id,
+      status: player.status,
+      avatar: "/avatar.svg?height=40&width=40", // Default avatar for now
+    }));
 
-		// Format the lobby data
-		const lobbyData = {
-			id: lobby.id,
-			code: lobby.code,
-			hostUserId: lobby.hostUserId,
-			status: lobby.status,
-			title: lobby.flashcardDeck?.name || "Multiplayer Session",
-			topic: lobby.flashcardDeck?.description || "First Aid",
-			difficulty: "Intermediate",
-			questions: 10, // Default value, could be based on deck
-			timePerQuestion: 30, // Default value, could be configurable
-			players: formattedPlayers,
-		};
+    // Format the lobby data
+    const lobbyData = {
+      id: lobby.id,
+      code: lobby.code,
+      hostUserId: lobby.hostUserId,
+      status: lobby.status,
+      title: lobby.flashcardDeck?.name || "Multiplayer Session",
+      topic: lobby.flashcardDeck?.description || "First Aid",
+      difficulty: "Intermediate",
+      questions: 10, // Default value, could be based on deck
+      timePerQuestion: 30, // Default value, could be configurable
+      players: formattedPlayers,
+    };
 
-		return NextResponse.json(lobbyData);
-	} catch (error) {
-		console.error("Error fetching lobby:", error);
-		return NextResponse.json(
-			{ error: "Failed to fetch lobby details" },
-			{ status: 500 },
-		);
-	}
+    return NextResponse.json(lobbyData);
+  } catch (error) {
+    console.error("Error fetching lobby:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch lobby details" },
+      { status: 500 },
+    );
+  }
 }

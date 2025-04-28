@@ -7,9 +7,16 @@ import { gameLobbies, gamePlayers } from "~/server/db/schema";
 
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: { id: string } },
+	{ params }: { params: Promise<{ id: string }> },
 ) {
 	try {
+		// Resolve dynamic route parameter
+		const { id: idParam } = await params;
+		const id = parseInt(idParam);
+		if (isNaN(id)) {
+			return NextResponse.json({ error: "Invalid lobby ID" }, { status: 400 });
+		}
+
 		const cookieStore = await cookies();
 		const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 		const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -30,11 +37,6 @@ export async function PATCH(
 				{ error: "Authentication required" },
 				{ status: 401 },
 			);
-		}
-
-		const id = Number.parseInt(params.id);
-		if (isNaN(id)) {
-			return NextResponse.json({ error: "Invalid lobby ID" }, { status: 400 });
 		}
 
 		const { action, playerId } = await request.json();

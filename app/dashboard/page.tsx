@@ -29,17 +29,42 @@ import {
 import { Progress } from "~/components/ui/progress";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import {
-	type Activity as ActivityType,
-	type DashboardData,
-	type LearningProgress,
-	type Recommendation,
-	type UpcomingReview,
-	type WeeklyProgressData,
-	fetchDashboardData,
-} from "~/lib/services/dashboard";
-import { createBrowserClient } from "~/lib/supabase";
+import { api } from "~/trpc/react";
 
+// Define necessary types for the dashboard data
+type ActivityType = {
+	activity: string;
+	timestamp: string;
+	icon: string;
+};
+
+type LearningProgress = {
+	id: number;
+	title: string;
+	progress: number;
+	dueCards: number;
+};
+
+type Recommendation = {
+	title: string;
+	description: string;
+	icon: string;
+};
+
+type UpcomingReview = {
+	period: string;
+	dueCards: number;
+	actionText: string;
+	actionVariant: "default" | "outline" | "secondary" | "destructive" | "ghost" | "link";
+};
+
+type WeeklyProgressData = {
+	day: string;
+	cards: number;
+	games: number;
+	chat: number;
+	[key: string]: string | number;
+};
 // Dynamically import the DashboardChart with no SSR to prevent hydration issues
 const DynamicDashboardChart = dynamic(
 	() =>
@@ -56,21 +81,12 @@ export default function DashboardPage() {
 	// Use the AuthProvider's context
 	const { user, isLoading: authLoading } = useAuth();
 
-	// Use React Query for data fetching with caching and proper error handling
-	const { data: dashboardData, isLoading: dataLoading } = useQuery({
-		queryKey: ["dashboardData", user?.id],
-		queryFn: async () => {
-			if (!user?.id) return null;
-			try {
-				console.log("📊 DASHBOARD: Fetching data for user:", user.id);
-				return await fetchDashboardData(user.id);
-			} catch (error) {
-				console.error("📊 DASHBOARD: Error fetching dashboard data:", error);
-				throw error;
-			}
-		},
-		enabled: !!user?.id, // Only run query if user id exists
-		staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+	// Use tRPC to fetch dashboard data
+	const { data: dashboardData, isLoading: dataLoading } = api.dashboard.getDashboardData.useQuery(
+		undefined, // No input needed as the server gets userId from auth context
+		{
+			enabled: !!user?.id, // Only run query if user id exists
+			staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
 		gcTime: 10 * 60 * 1000, // Keep data in cache for 10 minutes (renamed from cacheTime in React Query v4+)
 		refetchOnWindowFocus: false, // Don't refetch when window regains focus
 		refetchOnReconnect: false, // Don't refetch on network reconnection
