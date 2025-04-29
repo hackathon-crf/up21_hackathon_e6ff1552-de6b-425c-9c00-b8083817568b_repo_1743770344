@@ -16,7 +16,7 @@ import {
 	ThumbsUp,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import {
 	AlertDialog,
@@ -101,7 +101,7 @@ export default function StudyDeckPage({
 	const totalCards = cards.length;
 
 	// Utility function to calculate mastery
-	const calculateMasteryProgress = (cards: Flashcard[]) => {
+	const calculateMasteryProgress = useCallback((cards: Flashcard[]) => {
 		const masteredCards = cards.filter(
 			(card) =>
 				card.repetitions &&
@@ -121,7 +121,7 @@ export default function StudyDeckPage({
 		return cards.length
 			? Math.round(((masteredCards + learningCards * 0.5) / cards.length) * 100)
 			: 0;
-	};
+	}, []);
 
 	// Fetch deck information
 	const { data: deck, isLoading: deckLoading } =
@@ -235,7 +235,7 @@ export default function StudyDeckPage({
 			const initialProgress = calculateMasteryProgress(mappedCards);
 			setProgress(initialProgress);
 		}
-	}, [dueCards]);
+	}, [dueCards, calculateMasteryProgress]);
 
 	// Update the duration and progress
 	useEffect(() => {
@@ -273,7 +273,7 @@ export default function StudyDeckPage({
 		}
 
 		return () => clearInterval(timer);
-	}, [studyStats.studyStartTime, cards]);
+	}, [studyStats.studyStartTime, cards, showCompletionDialog]);
 
 	// Add keyboard navigation
 	useEffect(() => {
@@ -302,7 +302,7 @@ export default function StudyDeckPage({
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [flipped, currentCard]);
+	}, [flipped, currentCard, totalCards]);
 
 	// Show confetti effect on deck completion
 	useEffect(() => {

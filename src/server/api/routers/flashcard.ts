@@ -699,22 +699,21 @@ export const flashcardRouter = createTRPCRouter({
 						})
 						.where(eq(studyStats.id, existingStats.id))
 						.returning();
-				} else {
-					// Create new stats entry
-					// Create new stats entry for today
-					return await ctx.db
-						.insert(studyStats)
-						.values({
-							userId: ctx.auth.user.id,
-							studiedToday: 1,
-							totalStudied: 1,
-							correctToday: isCorrect ? 1 : 0,
-							totalCorrect: isCorrect ? 1 : 0,
-							streak: 1,
-							lastStudyDate: sql`CURRENT_TIMESTAMP`,
-						})
-						.returning();
 				}
+				// Create new stats entry
+				// Create new stats entry for today
+				return await ctx.db
+					.insert(studyStats)
+					.values({
+						userId: ctx.auth.user.id,
+						studiedToday: 1,
+						totalStudied: 1,
+						correctToday: isCorrect ? 1 : 0,
+						totalCorrect: isCorrect ? 1 : 0,
+						streak: 1,
+						lastStudyDate: sql`CURRENT_TIMESTAMP`,
+					})
+					.returning();
 			} catch (error) {
 				console.error("Error updating study stats:", error);
 				throw new TRPCError({

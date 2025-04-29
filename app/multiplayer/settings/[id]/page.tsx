@@ -87,7 +87,19 @@ function SettingsContent({ sessionId }: { sessionId: string }) {
 		if (hasChanges) {
 			setShowUnsavedChangesWarning(true);
 		} else {
-			router.push(`/multiplayer/lobby/${sessionId}`);
+			// Get the lobby code from the ID and redirect
+			fetch(`/api/multiplayer/${sessionId}/code`)
+				.then(res => res.json())
+				.then(data => {
+					if (data.code) {
+						router.push(`/multiplayer/lobby/${data.code}`);
+					} else {
+						router.push('/multiplayer');
+					}
+				})
+				.catch(() => {
+					router.push('/multiplayer');
+				});
 		}
 	};
 
@@ -116,7 +128,19 @@ function SettingsContent({ sessionId }: { sessionId: string }) {
 
 			// Navigate back to lobby
 			setTimeout(() => {
-				router.push(`/multiplayer/lobby/${sessionId}`);
+				// Get the lobby code from the ID and redirect
+				fetch(`/api/multiplayer/${sessionId}/code`)
+					.then(res => res.json())
+					.then(data => {
+						if (data.code) {
+							router.push(`/multiplayer/lobby/${data.code}`);
+						} else {
+							router.push('/multiplayer');
+						}
+					})
+					.catch(() => {
+						router.push('/multiplayer');
+					});
 			}, 1000);
 		} catch (error) {
 			// Error handling
@@ -134,7 +158,19 @@ function SettingsContent({ sessionId }: { sessionId: string }) {
 	// Handle discard changes
 	const handleDiscardChanges = () => {
 		setShowUnsavedChangesWarning(false);
-		router.push(`/multiplayer/lobby/${sessionId}`);
+		// Get the lobby code from the ID and redirect
+		fetch(`/api/multiplayer/${sessionId}/code`)
+			.then(res => res.json())
+			.then(data => {
+				if (data.code) {
+					router.push(`/multiplayer/lobby/${data.code}`);
+				} else {
+					router.push('/multiplayer');
+				}
+			})
+			.catch(() => {
+				router.push('/multiplayer');
+			});
 	};
 
 	// Handle continue editing

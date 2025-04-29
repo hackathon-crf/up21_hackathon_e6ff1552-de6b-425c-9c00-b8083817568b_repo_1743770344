@@ -72,7 +72,7 @@ export function AppSidebar() {
 		if (isMobile) {
 			setIsOpen(false);
 		}
-	}, [pathname, isMobile]);
+	}, [isMobile]);
 
 	// Reset showChat when switching to desktop
 	useEffect(() => {
@@ -145,6 +145,14 @@ export function AppSidebar() {
 				<div
 					className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm"
 					onClick={() => setIsOpen(false)}
+					onKeyDown={(e) => {
+						if (e.key === "Escape") {
+							setIsOpen(false);
+						}
+					}}
+					tabIndex={0}
+					role="button"
+					aria-label="Close sidebar"
 				/>
 			)}
 

@@ -17,6 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type React from "react";
 
+import QRCodeDisplay from "~/components/qr-code-display";
 import QRCodeModal from "~/components/qr-code-modal";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -30,6 +31,7 @@ import {
 } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { useToast } from "~/hooks/use-toast";
+import type { QRCodeState } from "~/lib/types";
 import { cn } from "~/lib/utils";
 import { ConnectionStatus } from "../../components/connection-status";
 import { GameChat } from "../../components/game-chat";
@@ -77,11 +79,11 @@ type LobbyData = {
 
 export default function LobbyPage() {
 	// Use the useParams hook to get route parameters
-	const { id } = useParams() as { id: string };
-	return <LobbyContent gameId={id} />;
+	const { code } = useParams() as { code: string };
+	return <LobbyContent lobbyCode={code} />;
 }
 
-function LobbyContent({ gameId }: { gameId: string }) {
+function LobbyContent({ lobbyCode }: { lobbyCode: string }) {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [isHost, setIsHost] = useState(false);
@@ -95,7 +97,10 @@ function LobbyContent({ gameId }: { gameId: string }) {
 	const [session, setSession] = useState<LobbyData | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
-	const [showQRCode, setShowQRCode] = useState(false);
+
+	// QR code display states: hidden, inline, modal
+	const [qrCodeDisplay, setQrCodeDisplay] = useState<QRCodeState>("hidden");
+
 	const baseUrl =
 		typeof window !== "undefined"
 			? `${window.location.protocol}//${window.location.host}`
@@ -112,7 +117,12 @@ function LobbyContent({ gameId }: { gameId: string }) {
 			isHost: player.isHost,
 			isCurrentUser: player.isCurrentUser,
 			isReady: player.isReady,
-			status: player.status as any, // Convert status type
+			status: player.status as
+				| "typing"
+				| "answered"
+				| "thinking"
+				| "away"
+				| undefined, // Use specific status types
 			role: player.isHost ? "host" : "player",
 		}));
 	}, [session]);
@@ -131,9 +141,9 @@ function LobbyContent({ gameId }: { gameId: string }) {
 	// Fetch lobby data
 	const fetchLobbyData = useCallback(async () => {
 		try {
-			if (!gameId) return;
+			if (!lobbyCode) return;
 
-			const response = await fetch(`/api/multiplayer/${gameId}`);
+			const response = await fetch(`/api/multiplayer/lobby/${lobbyCode}`);
 
 			if (!response.ok) {
 				const errorData = await response.json();
@@ -162,7 +172,7 @@ function LobbyContent({ gameId }: { gameId: string }) {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [gameId, toast]);
+	}, [lobbyCode, toast]);
 
 	// Initial data fetch
 	useEffect(() => {
@@ -206,7 +216,7 @@ function LobbyContent({ gameId }: { gameId: string }) {
 	}, [session, toast]);
 
 	const handleStartGame = useCallback(async () => {
-		if (!gameId || !session) return;
+		if (!lobbyCode || !session) return;
 
 		setConnectionError(null);
 		setIsStarting(true);
@@ -218,7 +228,7 @@ function LobbyContent({ gameId }: { gameId: string }) {
 		});
 
 		try {
-			const response = await fetch(`/api/multiplayer/${gameId}/start`, {
+			const response = await fetch(`/api/multiplayer/lobby/${lobbyCode}/start`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -239,12 +249,12 @@ function LobbyContent({ gameId }: { gameId: string }) {
 				duration: 2000,
 			});
 
-			// Redirect to the appropriate game mode
+			// Redirect to the appropriate game mode (still using numeric ID for game page)
 			setTimeout(() => {
 				if (gameMode === "rapid") {
-					router.push(`/multiplayer/rapid/${gameId}`);
+					router.push(`/multiplayer/rapid/${session.id}`);
 				} else {
-					router.push(`/multiplayer/clash/${gameId}`);
+					router.push(`/multiplayer/clash/${session.id}`);
 				}
 			}, 1000);
 		} catch (error) {
@@ -264,74 +274,13 @@ function LobbyContent({ gameId }: { gameId: string }) {
 		} finally {
 			setIsStarting(false);
 		}
-	}, [toast, gameId, gameMode, router, session]);
-
-	const handleForceStart = useCallback(async () => {
-		if (!gameId || !session) return;
-
-		setConnectionError(null);
-		setIsStarting(true);
-		toast({
-			variant: "warning",
-			title: "Force starting session",
-			description: "Starting the session before all players are ready...",
-			duration: 3000,
-		});
-
-		try {
-			const response = await fetch(`/api/multiplayer/${gameId}/start`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({ forceStart: true }),
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.error || "Failed to start game");
-			}
-
-			// Success path
-			toast({
-				variant: "success",
-				title: "Session started!",
-				description: "Redirecting to game...",
-				duration: 2000,
-			});
-
-			// Redirect to the appropriate game mode
-			setTimeout(() => {
-				if (gameMode === "rapid") {
-					router.push(`/multiplayer/rapid/${gameId}`);
-				} else {
-					router.push(`/multiplayer/clash/${gameId}`);
-				}
-			}, 1000);
-		} catch (error) {
-			console.error("Failed to force start game:", error);
-			let errorMessage = "Failed to start the game. Please try again.";
-			if (error instanceof Error) {
-				errorMessage = error.message;
-			}
-			setConnectionError(errorMessage);
-			toast({
-				variant: "destructive",
-				title: "Failed to start session",
-				description:
-					"There was a problem connecting to the game server. Please try again.",
-				duration: 5000,
-			});
-		} finally {
-			setIsStarting(false);
-		}
-	}, [toast, gameId, gameMode, router, session]);
+	}, [toast, lobbyCode, gameMode, router, session]);
 
 	const handleToggleReady = useCallback(async () => {
-		if (!gameId) return;
+		if (!lobbyCode) return;
 
 		try {
-			const response = await fetch(`/api/multiplayer/${gameId}/player`, {
+			const response = await fetch(`/api/multiplayer/lobby/${lobbyCode}/player`, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
@@ -371,14 +320,14 @@ function LobbyContent({ gameId }: { gameId: string }) {
 				duration: 3000,
 			});
 		}
-	}, [gameId, fetchLobbyData, toast]);
+	}, [lobbyCode, fetchLobbyData, toast]);
 
 	const handleKickPlayer = useCallback(
 		async (playerId: number | string) => {
-			if (!gameId) return;
-
+			if (!lobbyCode) return;
+			
 			try {
-				const response = await fetch(`/api/multiplayer/${gameId}/player`, {
+				const response = await fetch(`/api/multiplayer/lobby/${lobbyCode}/player`, {
 					method: "PATCH",
 					headers: {
 						"Content-Type": "application/json",
@@ -412,15 +361,15 @@ function LobbyContent({ gameId }: { gameId: string }) {
 				});
 			}
 		},
-		[gameId, fetchLobbyData, toast],
+		[lobbyCode, fetchLobbyData, toast],
 	);
 
 	const handlePromotePlayer = useCallback(
 		async (playerId: number | string) => {
-			if (!gameId) return;
+			if (!lobbyCode) return;
 
 			try {
-				const response = await fetch(`/api/multiplayer/${gameId}/player`, {
+				const response = await fetch(`/api/multiplayer/lobby/${lobbyCode}/player`, {
 					method: "PATCH",
 					headers: {
 						"Content-Type": "application/json",
@@ -454,14 +403,75 @@ function LobbyContent({ gameId }: { gameId: string }) {
 				});
 			}
 		},
-		[gameId, fetchLobbyData, toast],
+		[lobbyCode, fetchLobbyData, toast],
 	);
 
-	const handleEditSettings = useCallback(() => {
-		if (gameId) {
-			router.push(`/multiplayer/settings/${gameId}`);
+	const handleForceStart = useCallback(async () => {
+		if (!lobbyCode || !session) return;
+
+		setConnectionError(null);
+		setIsStarting(true);
+		toast({
+			variant: "warning",
+			title: "Force starting session",
+			description: "Starting the game without waiting for all players...",
+			duration: 3000,
+		});
+
+		try {
+			const response = await fetch(`/api/multiplayer/lobby/${lobbyCode}/start`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ forceStart: true }),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to start game");
+			}
+
+			// Success path
+			toast({
+				variant: "success",
+				title: "Session started!",
+				description: "Redirecting to game...",
+				duration: 2000,
+			});
+
+			// Redirect to the appropriate game mode (still using numeric ID for game page)
+			setTimeout(() => {
+				if (gameMode === "rapid") {
+					router.push(`/multiplayer/rapid/${session.id}`);
+				} else {
+					router.push(`/multiplayer/clash/${session.id}`);
+				}
+			}, 1000);
+		} catch (error) {
+			console.error("Failed to force start game:", error);
+			let errorMessage = "Failed to start the game. Please try again.";
+			if (error instanceof Error) {
+				errorMessage = error.message;
+			}
+			setConnectionError(errorMessage);
+			toast({
+				variant: "destructive",
+				title: "Failed to force start session",
+				description:
+					"There was a problem connecting to the game server. Please try again.",
+				duration: 5000,
+			});
+		} finally {
+			setIsStarting(false);
 		}
-	}, [router, gameId]);
+	}, [lobbyCode, session, gameMode, router, toast]);
+
+	const handleEditSettings = useCallback(() => {
+		if (session) {
+			router.push(`/multiplayer/settings/${session.id}`);
+		}
+	}, [router, session]);
 
 	const handleSetGameMode = useCallback((mode: "rapid" | "clash") => {
 		setGameMode(mode);
@@ -490,7 +500,7 @@ function LobbyContent({ gameId }: { gameId: string }) {
 	if (isLoading) {
 		return (
 			<div className="flex min-h-screen flex-col items-center justify-center">
-				<div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+				<div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
 				<p>Loading lobby...</p>
 			</div>
 		);
@@ -519,8 +529,8 @@ function LobbyContent({ gameId }: { gameId: string }) {
 			{/* QR Code Modal */}
 			{session && (
 				<QRCodeModal
-					open={showQRCode}
-					onOpenChange={setShowQRCode}
+					open={qrCodeDisplay === "modal"}
+					onOpenChange={() => setQrCodeDisplay("hidden")}
 					baseUrl={baseUrl}
 					gameCode={session.code}
 					lobbyId={session.id}
@@ -533,6 +543,7 @@ function LobbyContent({ gameId }: { gameId: string }) {
 					<div className="mb-2 sm:mb-0">
 						<h1 className="font-bold text-xl sm:text-2xl">{session.title}</h1>
 						<div className="flex items-center gap-2">
+							<Badge variant="outline">{session.code}</Badge>
 							<p className="text-muted-foreground text-xs sm:text-sm">
 								Waiting for all players to be ready
 							</p>
@@ -600,12 +611,24 @@ function LobbyContent({ gameId }: { gameId: string }) {
 											Copy Code
 										</Button>
 										<Button
-											variant="outline"
+											variant={
+												qrCodeDisplay !== "hidden" ? "default" : "outline"
+											}
 											size="sm"
-											onClick={() => setShowQRCode(true)}
+											onClick={() => {
+												if (qrCodeDisplay === "hidden")
+													setQrCodeDisplay("inline");
+												else if (qrCodeDisplay === "inline")
+													setQrCodeDisplay("modal");
+												else setQrCodeDisplay("hidden");
+											}}
 										>
 											<QrCode className="mr-2 h-4 w-4" />
-											QR Code
+											{qrCodeDisplay === "hidden"
+												? "Show QR"
+												: qrCodeDisplay === "inline"
+													? "Enlarge QR"
+													: "Hide QR"}
 										</Button>
 										{isHost && (
 											<Button
@@ -682,28 +705,67 @@ function LobbyContent({ gameId }: { gameId: string }) {
 												<span className="sr-only">Copy code</span>
 											</Button>
 											<Button
-												variant="outline"
+												variant={
+													qrCodeDisplay !== "hidden" ? "default" : "outline"
+												}
 												size="icon"
-												onClick={() => setShowQRCode(true)}
-												title="Show QR code"
+												onClick={() => {
+													if (qrCodeDisplay === "hidden")
+														setQrCodeDisplay("inline");
+													else if (qrCodeDisplay === "inline")
+														setQrCodeDisplay("modal");
+													else setQrCodeDisplay("hidden");
+												}}
+												title={
+													qrCodeDisplay === "hidden"
+														? "Show QR Code"
+														: qrCodeDisplay === "inline"
+															? "Show QR Code in Modal"
+															: "Hide QR Code"
+												}
 											>
 												<QrCode className="h-4 w-4" />
-												<span className="sr-only">Show QR code</span>
+												<span className="sr-only">Toggle QR code</span>
 											</Button>
 										</div>
 									</div>
 									<p className="mt-2 text-muted-foreground text-xs">
 										Share this code with your team to join the session
 									</p>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => setShowQRCode(true)}
-										className="mt-2 w-full"
-									>
-										<Share2 className="mr-2 h-4 w-4" />
-										Share Invite QR Code
-									</Button>
+									
+									{/* Inline QR code display */}
+									{qrCodeDisplay === "inline" && (
+										<div className="mt-4 rounded-lg border p-3">
+											<div className="mb-1 flex justify-end">
+												<Button
+													variant="ghost"
+													size="icon"
+													onClick={() => setQrCodeDisplay("hidden")}
+													className="h-6 w-6"
+												>
+													<X className="h-3 w-3" />
+												</Button>
+											</div>
+											<div className="flex flex-col items-center">
+												<QRCodeDisplay
+													url={`${baseUrl}/multiplayer/lobby/${session?.code || ""}`}
+													gameCode={session?.code}
+													text="Scan to join this session"
+													className="w-full border-none p-2 shadow-none"
+													compact={true}
+												/>
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => setQrCodeDisplay("modal")}
+													className="mt-2"
+												>
+													<QrCode className="mr-2 h-3 w-3" />
+													Show Full Screen
+												</Button>
+											</div>
+										</div>
+									)}
 								</div>
 
 								{/* Other Session Details */}

@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 		// Make sure the code is unique
 		while (codeExists && attempts < 5) {
 			const existingLobby = await db.query.gameLobbies.findFirst({
-				where: (gameLobbies: any, { eq }: any) => eq(gameLobbies.code, code),
+				where: (gameLobbies, { eq }) => eq(gameLobbies.code, code),
 			});
 
 			if (!existingLobby) {
@@ -165,8 +165,7 @@ export async function GET(request: NextRequest) {
 
 		// Get all active lobbies
 		const activeLobbies = await db.query.gameLobbies.findMany({
-			where: (gameLobbies: any, { eq }: any) =>
-				eq(gameLobbies.status, "waiting"),
+			where: (gameLobbies, { eq }) => eq(gameLobbies.status, "waiting"),
 			with: {
 				players: true,
 				host: {
@@ -179,7 +178,7 @@ export async function GET(request: NextRequest) {
 		});
 
 		// Format the lobbies for the client
-		const formattedLobbies = activeLobbies.map((lobby: any) => ({
+		const formattedLobbies = activeLobbies.map((lobby) => ({
 			id: lobby.id,
 			code: lobby.code,
 			hostEmail: lobby.host.email,

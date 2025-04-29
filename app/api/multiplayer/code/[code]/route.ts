@@ -2,18 +2,17 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "~/server/db";
-import { gameLobbies, users } from "~/server/db/schema";
+import { gameLobbies } from "~/server/db/schema";
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> },
+	{ params }: { params: Promise<{ code: string }> },
 ) {
 	try {
 		// Resolve dynamic route parameter
-		const { id: idParam } = await params;
-		const id = Number.parseInt(idParam);
-		if (Number.isNaN(id)) {
-			return NextResponse.json({ error: "Invalid lobby ID" }, { status: 400 });
+		const { code: lobbyCode } = await params;
+		if (!lobbyCode || lobbyCode.length !== 6) {
+			return NextResponse.json({ error: "Invalid lobby code" }, { status: 400 });
 		}
 
 		const cookieStore = await cookies();
@@ -40,7 +39,7 @@ export async function GET(
 
 		// Fetch lobby with players and check permissions
 		const lobby = await db.query.gameLobbies.findFirst({
-			where: (gameLobbies, { eq }) => eq(gameLobbies.id, id),
+			where: (gameLobbies, { eq }) => eq(gameLobbies.code, lobbyCode.toUpperCase()),
 			with: {
 				players: {
 					with: {
@@ -98,7 +97,7 @@ export async function GET(
 			status: lobby.status,
 			title: lobby.flashcardDeck?.name || "Multiplayer Session",
 			topic: lobby.flashcardDeck?.description || "First Aid",
-			difficulty: "Intermediate",
+			difficulty: "Intermediate", // Hardcoded default
 			questions: 10, // Default value, could be based on deck
 			timePerQuestion: 30, // Default value, could be configurable
 			players: formattedPlayers,
@@ -106,9 +105,9 @@ export async function GET(
 
 		return NextResponse.json(lobbyData);
 	} catch (error) {
-		console.error("Error fetching lobby:", error);
+		console.error("API error:", error);
 		return NextResponse.json(
-			{ error: "Failed to fetch lobby details" },
+			{ error: "Failed to fetch lobby data" },
 			{ status: 500 },
 		);
 	}

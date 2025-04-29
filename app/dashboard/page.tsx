@@ -55,7 +55,13 @@ type UpcomingReview = {
 	period: string;
 	dueCards: number;
 	actionText: string;
-	actionVariant: "default" | "outline" | "secondary" | "destructive" | "ghost" | "link";
+	actionVariant:
+		| "default"
+		| "outline"
+		| "secondary"
+		| "destructive"
+		| "ghost"
+		| "link";
 };
 
 type WeeklyProgressData = {
@@ -82,17 +88,19 @@ export default function DashboardPage() {
 	const { user, isLoading: authLoading } = useAuth();
 
 	// Use tRPC to fetch dashboard data
-	const { data: dashboardData, isLoading: dataLoading } = api.dashboard.getDashboardData.useQuery(
-		undefined, // No input needed as the server gets userId from auth context
-		{
-			enabled: !!user?.id, // Only run query if user id exists
-			staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-		gcTime: 10 * 60 * 1000, // Keep data in cache for 10 minutes (renamed from cacheTime in React Query v4+)
-		refetchOnWindowFocus: false, // Don't refetch when window regains focus
-		refetchOnReconnect: false, // Don't refetch on network reconnection
-		refetchOnMount: false, // Don't refetch when component remounts
-		retry: false, // Don't retry on error
-	});
+	const { data: dashboardData, isLoading: dataLoading } =
+		api.dashboard.getDashboardData.useQuery(
+			undefined, // No input needed as the server gets userId from auth context
+			{
+				enabled: !!user?.id, // Only run query if user id exists
+				staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+				gcTime: 10 * 60 * 1000, // Keep data in cache for 10 minutes (renamed from cacheTime in React Query v4+)
+				refetchOnWindowFocus: false, // Don't refetch when window regains focus
+				refetchOnReconnect: false, // Don't refetch on network reconnection
+				refetchOnMount: false, // Don't refetch when component remounts
+				retry: false, // Don't retry on error
+			},
+		);
 
 	// Set client-side rendering flag
 	useEffect(() => {

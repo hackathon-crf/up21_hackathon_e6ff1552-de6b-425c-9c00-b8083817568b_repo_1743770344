@@ -1,11 +1,13 @@
 "use client";
 
-import { Crown, Gamepad2, QrCode, Share2, Users } from "lucide-react";
+import { Crown, Gamepad2, QrCode, Share2, Users, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { DashboardHeader } from "~/components/dashboard-header";
+import QRCodeDisplay from "~/components/qr-code-display";
 import QRCodeModal from "~/components/qr-code-modal";
+import { ToggleableQRCode } from "~/components/toggleable-qr-code";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -18,6 +20,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useToast } from "~/hooks/use-toast";
+import type { QRCodeState } from "~/lib/types";
 
 export default function MultiplayerPage() {
 	return <MultiplayerContent />;
@@ -29,17 +32,65 @@ function MultiplayerContent() {
 	const [gameCode, setGameCode] = useState("");
 	const [isJoining, setIsJoining] = useState(false);
 	const [creatingGameType, setCreatingGameType] = useState<string | null>(null);
-	const [showQRCode, setShowQRCode] = useState(false);
+
+	// Track QR code display states for each game type
+	const [qrCodeState, setQrCodeState] = useState<{
+		[key: string]: QRCodeState;
+	}>({
+		"Rapid Response": "hidden",
+		"Card Clash": "hidden",
+	});
+
+	// Store the created game data for showing QR codes
 	const [createdGameData, setCreatedGameData] = useState<{
 		code: string;
 		id: number | string;
 	} | null>(null);
+
+	// Generate game preview codes for QR display (only for preview, not actual game codes)
+	const [previewGameCodes, setPreviewGameCodes] = useState<{
+		[key: string]: string;
+	}>({
+		"Rapid Response": generateRandomCode(),
+		"Card Clash": generateRandomCode(),
+	});
+
 	const baseUrl =
 		typeof window !== "undefined"
 			? `${window.location.protocol}//${window.location.host}`
 			: "";
 
-	const handleJoinGame = async () => {
+	// Generate a random 6-character game code (for preview only)
+	function generateRandomCode() {
+		const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+		let result = "";
+		for (let i = 0; i < 6; i++) {
+			result += characters.charAt(
+				Math.floor(Math.random() * characters.length),
+			);
+		}
+		return result;
+	}
+
+	// Function to toggle QR code display state for a specific game type
+	const toggleQRCodeState = (gameType: string) => {
+		setQrCodeState((prev) => {
+			const currentState = prev[gameType] || "hidden";
+			if (currentState === "hidden") return { ...prev, [gameType]: "inline" };
+			if (currentState === "inline") return { ...prev, [gameType]: "modal" };
+			return { ...prev, [gameType]: "hidden" };
+		});
+	};
+
+	// Function to directly set a specific QR code state
+	const setQRCodeStateForGame = (
+		gameType: string,
+		state: "hidden" | "inline" | "modal",
+	) => {
+		setQrCodeState((prev) => ({ ...prev, [gameType]: state }));
+	};
+
+	const handleJoinGame = useCallback(async () => {
 		if (!gameCode.trim()) {
 			toast({
 				title: "Error",
@@ -73,8 +124,8 @@ function MultiplayerContent() {
 				throw new Error(data.error || "Failed to join game");
 			}
 
-			// Redirect to the lobby page
-			router.push(`/multiplayer/lobby/${data.id}`);
+			// Redirect to the lobby page by code
+			router.push(`/multiplayer/lobby/${data.code}`);
 		} catch (error) {
 			console.error("Error joining game:", error);
 			toast({
@@ -86,7 +137,7 @@ function MultiplayerContent() {
 		} finally {
 			setIsJoining(false);
 		}
-	};
+	}, [gameCode, router, toast]);
 
 	// Check for QR code join parameter in URL
 	useEffect(() => {
@@ -106,7 +157,7 @@ function MultiplayerContent() {
 
 			return () => clearTimeout(timer);
 		}
-	}, [router, toast, gameCode, setGameCode, handleJoinGame]);
+	}, [router, handleJoinGame]);
 
 	const handleCopyCode = (code: string) => {
 		if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -148,14 +199,20 @@ function MultiplayerContent() {
 				description: `Your session has been created with code: ${data.code}`,
 			});
 
-			if (showQR) {
-				// Store the created game data and show QR code
-				setCreatedGameData({ code: data.code, id: data.id });
-				setShowQRCode(true);
+			// Store the created game data regardless
+			setCreatedGameData({ code: data.code, id: data.id });
+
+			if (showQR || qrCodeState[mode] !== "hidden") {
+				// If user was already viewing QR code preview or requested QR explicitly
+				// Set the state to modal for this game type
+				setQrCodeState((prev) => ({
+					...prev,
+					[mode]: "modal",
+				}));
 				// Don't redirect immediately, let user share QR code first
 			} else {
 				// Redirect to the lobby page immediately
-				router.push(`/multiplayer/lobby/${data.id}`);
+				router.push(`/multiplayer/lobby/${data.code}`);
 			}
 		} catch (error) {
 			console.error("Error creating game:", error);
@@ -173,10 +230,33 @@ function MultiplayerContent() {
 	// Handle continuing to lobby after showing QR code
 	const continueToLobby = () => {
 		if (createdGameData) {
-			setShowQRCode(false);
-			router.push(`/multiplayer/lobby/${createdGameData.id}`);
+			// Reset any QR code displays
+			setQrCodeState((prev) => {
+				const newState = { ...prev };
+				for (const key of Object.keys(newState)) {
+					newState[key] = "hidden";
+				}
+				return newState;
+			});
+			router.push(`/multiplayer/lobby/${createdGameData.code}`);
 		}
 	};
+
+	// Reset QR code modal state when createdGameData changes
+	useEffect(() => {
+		if (!createdGameData) {
+			// Reset modal states when the created game data is cleared
+			setQrCodeState((prev) => {
+				const newState = { ...prev };
+				for (const key of Object.keys(newState)) {
+					if (newState[key] === "modal") {
+						newState[key] = "hidden";
+					}
+				}
+				return newState;
+			});
+		}
+	}, [createdGameData]);
 
 	return (
 		<div className="flex min-h-screen flex-col">
@@ -185,19 +265,65 @@ function MultiplayerContent() {
 				description="Challenge your team and test your first aid knowledge together"
 			/>
 
-			{/* QR Code Modal */}
+			{/* QR Code Modal for generated games */}
 			{createdGameData && (
 				<QRCodeModal
-					open={showQRCode}
+					open={Object.values(qrCodeState).includes("modal")}
 					onOpenChange={(open) => {
-						setShowQRCode(open);
-						if (!open) continueToLobby();
+						if (!open) {
+							// Reset modal states when the modal is closed
+							setQrCodeState((prev) => {
+								const newState = { ...prev };
+								for (const key of Object.keys(newState)) {
+									if (newState[key] === "modal") {
+										newState[key] = "hidden";
+									}
+								}
+								return newState;
+							});
+							continueToLobby();
+						}
 					}}
 					baseUrl={baseUrl}
 					gameCode={createdGameData.code}
 					lobbyId={createdGameData.id}
 				/>
 			)}
+
+			{/* QR Code Modal for preview games - using conditional rendering instead of map */}
+			{Object.entries(qrCodeState).some(([_, state]) => state === "modal") &&
+				!createdGameData && (
+					<QRCodeModal
+						key="qr-modal-preview"
+						open={Object.entries(qrCodeState).some(
+							([_, state]) => state === "modal",
+						)}
+						onOpenChange={(open) => {
+							if (!open) {
+								// Reset all modal QR states to hidden
+								setQrCodeState((prev) => {
+									const newState = { ...prev };
+									for (const key of Object.keys(newState)) {
+										if (newState[key] === "modal") {
+											newState[key] = "hidden";
+										}
+									}
+									return newState;
+								});
+							}
+						}}
+						baseUrl={baseUrl}
+						// Find the first game type that has modal state
+						gameCode={
+							previewGameCodes[
+								Object.entries(qrCodeState).find(
+									([_, state]) => state === "modal",
+								)?.[0] || "Rapid Response"
+							]
+						}
+						lobbyId="preview"
+					/>
+				)}
 
 			<main className="flex-1 p-6">
 				<Tabs defaultValue="join" className="mx-auto max-w-4xl">
@@ -305,6 +431,7 @@ function MultiplayerContent() {
 
 					<TabsContent value="create" className="mt-6 space-y-4">
 						<div className="grid gap-6 md:grid-cols-2">
+							{/* Rapid Response Card */}
 							<Card>
 								<CardHeader>
 									<div className="flex items-center gap-3">
@@ -331,36 +458,31 @@ function MultiplayerContent() {
 												</div>
 											</div>
 										</div>
+
+										{/* ToggleableQRCode component will handle QR display based on state */}
 									</div>
 								</CardContent>
 								<CardFooter className="flex flex-col gap-2">
-									<Button
-										className="w-full"
-										onClick={() => handleCreateGame("Rapid Response")}
-										disabled={creatingGameType !== null}
-									>
-										{creatingGameType === "Rapid Response" ? (
-											<>
-												<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-												Creating session...
-											</>
-										) : (
-											<>Create & Host Rapid Response</>
-										)}
-									</Button>
-
-									<Button
-										variant="outline"
-										className="w-full"
-										onClick={() => handleCreateGame("Rapid Response", true)}
-										disabled={creatingGameType !== null}
-									>
-										<QrCode className="mr-2 h-4 w-4" />
-										Create with QR Code
-									</Button>
+									<div className="flex w-full gap-2">
+										<Button
+											className="w-full"
+											onClick={() => handleCreateGame("Rapid Response")}
+											disabled={creatingGameType !== null}
+										>
+											{creatingGameType === "Rapid Response" ? (
+												<>
+													<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+													Creating session...
+												</>
+											) : (
+												<>Create & Host Rapid Response</>
+											)}
+										</Button>
+									</div>
 								</CardFooter>
 							</Card>
 
+							{/* Card Clash Card */}
 							<Card>
 								<CardHeader>
 									<div className="flex items-center gap-3">
@@ -387,33 +509,27 @@ function MultiplayerContent() {
 												</div>
 											</div>
 										</div>
+
+										{/* ToggleableQRCode component will handle QR display based on state */}
 									</div>
 								</CardContent>
 								<CardFooter className="flex flex-col gap-2">
-									<Button
-										className="w-full"
-										onClick={() => handleCreateGame("Card Clash")}
-										disabled={creatingGameType !== null}
-									>
-										{creatingGameType === "Card Clash" ? (
-											<>
-												<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-												Creating session...
-											</>
-										) : (
-											<>Create & Host Card Clash</>
-										)}
-									</Button>
-
-									<Button
-										variant="outline"
-										className="w-full"
-										onClick={() => handleCreateGame("Card Clash", true)}
-										disabled={creatingGameType !== null}
-									>
-										<QrCode className="mr-2 h-4 w-4" />
-										Create with QR Code
-									</Button>
+									<div className="flex w-full gap-2">
+										<Button
+											className="w-full"
+											onClick={() => handleCreateGame("Card Clash")}
+											disabled={creatingGameType !== null}
+										>
+											{creatingGameType === "Card Clash" ? (
+												<>
+													<div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+													Creating session...
+												</>
+											) : (
+												<>Create & Host Card Clash</>
+											)}
+										</Button>
+									</div>
 								</CardFooter>
 							</Card>
 						</div>

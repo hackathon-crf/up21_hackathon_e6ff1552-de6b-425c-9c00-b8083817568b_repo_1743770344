@@ -12,8 +12,8 @@ export async function PATCH(
 	try {
 		// Resolve dynamic route parameter
 		const { id: idParam } = await params;
-		const id = parseInt(idParam);
-		if (isNaN(id)) {
+		const id = Number.parseInt(idParam);
+		if (Number.isNaN(id)) {
 			return NextResponse.json({ error: "Invalid lobby ID" }, { status: 400 });
 		}
 

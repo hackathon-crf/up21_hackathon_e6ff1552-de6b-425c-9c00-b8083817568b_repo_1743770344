@@ -68,7 +68,6 @@ export async function POST(request: NextRequest) {
 		);
 		if (existingPlayer) {
 			return NextResponse.json({
-				id: lobby.id,
 				code: lobby.code,
 				hostId: lobby.hostUserId,
 				playerId: existingPlayer.id,
@@ -97,7 +96,6 @@ export async function POST(request: NextRequest) {
 		}
 
 		return NextResponse.json({
-			id: lobby.id,
 			code: lobby.code,
 			hostId: lobby.hostUserId,
 			playerId: player.id,

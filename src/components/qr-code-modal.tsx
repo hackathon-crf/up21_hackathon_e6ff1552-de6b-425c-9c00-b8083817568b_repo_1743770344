@@ -26,11 +26,11 @@ interface QRCodeModalProps {
 	/**
 	 * The game code to encode in the QR code URL
 	 */
-	gameCode: string;
+	gameCode: string | undefined;
 	/**
 	 * The ID of the lobby
 	 */
-	lobbyId: string | number;
+	lobbyId: string | number | undefined;
 }
 
 const QRCodeModal = ({
@@ -43,8 +43,8 @@ const QRCodeModal = ({
 	// Remove trailing slash if present
 	const cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 
-	// Generate the join URL
-	const joinUrl = `${cleanBaseUrl}/multiplayer?join=${gameCode}`;
+	// Generate the direct URL to the lobby page
+	const joinUrl = `${cleanBaseUrl}/multiplayer/lobby/${gameCode || "DEMO"}`;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,9 +61,11 @@ const QRCodeModal = ({
 						url={joinUrl}
 						gameCode={gameCode}
 						text="Scan to join this multiplayer session"
+						size={280} /* Significantly larger QR code for modal display */
+						className="scale-110" /* Additional scaling for better visibility */
 					/>
 
-					<p className="mt-4 text-center text-muted-foreground text-sm">
+					<p className="mt-8 text-center text-muted-foreground text-sm">
 						Players can also manually enter the code on the join page
 					</p>
 				</div>
