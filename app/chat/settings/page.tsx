@@ -654,6 +654,26 @@ export default function AIAssistantSettingsPage() {
 												your browser.
 											</p>
 
+											{/* Check for potential mismatch between env and client key */}
+											{apiKey && (
+												<div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+													<div className="flex gap-2">
+														<Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
+														<div>
+															<h4 className="font-medium text-amber-800 dark:text-amber-300">
+																Environment Variable vs Client Key
+															</h4>
+															<p className="mt-1 text-amber-700 dark:text-amber-400">
+																If you are experiencing API key authentication issues despite having a valid key, check if there is a mismatch between your environment variable and the client key entered here.
+															</p>
+															<p className="mt-1 text-amber-700 dark:text-amber-400">
+																Environment variables take precedence unless overridden in the code. You may need to update your environment variable if you want to use this key.
+															</p>
+														</div>
+													</div>
+												</div>
+											)}
+
 											{/* Display cache status if available */}
 											{cacheInfo && cacheInfo.status !== "none" && (
 												<div

@@ -466,10 +466,7 @@ function CardClashContent() {
 			setResult("timeout"); // Treat manual flip as a timeout/skip
 			setStreak(0); // Reset streak
 
-			toast({
-				title: "Card flipped",
-				description: `The answer is: ${currentCardData?.answer || "Not available"}`,
-			});
+			// Removed toast notification for card flipping
 
 			// Simulate other players answering
 			simulateOtherPlayersAnswers();

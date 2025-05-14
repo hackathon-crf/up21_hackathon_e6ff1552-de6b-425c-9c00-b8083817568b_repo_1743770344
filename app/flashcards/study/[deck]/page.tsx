@@ -330,15 +330,7 @@ export default function StudyDeckPage({
 
 	const handleFlip = () => {
 		setFlipped(!flipped);
-
-		if (!flipped) {
-			// Only show toast when revealing the answer
-			toast({
-				title: "Card flipped",
-				description: "Take your time to review the answer",
-				variant: "info",
-			});
-		}
+		// Removed toast notification for card flipping
 	};
 
 	const handleCardRating = (rating: 1 | 2 | 3 | 4) => {

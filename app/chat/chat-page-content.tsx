@@ -317,10 +317,31 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 
 		// Check if API key is available for selected provider
 		const apiKey = localStorage.getItem(`${provider}_api_key`);
+		
 		if (!apiKey) {
 			toast({
 				title: "API Key Required",
 				description: `Please add your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in settings before sending messages.`,
+				variant: "destructive",
+			});
+
+			// Redirect to settings
+			router.push("/chat/settings");
+			return;
+		}
+		
+		// Clean up API key - remove any whitespace or quotes
+		const cleanedApiKey = apiKey.trim().replace(/['"]/g, '');
+		
+		// Basic validation of API key format
+		const isValidFormat = (provider === "mistral" && cleanedApiKey.length >= 20) ||
+		                     (provider === "openai" && (cleanedApiKey.startsWith("sk-") || cleanedApiKey.length >= 30)) ||
+		                     cleanedApiKey.length >= 20;
+		
+		if (!isValidFormat) {
+			toast({
+				title: "Invalid API Key Format",
+				description: `Your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key appears to be invalid. Please check it in settings.`,
 				variant: "destructive",
 			});
 
@@ -426,8 +447,12 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 				),
 			);
 
-			// Get the API key from localStorage for development mode
+			// Get the API key from localStorage - ensure we get the most current value
 			const apiKey = localStorage.getItem(`${provider}_api_key`);
+			console.log(`Using API key for ${provider}: ${apiKey ? 'Key present (length: ' + apiKey.length + ')' : 'Not found'}`);
+			
+			// Ensure API key doesn't have any whitespace or quotes
+			const cleanedApiKey = apiKey?.trim().replace(/['"]/g, '');
 
 			// Make streaming request
 			const response = await fetch("/api/chat/stream", {
@@ -443,14 +468,26 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 					// Pass the system prompt from settings
 					systemPrompt,
 					// Include API key for development mode (will only be used if server env vars aren't set)
-					apiKey,
+					apiKey: cleanedApiKey,
 				}),
 			});
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => null);
+				
+				// Special handling for authentication errors
+				if (response.status === 401 || response.status === 403) {
+					const errorMsg = errorData?.message || errorData?.error || "Authentication failed";
+					console.error(`API Authentication error (${response.status}):`, errorData);
+					
+					// Add more descriptive message
+					throw new Error(
+						`Authentication error: ${errorMsg}. Please check your API key for ${provider} in settings.`
+					);
+				}
+				
 				throw new Error(
-					`HTTP error ${response.status}: ${errorData?.error || response.statusText}`,
+					`HTTP error ${response.status}: ${errorData?.error || errorData?.message || response.statusText}`,
 				);
 			}
 

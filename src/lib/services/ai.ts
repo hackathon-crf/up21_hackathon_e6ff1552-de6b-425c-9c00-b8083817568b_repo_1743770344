@@ -92,11 +92,78 @@ export class AIService {
 	}
 
 	private getMistralClient() {
-		return new Mistral({ apiKey: this.apiKey });
+		try {
+			// Thorough API key cleaning - remove any whitespace, quotes, and invisible characters
+			const cleanedApiKey = this.apiKey
+				.trim()
+				.replace(/['"]/g, '')
+				.replace(/\s+/g, '')
+				.replace(/[\u200B-\u200D\uFEFF]/g, ''); // Remove zero-width spaces and other invisible chars
+			
+			// Validate API key format for Mistral
+			if (cleanedApiKey.length < 20) {
+				console.warn("[AIService] ⚠️ Mistral API key appears to be too short");
+			}
+			
+			if (!/^[A-Za-z0-9_\-]+$/.test(cleanedApiKey)) {
+				console.warn("[AIService] ⚠️ Mistral API key contains invalid characters");
+			}
+			
+			// DETAILED DEBUG LOG
+			console.log("[AIService] Creating Mistral client with:", {
+				keyLength: cleanedApiKey.length,
+				keyPrefix: cleanedApiKey.substring(0, 5) + '...',
+				keySuffix: '...' + cleanedApiKey.substring(cleanedApiKey.length - 5),
+				keyFormat: cleanedApiKey.match(/^[A-Za-z0-9_\-]+$/) ? "valid format" : "invalid format",
+				// This is how the key will be formatted in the Authorization header
+				authHeader: `Bearer ${cleanedApiKey}`,
+				authHeaderLength: `Bearer ${cleanedApiKey}`.length
+			});
+			
+			// Log full sanitized key for diagnostic purposes (be careful with this in production)
+			// But we need to debug the actual key being used
+			console.log("[AIService] DEBUG ONLY - Full sanitized key:", cleanedApiKey);
+			
+			// Important: Use the cleaned key
+			const client = new Mistral({ 
+				apiKey: cleanedApiKey 
+			});
+			
+			// Test if the client was initialized correctly
+			console.log("[AIService] Mistral client initialized successfully");
+			
+			return client;
+		} catch (error) {
+			console.error("[AIService] Failed to initialize Mistral client:", error);
+			throw new AIServiceError(
+				`Failed to initialize Mistral client: ${error instanceof Error ? error.message : String(error)}`,
+				"mistral",
+				undefined,
+				error
+			);
+		}
 	}
 
 	private getOpenAIClient() {
-		return new OpenAI({ apiKey: this.apiKey });
+		try {
+			// Clean the API key - remove any whitespace or quotes
+			const cleanedApiKey = this.apiKey.trim().replace(/['"]/g, '');
+			
+			// Validate API key format for OpenAI (starts with "sk-" and has minimum length)
+			if (!cleanedApiKey.startsWith("sk-") && cleanedApiKey.length < 30) {
+				console.warn("OpenAI API key appears to be in an invalid format");
+			}
+			
+			// Important: Use the cleaned key
+			return new OpenAI({ apiKey: cleanedApiKey });
+		} catch (error) {
+			throw new AIServiceError(
+				`Failed to initialize OpenAI client: ${error instanceof Error ? error.message : String(error)}`,
+				"openai",
+				undefined,
+				error
+			);
+		}
 	}
 
 	async generateResponse(
@@ -202,31 +269,70 @@ export class AIService {
 			maxTokens: options.maxTokens ?? 4000,
 		};
 
+		// Log API key length and format for debugging (safely)
+		console.log(`[AIService] Using ${this.provider} API key:`, {
+			length: this.apiKey.length,
+			format: this.apiKey.substring(0, 4) + '...',
+			model: this.model,
+		});
+
 		switch (this.provider) {
 			case "mistral": {
 				const mistralClient = this.getMistralClient();
 				// Updated to use the correct Mistral streaming API
-				const stream = await mistralClient.chat.stream({
-					model: this.model,
-					messages,
-					temperature: finalOptions.temperature,
-					maxTokens: finalOptions.maxTokens,
-				});
+				try {
+					const stream = await mistralClient.chat.stream({
+						model: this.model,
+						messages,
+						temperature: finalOptions.temperature,
+						maxTokens: finalOptions.maxTokens,
+					});
 
-				return this.processMistralStream(stream);
+					return this.processMistralStream(stream);
+				} catch (error) {
+					// Handle authentication errors specifically
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					console.error("[AIService] Mistral API error:", errorMessage);
+					
+					if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+						throw new AIServiceError(
+							"Authentication failed with Mistral API. Please check your API key.",
+							"mistral",
+							401,
+							error
+						);
+					}
+					throw error;
+				}
 			}
 
 			case "openai": {
 				const openaiClient = this.getOpenAIClient();
-				const stream = await openaiClient.chat.completions.create({
-					model: this.model,
-					messages,
-					temperature: finalOptions.temperature,
-					max_tokens: finalOptions.maxTokens,
-					stream: true,
-				});
+				try {
+					const stream = await openaiClient.chat.completions.create({
+						model: this.model,
+						messages,
+						temperature: finalOptions.temperature,
+						max_tokens: finalOptions.maxTokens,
+						stream: true,
+					});
 
-				return this.processOpenAIStream(stream);
+					return this.processOpenAIStream(stream);
+				} catch (error) {
+					// Handle authentication errors specifically
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					console.error("[AIService] OpenAI API error:", errorMessage);
+					
+					if (errorMessage.includes("401") || errorMessage.includes("Unauthorized") || errorMessage.includes("authentication")) {
+						throw new AIServiceError(
+							"Authentication failed with OpenAI API. Please check your API key.",
+							"openai",
+							401,
+							error
+						);
+					}
+					throw error;
+				}
 			}
 
 			case "anthropic":

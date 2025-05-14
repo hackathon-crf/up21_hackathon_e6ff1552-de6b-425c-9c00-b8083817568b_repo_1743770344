@@ -4,8 +4,8 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { AIService } from "~/lib/services/ai";
-import type { ChatMessage } from "~/lib/services/ai"; // Change to type-only import
-import { db } from "~/server/db";
+import type { ChatMessage } from "~/lib/services/ai";
+import { getDb } from "~/server/db";
 import { chatMessages, chatSessions } from "~/server/db/schema";
 
 // Define a type for the input messages
@@ -40,31 +40,152 @@ function formatSSE(event: string, data: unknown) {
 export async function POST(request: NextRequest) {
 	try {
 		console.log("[stream] Starting chat stream request");
-		const cookieStore = await cookies(); // Fix: await the cookies() call
+		const cookieStore = await cookies();
 		const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 		const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+		
+		// Create Supabase client
 		const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
 			cookies: {
-				get: (name) => cookieStore.get(name)?.value ?? "", // Fix: Add empty string fallback
+				get: (name) => cookieStore.get(name)?.value ?? "",
 				set: () => {}, // Not needed for this endpoint
 				remove: () => {}, // Not needed for this endpoint
 			},
 		});
 
-		// Authenticate the user
-		const {
-			data: { session },
-		} = await supabase.auth.getSession();
-		if (!session?.user) {
-			console.error("[stream] Unauthorized: No user session found");
-			return new Response(JSON.stringify({ error: "Unauthorized" }), {
+		// Get authentication session
+		const authResult = await supabase.auth.getSession();
+		console.log("[stream] Auth result:", JSON.stringify({
+			hasSession: !!authResult.data.session,
+			hasUser: !!authResult.data.session?.user,
+		}));
+
+		// Require authentication
+		if (!authResult.data.session?.user) {
+			console.error("[stream] Unauthorized: No valid user session found");
+			return new Response(JSON.stringify({ 
+				error: "Unauthorized",
+				message: "Authentication required. Please log in to continue."
+			}), {
 				status: 401,
 				headers: { "Content-Type": "application/json" },
 			});
 		}
 
+		// Authentication successful
+		const session = authResult.data.session;
 		const userId = session.user.id;
 		console.log(`[stream] Authenticated user: ${userId.slice(0, 8)}...`);
+
+		// Parse request body
+		let requestBody;
+		try {
+			requestBody = await request.json();
+		} catch (error) {
+			console.error("[stream] Failed to parse request body:", error);
+			return new Response(JSON.stringify({ 
+				error: "Bad Request",
+				message: "Invalid request format. Expected JSON body."
+			}), {
+				status: 400,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+
+		// Extract request parameters
+		const {
+			session_id,
+			messages,
+			provider = "mistral",
+			model,
+			temperature = 0.7,
+			maxTokens = 4000,
+			apiKey: clientApiKey,
+			streamingSystemPrompt,
+		} = requestBody;
+
+		// Validate messages
+		if (!messages || !Array.isArray(messages) || messages.length === 0) {
+			console.error("[stream] Invalid messages in request");
+			return new Response(JSON.stringify({ 
+				error: "Bad Request",
+				message: "Messages must be a non-empty array"
+			}), {
+				status: 400,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+
+		// Get API key - prefer server-side env var but fall back to client-provided key
+		const apiKeyEnvVar = `${provider.toUpperCase()}_API_KEY`;
+		const serverApiKey = process.env[apiKeyEnvVar];
+		
+		// Clean API keys (remove whitespace and quotes)
+		const cleanedClientApiKey = clientApiKey?.trim().replace(/['"]/g, '');
+		const cleanedServerApiKey = serverApiKey?.trim().replace(/['"]/g, '');
+		
+		// OVERRIDE: Temporarily force use of client key for debugging
+		const apiKey = cleanedClientApiKey || cleanedServerApiKey;
+		
+		// Log detailed key information for debugging
+		console.log(`[stream] DETAILED KEY INFO:`, {
+			clientKeyLength: cleanedClientApiKey?.length || 0,
+			clientKeyPrefix: cleanedClientApiKey ? cleanedClientApiKey.substring(0, 5) + '...' : 'none',
+			serverKeyLength: cleanedServerApiKey?.length || 0,
+			serverKeyPrefix: cleanedServerApiKey ? cleanedServerApiKey.substring(0, 5) + '...' : 'none',
+			usingKey: cleanedClientApiKey ? 'CLIENT' : 'SERVER',
+			usingPrefix: apiKey?.substring(0, 5) + '...'
+		});
+		
+		// Check and warn about key mismatches
+		if (cleanedClientApiKey && cleanedServerApiKey && cleanedClientApiKey !== cleanedServerApiKey) {
+			console.warn(`[stream] ⚠️ WARNING: API key mismatch detected for ${provider}!
+			- Server environment variable key (${apiKeyEnvVar}): ${cleanedServerApiKey.substring(0, 3)}...${cleanedServerApiKey.substring(cleanedServerApiKey.length - 3)}
+			- Client-side settings key: ${cleanedClientApiKey.substring(0, 3)}...${cleanedClientApiKey.substring(cleanedClientApiKey.length - 3)}
+			This might cause issues if your server is preferring environment variables. Currently using: ${apiKey === cleanedServerApiKey ? 'SERVER' : 'CLIENT'} key.`);
+		}
+
+		// Add detailed logging for API key handling
+		console.log(`[stream] API key info:`, {
+			provider,
+			hasServerKey: !!serverApiKey,
+			hasClientKey: !!clientApiKey,
+			usingClientKey: !serverApiKey && !!clientApiKey,
+			apiKeyLength: apiKey ? apiKey.length : 0,
+			apiKeyPrefix: apiKey ? apiKey.substring(0, 3) + '...' : '',
+		});
+
+		if (!apiKey) {
+			console.error(`[stream] API key for ${provider} is not configured`);
+			return new Response(
+				JSON.stringify({ 
+					error: "API Key Required",
+					message: `API key for ${provider} is not configured. Add it in settings.`
+				}),
+				{
+					status: 403,
+					headers: { "Content-Type": "application/json" },
+				},
+			);
+		}
+		
+		// Verify API key format
+		if (apiKey.length < 10 || !apiKey.match(/^[A-Za-z0-9_\-]+$/)) {
+			console.error(`[stream] Invalid API key format for ${provider}`);
+			return new Response(
+				JSON.stringify({ 
+					error: "Invalid API Key",
+					message: `The API key for ${provider} appears to be invalid. Please check your settings.`
+				}),
+				{
+					status: 403,
+					headers: { "Content-Type": "application/json" },
+				},
+			);
+		}
+
+		// Make sure database connection is ready before proceeding
+		const db = await getDb();
 
 		// Check if user exists in database and create if not (auto-sync)
 		try {
@@ -97,42 +218,6 @@ export async function POST(request: NextRequest) {
 				`[stream] Error syncing user: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			// Continue despite user sync error - this is non-critical
-		}
-
-		// Parse request
-		const {
-			session_id,
-			messages,
-			provider = "mistral",
-			model,
-			temperature = 0.7,
-			maxTokens = 4000,
-			apiKey: clientApiKey,
-			streamingSystemPrompt, // Get custom system prompt from request
-		} = await request.json();
-
-		// Validate request
-		if (!messages || !Array.isArray(messages) || messages.length === 0) {
-			console.error("[stream] Invalid messages in request");
-			return new Response(JSON.stringify({ error: "Invalid messages" }), {
-				status: 400,
-				headers: { "Content-Type": "application/json" },
-			});
-		}
-
-		// Get API key - prefer server-side env var but fall back to client-provided key for development
-		const apiKeyEnvVar = `${provider.toUpperCase()}_API_KEY`;
-		const apiKey = process.env[apiKeyEnvVar] || clientApiKey;
-
-		if (!apiKey) {
-			console.error(`[stream] API key for ${provider} is not configured`);
-			return new Response(
-				JSON.stringify({ error: `API key for ${provider} is not configured` }),
-				{
-					status: 500,
-					headers: { "Content-Type": "application/json" },
-				},
-			);
 		}
 
 		// Create or identify session
@@ -173,7 +258,6 @@ export async function POST(request: NextRequest) {
 				.returning();
 
 			if (!newSession.length || !newSession[0]?.id) {
-				// Fix: Add proper null check
 				console.error("[stream] Failed to create chat session");
 				return new Response(
 					JSON.stringify({ error: "Failed to create chat session" }),
@@ -189,7 +273,7 @@ export async function POST(request: NextRequest) {
 		} else {
 			console.log(`[stream] Using existing session ID: ${currentSessionId}`);
 			// Verify session belongs to user
-			const session = await db
+			const sessionCheck = await db
 				.select()
 				.from(chatSessions)
 				.where(
@@ -200,10 +284,10 @@ export async function POST(request: NextRequest) {
 				)
 				.limit(1);
 
-			if (!session.length) {
+			if (!sessionCheck.length) {
 				console.error("[stream] Session not found or doesn't belong to user");
 				return new Response(
-					JSON.stringify({ error: "Chat session not found" }),
+					JSON.stringify({ error: "Chat session not found or unauthorized" }),
 					{
 						status: 404,
 						headers: { "Content-Type": "application/json" },
@@ -261,13 +345,33 @@ export async function POST(request: NextRequest) {
 
 					// Generate AI response (streaming)
 					console.log("[stream] Starting AI streaming response generation");
-					const streamGenerator = await aiService.generateStreamingResponse(
-						formattedMessages,
-						{
-							temperature,
-							maxTokens,
-						},
-					);
+					
+					let streamGenerator;
+					try {
+						streamGenerator = await aiService.generateStreamingResponse(
+							formattedMessages,
+							{
+								temperature,
+								maxTokens,
+							},
+						);
+					} catch (streamError) {
+						console.error("[stream] Error initializing stream:", streamError);
+						const errorMessage = streamError instanceof Error ? streamError.message : "Unknown error";
+						
+						// Check specifically for auth errors
+						const isAuthError = 
+							errorMessage.includes("401") || 
+							errorMessage.includes("auth") || 
+							errorMessage.includes("Unauthorized") ||
+							errorMessage.includes("Invalid API key");
+							
+						if (isAuthError) {
+							throw new Error(`Authentication failed with provider: ${provider}. Please check your API key.`);
+						} else {
+							throw new Error(`Failed to initialize stream with ${provider}: ${errorMessage}`);
+						}
+					}
 
 					// Stream chunks to the client
 					for await (const chunk of streamGenerator) {
@@ -311,12 +415,12 @@ export async function POST(request: NextRequest) {
 					controller.enqueue(
 						formatSSE("done", {
 							message_id: assistantMsgId,
-							session_id: currentSessionId, // Include session ID in done event too
+							session_id: currentSessionId,
 						}),
 					);
 
 					// Verify messages were saved correctly
-					const messages = await db
+					const messagesCheck = await db
 						.select()
 						.from(chatMessages)
 						.where(eq(chatMessages.session_id, currentSessionId))
@@ -324,7 +428,7 @@ export async function POST(request: NextRequest) {
 						.limit(5);
 
 					console.log(
-						`[stream] Session ${currentSessionId} now has ${messages.length} messages`,
+						`[stream] Session ${currentSessionId} now has ${messagesCheck.length} messages`,
 					);
 
 					// Close the stream
@@ -345,6 +449,7 @@ export async function POST(request: NextRequest) {
 					// Delete session if we created it and encountered an error
 					if (isNewSession) {
 						try {
+							const db = await getDb();
 							await db
 								.delete(chatSessions)
 								.where(eq(chatSessions.id, currentSessionId));
