@@ -606,10 +606,16 @@ export const chatRouter = createTRPCRouter({
 	getMessages: protectedProcedure
 		.input(
 			z.object({
-				session_id: z.string().uuid(),
+				// Just use string type without uuid validation to avoid issues with empty strings
+				session_id: z.string(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
+			// Skip validation if given an empty session ID
+			if (!input.session_id || input.session_id.trim() === '') {
+				console.log("[chat.getMessages] - Empty session ID provided, returning empty array");
+				return [];
+			}
 			console.log(
 				`[chat.getMessages] - Request received for session: ${input.session_id}`,
 			);
@@ -628,7 +634,13 @@ export const chatRouter = createTRPCRouter({
 			console.log(`[chat.getMessages] - Authorized for user: ${userId}`);
 
 			try {
-				// Verify the session belongs to the user - updated with proper column names
+				// Verify the session belongs to the user if we have a valid session ID
+				// For UUIDs, they should be 36 characters long
+				if (input.session_id.length !== 36) {
+					console.log(`[chat.getMessages] - Invalid session ID format: ${input.session_id}`);
+					return []; // Return empty array for invalid session IDs
+				}
+				
 				const session = await db
 					.select()
 					.from(chatSessions)

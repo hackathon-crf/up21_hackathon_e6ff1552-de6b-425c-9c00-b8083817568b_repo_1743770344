@@ -211,16 +211,21 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 			// Only update if we have a valid session ID in the URL that differs from current state
 			if (urlSessionId && urlSessionId !== sessionId) {
 				console.log(`Updating session ID from URL: ${urlSessionId}`);
+				// Update ref first to ensure consistent state
+				latestSessionIdRef.current = urlSessionId;
+				// Then update state
 				setSessionId(urlSessionId);
-				latestSessionIdRef.current = urlSessionId; // Update ref for latest session ID
 			}
 		} else if (pathname === "/chat") {
 			// If we're on the base /chat route, we should be ready for a new session
 			// but only clear the session ID if we're not on an existing session page
 			if (sessionId && !initialSessionId) {
 				console.log("Base chat route detected, clearing session ID for new conversation");
+				// Update ref first to ensure consistent state
+				latestSessionIdRef.current = undefined;
+				// Then update state
 				setSessionId(undefined);
-				latestSessionIdRef.current = undefined; // Update ref for latest session ID
+				// Clear messages for new conversation
 				setMessages([]);
 			}
 		}
@@ -229,26 +234,31 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 	// tRPC mutations and queries
 	const sendMessageMutation = api.chat.sendMessage.useMutation({
 		onSuccess: (data) => {
-			// Always update the sessionId if we get a response, even if we think we have one
+			// Always update ref first, then state to maintain consistency
 			// This ensures consistency between client state and server state
-			setSessionId(data.session_id);
-			latestSessionIdRef.current = data.session_id; // Update ref for latest session ID
+			latestSessionIdRef.current = data.session_id; // Update ref first
+			setSessionId(data.session_id); // Then update state
 			
-			// Always update the URL to reflect the correct session
-			// This is critical to fix the issue with messages being split across sessions
+			// Only update URL if we're on a different chat page or the base chat page
+			// This avoids unnecessary navigation on the current session page
 			if (pathname !== `/chat/${data.session_id}`) {
-				console.log(`⚡⚡⚡ [CHAT-DEBUG] Redirecting to correct session: /chat/${data.session_id} ⚡⚡⚡`);
+				console.log(`⚡⚡⚡ [CHAT-DEBUG] Updating URL: /chat/${data.session_id} ⚡⚡⚡`);
 				
-				// For the base /chat route, force a hard redirect to ensure synchronization
-				if (pathname === '/chat') {
-					console.log(`🚨🚨🚨 [CHAT-DEBUG] Using HARD REDIRECT for /chat base route! 🚨🚨🚨`);
-					// Use window.location for a full page refresh and redirect
-					window.location.href = `/chat/${data.session_id}`;
-					return; // Exit early as we're doing a full page navigation
-				} else {
-					// For other routes, use replace for smoother navigation
-					console.log(`🔄🔄🔄 [CHAT-DEBUG] Using router.replace for non-base route 🔄🔄🔄`);
-					router.replace(`/chat/${data.session_id}`, { scroll: false });
+				// Instead of navigation, update the browser URL quietly without a page change
+				// This is more seamless than router.push even with shallow: true
+				if (window.history && window.history.replaceState) {
+					try {
+						// Quietly update the URL without triggering navigation
+						window.history.replaceState({}, "", `/chat/${data.session_id}`);
+						console.log(`🔄🔄🔄 [CHAT-DEBUG] URL quietly updated using history.replaceState 🔄🔄🔄`);
+					} catch (err) {
+						console.error("History API error:", err);
+						// Fallback to router.replace only if history API fails
+						router.replace(`/chat/${data.session_id}`, undefined, { 
+							scroll: false, 
+							shallow: true 
+						});
+					}
 				}
 			}
 
@@ -292,11 +302,19 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 
 	// Fetch chat history when sessionId changes
 	const messagesQuery = api.chat.getMessages.useQuery(
-		{ session_id: sessionId || "" }, // Provide empty string as fallback (query is disabled when sessionId is falsy)
+		{ 
+			// Always provide session_id - the backend will handle empty strings
+			session_id: sessionId || ""
+		},
 		{
-			enabled: !!sessionId, // Only enable query when sessionId exists
+			enabled: true, // Always enable query, backend will handle validation
 			refetchOnMount: true, // This ensures it runs when session ID is updated
 			refetchOnWindowFocus: false,
+			retry: false, // Don't retry on errors
+			onError: (error) => {
+				// Log the error but don't show UI toast - this is expected when session ID is changing
+				console.error("[MessagesQuery] Error:", error.message);
+			}
 		},
 	);
 
@@ -695,17 +713,20 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 				if (pathname !== `/chat/${tempSessionId}`) {
 					console.log(`Updating URL to match session: /chat/${tempSessionId}`);
 					
-					// Use replace instead of push for immediate URL replacement without history entry
-					router.replace(`/chat/${tempSessionId}`, { scroll: false });
-					console.log(`URL replacement initiated for session: ${tempSessionId}`);
-					
-					// For the base /chat route, force a hard redirect to ensure synchronization
-					if (pathname === '/chat' && tempSessionId) {
-						console.log(`🚨🚨🚨 [CHAT-DEBUG] Using HARD REDIRECT for streaming response on /chat base route! 🚨🚨🚨`);
-						// Use window.location for a full page refresh and redirect
-						// No delay needed - immediately redirect
-						window.location.href = `/chat/${tempSessionId}`;
-						return; // Exit early to prevent further processing
+					// Instead of navigation, update the browser URL quietly without a page change
+					if (window.history && window.history.replaceState) {
+						try {
+							// Quietly update the URL without triggering navigation
+							window.history.replaceState({}, "", `/chat/${tempSessionId}`);
+							console.log(`🔄🔄🔄 [CHAT-DEBUG] URL quietly updated using history.replaceState 🔄🔄🔄`);
+						} catch (err) {
+							console.error("History API error:", err);
+							// Fallback to router.replace only if history API fails
+							router.replace(`/chat/${tempSessionId}`, undefined, { 
+								scroll: false,
+								shallow: true 
+							});
+						}
 					}
 					
 					// Hard page refresh as a last resort if needed - uncomment if router.replace doesn't work
