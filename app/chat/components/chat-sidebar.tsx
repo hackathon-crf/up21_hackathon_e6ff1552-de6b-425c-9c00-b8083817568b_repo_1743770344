@@ -103,6 +103,7 @@ export function ChatSidebar() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeTab, setActiveTab] = useState("all");
 	const [showDialog, setShowDialog] = useState(false);
+	const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 	const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
 		null,
 	);
@@ -398,6 +399,32 @@ export function ChatSidebar() {
 		},
 	});
 
+	// Delete all sessions
+	const deleteAllSessionsMutation = api.chat.deleteAllSessions.useMutation({
+		onSuccess: (data) => {
+			refetch();
+			setShowDeleteAllDialog(false);
+			
+			// Always redirect to /chat after deleting all sessions
+			router.push("/chat");
+
+			toast({
+				title: "All chats deleted",
+				description: `Successfully deleted ${data.count} chat sessions`,
+			});
+		},
+		onError: (error) => {
+			console.error("Failed to delete all sessions:", error);
+			setShowDeleteAllDialog(false);
+
+			toast({
+				title: "Error",
+				description: `Failed to delete all chats: ${error.message}`,
+				variant: "destructive",
+			});
+		},
+	});
+
 	// Handle filter changes
 	const handleFilterChange = (
 		key: keyof FilterOptions,
@@ -428,6 +455,14 @@ export function ChatSidebar() {
 			title: "New Chat",
 			is_pinned: false,
 		});
+	};
+
+	const handleDeleteAllChats = () => {
+		setShowDeleteAllDialog(true);
+	};
+
+	const confirmDeleteAllChats = () => {
+		deleteAllSessionsMutation.mutate();
 	};
 
 	const handleTogglePin = (e: React.MouseEvent, session: Session) => {
@@ -557,13 +592,23 @@ export function ChatSidebar() {
 							/>
 						</div>
 
-						<Button
-							onClick={handleCreateChat}
-							className="w-full justify-center gap-2"
-						>
-							<Plus className="h-4 w-4" />
-							New Chat
-						</Button>
+						<div className="flex w-full gap-2">
+							<Button
+								onClick={handleCreateChat}
+								className="flex-1 justify-center gap-2"
+							>
+								<Plus className="h-4 w-4" />
+								New Chat
+							</Button>
+							<Button
+								onClick={handleDeleteAllChats}
+								variant="destructive"
+								className="flex gap-1"
+								title="Delete all chats"
+							>
+								<Trash2 className="h-4 w-4" />
+							</Button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -814,6 +859,28 @@ export function ChatSidebar() {
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
 							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			{/* Delete All Confirmation Dialog */}
+			<AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete All Chats</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete ALL your
+							chats and their messages from our servers.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={confirmDeleteAllChats}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Delete All
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

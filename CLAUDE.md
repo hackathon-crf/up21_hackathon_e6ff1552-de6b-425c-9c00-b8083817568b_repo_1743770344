@@ -209,6 +209,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
     *   `getSessions`: Lists all chat sessions for the user. ✅ *Fixed and Working*
     *   `updateSessionTitle`: Changes the title of an existing session. ✅ *Implemented*
     *   `deleteSession`: Removes a chat session and all its messages. ✅ *Implemented*
+    *   `deleteAllSessions`: Removes all chat sessions and their messages for the user. ✅ *Implemented*
     *   `getMessages`: Retrieves all messages from a specific session. ✅ *Implemented*
     *   `sendMessage`: Processes user message and returns AI response. ✅ *Implemented*
         *   Creates/fetches chat_session and history.
@@ -310,6 +311,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
     *   **Chat Sidebar:** ✅ *Implemented*
         *   Session management UI.
         *   Create, edit, delete chat sessions.
+        *   Delete all chats functionality with confirmation dialog. ✅ *Implemented*
         *   Enhanced error handling with detailed logs.
         *   Improved responsive design with mobile view toggle.
 
@@ -408,6 +410,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
 
 2. **Backend API (tRPC):** ✅ *Mostly complete (90%)*
    * Chat API ✅
+   * Bulk operations (delete all chats functionality) ✅
    * Flashcard CRUD and study API ✅
    * User authentication ✅
    * AI integration (partial) ⏳
@@ -416,6 +419,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
 3. **Frontend Components:** ✅ *Mostly complete (80%)*
    * Layout and navigation with responsive design ✅
    * Chat UI with mobile optimizations ✅
+   * Bulk actions support (delete all chats) ✅
    * Flashcard Create/Manage/Study ✅
    * Settings UI (complete but using mock data) ✅
    * Authentication UI with OTP verification ✅
@@ -424,6 +428,7 @@ This plan details the migration from the current Python-based stack (Streamlit f
 4. **Multiplayer Features:** ⏳ *UI complete, backend pending (50%)*
    * Database schema ✅
    * UI components fully implemented ✅
+   * QR code generation for sharing lobbies ✅
    * Backend integration missing ❌
    * Real-time functionality missing ❌
    * Voice chat infrastructure missing ❌
@@ -433,6 +438,8 @@ This plan details the migration from the current Python-based stack (Streamlit f
    * Enhanced responsive design ✅
    * Comprehensive error handling ✅
    * Improved performance optimizations ⏳
+   * Dead code identification and documentation ✅
+   * Mocked implementations documented ✅
    * No formal testing ❌
    * No deployment pipeline ❌
 
@@ -442,6 +449,13 @@ This plan details the migration from the current Python-based stack (Streamlit f
    * Improved touch targets and interactions ✅
    * Proper container queries and media breakpoints ✅
    * Slide animations for better mobile experience ✅
+
+7. **Project Documentation:** ⏳ *In progress (60%)*
+   * CLAUDE.md migration plan ✅
+   * Code documentation ⏳
+   * Dead code and duplicated code documentation ✅
+   * Mocked implementations inventory ✅
+   * README updates ⏳
 
 **Key Considerations & Next Steps:**
 
@@ -453,3 +467,8 @@ This plan details the migration from the current Python-based stack (Streamlit f
 *   **Performance Optimization:** Implement memoization for expensive components and optimize re-renders.
 *   **Deployment:** Configure deployment pipeline for production environment.
 *   **Documentation:** Update README.md with setup instructions and architecture overview.
+*   **Code Cleanup:** Remove dead code, implement proper utilities for duplicated functionality, convert mocked implementations to real functionality.
+*   **Error Handling Improvement:** Implement standardized error handling across all tRPC procedures.
+*   **Authentication Middleware:** Extract common authentication code to reduce duplication.
+*   **UI Refinement:** Evaluate UX patterns across features for consistency and intuitiveness.
+*   **Mobile Enhancement:** Continue improving mobile experience and touch-friendly interactions.

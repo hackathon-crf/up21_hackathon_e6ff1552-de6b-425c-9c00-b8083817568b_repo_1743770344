@@ -18,6 +18,58 @@ function generateTitleFromMessage(content: string): string {
 }
 
 export const chatRouter = createTRPCRouter({
+	// Delete all chat sessions for a user
+	deleteAllSessions: protectedProcedure
+		.mutation(async ({ ctx }) => {
+			const userId = ctx.auth.user?.id;
+			if (!userId) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "You must be logged in to delete chat sessions",
+				});
+			}
+
+			try {
+				// Use a transaction to ensure consistency
+				return await db.transaction(async (tx) => {
+					// Get all session IDs belonging to the user
+					const userSessions = await tx
+						.select({ id: chatSessions.id })
+						.from(chatSessions)
+						.where(eq(chatSessions.user_id, userId));
+					
+					const sessionIds = userSessions.map(session => session.id);
+					
+					if (sessionIds.length === 0) {
+						return { success: true, count: 0 };
+					}
+
+					// Delete all messages for these sessions
+					await tx
+						.delete(chatMessages)
+						.where(inArray(chatMessages.session_id, sessionIds));
+
+					// Delete all the sessions
+					const result = await tx
+						.delete(chatSessions)
+						.where(eq(chatSessions.user_id, userId))
+						.returning({ id: chatSessions.id });
+
+					return {
+						success: true,
+						count: result.length,
+					};
+				});
+			} catch (error) {
+				console.error("Error deleting all sessions:", error);
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to delete all chat sessions",
+					cause: error,
+				});
+			}
+		}),
+
 	// Create a new chat session
 	createSession: protectedProcedure
 		.input(
