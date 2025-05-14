@@ -125,9 +125,11 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 	const [isTyping, setIsTyping] = useState(false);
 	const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
 	const [expandedSources, setExpandedSources] = useState<string | null>(null);
+	const [isNavigating, setIsNavigating] = useState(false); // Add navigation lock
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const latestSessionIdRef = useRef<string | undefined>(initialSessionId); // Reference for latest session ID
 
 	// Get settings from store
 	const {
@@ -163,16 +165,63 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 		return () => observer.disconnect();
 	}, []);
 
-	// Extract session ID from URL if not provided as prop
+	// Set up navigation event listeners for router events
 	useEffect(() => {
+		// Navigation start handlers
+		const handleRouteChangeStart = () => {
+			console.log("🔄🔄🔄 [CHAT-DEBUG] Route change starting... 🔄🔄🔄");
+			setIsNavigating(true);
+		};
+		
+		// Navigation complete handlers
+		const handleRouteChangeComplete = (url: string) => {
+			console.log(`✅✅✅ [CHAT-DEBUG] Route change complete: ${url} ✅✅✅`);
+			setIsNavigating(false);
+		};
+		
+		// Navigation error handlers
+		const handleRouteChangeError = (err: Error) => {
+			console.error("❌❌❌ [CHAT-DEBUG] Route change error:", err, "❌❌❌");
+			setIsNavigating(false);
+		};
+		
+		// Register router event handlers
+		router.events?.on('routeChangeStart', handleRouteChangeStart);
+		router.events?.on('routeChangeComplete', handleRouteChangeComplete);
+		router.events?.on('routeChangeError', handleRouteChangeError);
+		
+		return () => {
+			// Clean up event handlers
+			router.events?.off('routeChangeStart', handleRouteChangeStart);
+			router.events?.off('routeChangeComplete', handleRouteChangeComplete);
+			router.events?.off('routeChangeError', handleRouteChangeError);
+		};
+	}, [router]);
+
+	// Extract session ID from URL if not provided as prop
+	// This is critical for synchronizing the UI state with the URL
+	useEffect(() => {
+		// If we're on a specific chat URL (e.g. /chat/123-456-789)
 		if (
-			!initialSessionId &&
 			pathname.includes("/chat/") &&
 			pathname !== "/chat/settings"
 		) {
 			const urlSessionId = pathname.split("/").pop();
+			
+			// Only update if we have a valid session ID in the URL that differs from current state
 			if (urlSessionId && urlSessionId !== sessionId) {
+				console.log(`Updating session ID from URL: ${urlSessionId}`);
 				setSessionId(urlSessionId);
+				latestSessionIdRef.current = urlSessionId; // Update ref for latest session ID
+			}
+		} else if (pathname === "/chat") {
+			// If we're on the base /chat route, we should be ready for a new session
+			// but only clear the session ID if we're not on an existing session page
+			if (sessionId && !initialSessionId) {
+				console.log("Base chat route detected, clearing session ID for new conversation");
+				setSessionId(undefined);
+				latestSessionIdRef.current = undefined; // Update ref for latest session ID
+				setMessages([]);
 			}
 		}
 	}, [initialSessionId, pathname, sessionId]);
@@ -180,10 +229,27 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 	// tRPC mutations and queries
 	const sendMessageMutation = api.chat.sendMessage.useMutation({
 		onSuccess: (data) => {
-			if (!sessionId) {
-				setSessionId(data.session_id);
-				// Update URL without full reload
-				router.push(`/chat/${data.session_id}`, { scroll: false });
+			// Always update the sessionId if we get a response, even if we think we have one
+			// This ensures consistency between client state and server state
+			setSessionId(data.session_id);
+			latestSessionIdRef.current = data.session_id; // Update ref for latest session ID
+			
+			// Always update the URL to reflect the correct session
+			// This is critical to fix the issue with messages being split across sessions
+			if (pathname !== `/chat/${data.session_id}`) {
+				console.log(`⚡⚡⚡ [CHAT-DEBUG] Redirecting to correct session: /chat/${data.session_id} ⚡⚡⚡`);
+				
+				// For the base /chat route, force a hard redirect to ensure synchronization
+				if (pathname === '/chat') {
+					console.log(`🚨🚨🚨 [CHAT-DEBUG] Using HARD REDIRECT for /chat base route! 🚨🚨🚨`);
+					// Use window.location for a full page refresh and redirect
+					window.location.href = `/chat/${data.session_id}`;
+					return; // Exit early as we're doing a full page navigation
+				} else {
+					// For other routes, use replace for smoother navigation
+					console.log(`🔄🔄🔄 [CHAT-DEBUG] Using router.replace for non-base route 🔄🔄🔄`);
+					router.replace(`/chat/${data.session_id}`, { scroll: false });
+				}
 			}
 
 			// Update messages - remove loading state and add response
@@ -309,6 +375,16 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 	// Handle sending messages
 	const handleSend = async () => {
 		if (!input.trim()) return;
+		
+		// Prevent sending messages while waiting for sessionId to be set from a previous message
+		// or while navigating between pages
+		if (isTyping || isNavigating) {
+			console.log(`Message sending prevented: ${isTyping ? 'AI is still responding' : 'Navigation in progress'}`);
+			return;
+		}
+		
+		// Use the latest session ID from the ref to prevent race conditions
+		const currentSessionId = latestSessionIdRef.current;
 
 		// Hide welcome banner
 		if (showWelcomeBanner) {
@@ -374,13 +450,17 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 		setIsTyping(true);
 
 		try {
+			// Use the latest session ID from the ref instead of from state
+			// This prevents race conditions between React renders and async operations
+			console.log(`Sending message with sessionId: ${currentSessionId || 'creating new session'}`);
+			
 			if (streamingEnabled) {
 				// Use streaming endpoint
 				await handleStreamingResponse(userMessage.content);
 			} else {
 				// Use tRPC mutation for non-streaming response
 				sendMessageMutation.mutate({
-					session_id: sessionId,
+					session_id: currentSessionId,
 					content: userMessage.content,
 					provider,
 					model,
@@ -454,12 +534,22 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 			// Ensure API key doesn't have any whitespace or quotes
 			const cleanedApiKey = apiKey?.trim().replace(/['"]/g, '');
 
+			// Capture the current session ID before making the request
+			// This is important to avoid race conditions where the session ID
+			// might change while we're waiting for the response
+			const currentSessionId = sessionId;
+			console.log(`🔍🔍🔍 [CHAT-DEBUG] Streaming with session ID: ${currentSessionId || 'creating new session'} 🔍🔍🔍`);
+			console.log(`🧩🧩🧩 [CHAT-DEBUG] Current pathname: ${pathname} 🧩🧩🧩`);
+
+			// Before making request, update the latest session ID ref
+			latestSessionIdRef.current = currentSessionId;
+			
 			// Make streaming request
 			const response = await fetch("/api/chat/stream", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					session_id: sessionId,
+					session_id: currentSessionId,
 					messages: messageHistory,
 					provider,
 					model,
@@ -537,11 +627,20 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 						// Handle different event types
 						switch (eventType) {
 							case "setup":
-								if (parsedData.sessionId) {
+								// FIXED: Changed from sessionId to session_id to match server format
+								if (parsedData.session_id) {
 									console.log(
-										`Received session ID from server: ${parsedData.sessionId}`,
+										`🔔🔔🔔 [CHAT-DEBUG] RECEIVED SESSION ID FROM SERVER: ${parsedData.session_id} 🔔🔔🔔`,
 									);
-									tempSessionId = parsedData.sessionId;
+									// Always update tempSessionId, even if we think we already have one
+									// This ensures consistency with the server
+									tempSessionId = parsedData.session_id;
+									
+									// Log the session ID received and current URL path
+									console.log(`📌📌📌 [CHAT-DEBUG] Server returned session ID: ${parsedData.session_id}, Current path: ${pathname} 📌📌📌`);
+								} else {
+									console.log(`⚠️⚠️⚠️ [CHAT-DEBUG] No session ID received from server! Keys in response: ${Object.keys(parsedData).join(', ')} ⚠️⚠️⚠️`);
+									console.log(`⚠️⚠️⚠️ [CHAT-DEBUG] Full parsedData: ${JSON.stringify(parsedData)} ⚠️⚠️⚠️`);
 								}
 								break;
 
@@ -582,23 +681,50 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 			setIsTyping(false);
 
 			// Always update the session ID if we got one from the server
-			if (tempSessionId && tempSessionId !== sessionId) {
-				console.log(`Setting session ID: ${tempSessionId}`);
+			// This critical step ensures all messages go to the same conversation
+			if (tempSessionId) {
+				console.log(`🎯🎯🎯 [CHAT-DEBUG] SETTING SESSION ID: ${tempSessionId} (current: ${sessionId || 'undefined'}) 🎯🎯🎯`);
+				
+				// Always update the session ID state and ref, even if we think we have the same one
+				// This ensures client and server state are synchronized
 				setSessionId(tempSessionId);
+				latestSessionIdRef.current = tempSessionId;
 
-				// Update the URL if needed
-				if (!pathname.includes(tempSessionId)) {
-					router.push(`/chat/${tempSessionId}`, { scroll: false });
+				// Always update the URL to match the session ID
+				// This ensures the user is on the correct route for this conversation
+				if (pathname !== `/chat/${tempSessionId}`) {
+					console.log(`Updating URL to match session: /chat/${tempSessionId}`);
+					
+					// Use replace instead of push for immediate URL replacement without history entry
+					router.replace(`/chat/${tempSessionId}`, { scroll: false });
+					console.log(`URL replacement initiated for session: ${tempSessionId}`);
+					
+					// For the base /chat route, force a hard redirect to ensure synchronization
+					if (pathname === '/chat' && tempSessionId) {
+						console.log(`🚨🚨🚨 [CHAT-DEBUG] Using HARD REDIRECT for streaming response on /chat base route! 🚨🚨🚨`);
+						// Use window.location for a full page refresh and redirect
+						// No delay needed - immediately redirect
+						window.location.href = `/chat/${tempSessionId}`;
+						return; // Exit early to prevent further processing
+					}
+					
+					// Hard page refresh as a last resort if needed - uncomment if router.replace doesn't work
+					// window.location.href = `/chat/${tempSessionId}`;
 				}
 
-				// Small delay to ensure state is updated before any subsequent queries
-				await new Promise((resolve) => setTimeout(resolve, 100));
+				// Longer delay to ensure state is updated before any subsequent queries
+				// This is critical to prevent race conditions with session ID updates
+				await new Promise((resolve) => setTimeout(resolve, 500));
 			}
 
 			// Refetch messages after streaming completes
 			if (tempSessionId) {
 				console.log("Refetching messages after streaming completes");
-				messagesQuery.refetch();
+				try {
+					await messagesQuery.refetch();
+				} catch (refetchError) {
+					console.error("Error refetching messages:", refetchError);
+				}
 			}
 		} catch (error) {
 			console.error("Streaming error:", error);
