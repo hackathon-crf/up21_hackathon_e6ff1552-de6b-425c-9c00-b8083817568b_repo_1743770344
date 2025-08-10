@@ -1,0 +1,628 @@
+{
+	"common": {
+		"loading": "Chargement...",
+		"error": "Erreur",
+		"save": "Sauvegarder",
+		"cancel": "Annuler",
+		"delete": "Supprimer",
+		"edit": "Modifier",
+		"create": "Créer",
+		"back": "Retour",
+		"next": "Suivant",
+		"submit": "Soumettre",
+		"retry": "Réessayer",
+		"close": "Fermer",
+		"confirm": "Confirmer",
+		"search": "Rechercher",
+		"filter": "Filtrer",
+		"settings": "Paramètres",
+		"help": "Aide",
+		"logout": "Se déconnecter",
+		"notifications": "Notifications"
+	},
+	"navigation": {
+		"chat": "Chat",
+		"flashcards": "Cartes mémoire",
+		"multiplayer": "Multijoueur",
+		"dashboard": "Tableau de bord",
+		"profile": "Profil"
+	},
+	"auth": {
+		"signIn": "Se connecter",
+		"signUp": "S'inscrire",
+		"email": "E-mail",
+		"password": "Mot de passe",
+		"confirmPassword": "Confirmer le mot de passe",
+		"forgotPassword": "Mot de passe oublié ?",
+		"createAccount": "Créer un compte",
+		"alreadyHaveAccount": "Vous avez déjà un compte ?",
+		"dontHaveAccount": "Vous n'avez pas de compte ?",
+		"signInWithEmail": "Se connecter avec l'e-mail",
+		"signUpWithEmail": "S'inscrire avec l'e-mail",
+		"checkEmail": "Vérifiez vos e-mails",
+		"verificationSent": "Nous vous avons envoyé un lien de vérification",
+		"invalidCredentials": "E-mail ou mot de passe invalide",
+		"emailRequired": "L'e-mail est requis",
+		"passwordRequired": "Le mot de passe est requis",
+		"passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères",
+		"passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
+		"form": {
+			"title": "Secours",
+			"subtitle": "Votre plateforme de formation aux interventions d'urgence",
+			"login": "Connexion",
+			"loginDescription": "Entrez vos identifiants pour accéder à votre compte",
+			"register": "Inscription",
+			"registerDescription": "Entrez vos informations pour créer un compte",
+			"emailPlaceholder": "nom@exemple.com",
+			"passwordPlaceholder": "••••••••",
+			"firstName": "Prénom",
+			"firstNamePlaceholder": "Jean",
+			"lastName": "Nom",
+			"lastNamePlaceholder": "Dupont",
+			"signingIn": "Connexion...",
+			"creatingAccount": "Création du compte...",
+			"orContinueWith": "ou continuer avec",
+			"orRegisterWith": "ou s'inscrire avec",
+			"showPassword": "Afficher le mot de passe",
+			"hidePassword": "Masquer le mot de passe",
+			"passwordRequirements": "Exigences du mot de passe :",
+			"atLeast8Characters": "Au moins 8 caractères",
+			"atLeastOneUppercase": "Au moins une lettre majuscule",
+			"atLeastOneLowercase": "Au moins une lettre minuscule",
+			"atLeastOneNumber": "Au moins un chiffre",
+			"atLeastOneSpecial": "Au moins un caractère spécial",
+			"noSpaces": "Aucun espace"
+		},
+		"strength": {
+			"weak": "Faible",
+			"fair": "Passable",
+			"good": "Bon",
+			"strong": "Fort"
+		},
+		"providers": {
+			"google": "Google",
+			"github": "GitHub"
+		}
+	},
+	"chat": {
+		"newChat": "Nouveau Chat",
+		"startConversation": "Commencer une conversation",
+		"typeMessage": "Tapez un message...",
+		"send": "Envoyer",
+		"chooseScenario": "Choisir un scénario",
+		"browseAllScenarios": "Parcourir tous les scénarios",
+		"newConversation": "Nouvelle conversation",
+		"deleteAllChats": "Supprimer tous les chats",
+		"confirmDeleteAll": "Êtes-vous sûr de vouloir supprimer tous les chats ? Cette action ne peut pas être annulée.",
+		"allChatsDeleted": "Tous les chats ont été supprimés",
+		"sessionDeleted": "Session de chat supprimée",
+		"sessionRenamed": "Session de chat renommée",
+		"ui": {
+			"refreshPage": "Actualiser la page",
+			"aiAssistant": "Assistant IA",
+			"aiDescription": "Posez des questions et obtenez des conseils personnalisés de premiers secours",
+			"askAboutFirstAid": "Posez des questions sur les procédures de premiers secours, les interventions d'urgence ou les techniques de RCP...",
+			"attachFile": "Joindre un fichier",
+			"attachImage": "Joindre une image",
+			"sendMessage": "Envoyer le message",
+			"aiTyping": "L'IA tape...",
+			"poweredBy": "Propulsé par l'IA Croix-Rouge",
+			"enterToSend": "Entrée",
+			"toSend": "pour envoyer",
+			"shiftEnterNewLine": "Maj+Entrée",
+			"forNewLine": "pour nouvelle ligne",
+			"source": "source",
+			"sources": "sources",
+			"referenceSources": "Sources de référence",
+			"conversationalTraining": "Formation conversationnelle",
+			"newScenario": "Nouveau scénario",
+			"startNewScenario": "Commencer un nouveau scénario",
+			"chatSettings": "Paramètres du chat",
+			"searchConversations": "Rechercher des conversations...",
+			"noChatFound": "Aucun chat trouvé",
+			"pinConversations": "Épinglez des conversations pour les voir ici",
+			"archiveConversations": "Archivez les conversations pour les stocker pour référence ultérieure",
+			"startNewConversation": "Commencer une nouvelle conversation"
+		},
+		"errors": {
+			"somethingWentWrong": "Quelque chose s'est mal passé",
+			"loadingError": "Il y a eu une erreur lors du chargement de l'interface de chat.",
+			"genericError": "Une erreur s'est produite"
+		},
+		"tabs": {
+			"all": "Tous",
+			"pinned": "Épinglés",
+			"archived": "Archivés"
+		},
+		"actions": {
+			"pin": "Épingler",
+			"unpin": "Désépingler",
+			"rename": "Renommer",
+			"archive": "Archiver",
+			"unarchive": "Désarchiver",
+			"delete": "Supprimer",
+			"moreOptions": "Plus d'options"
+		},
+		"dialogs": {
+			"deleteChat": "Supprimer le chat",
+			"deleteChatDescription": "Cette action ne peut pas être annulée. Cela supprimera définitivement le chat et tous ses messages de nos serveurs.",
+			"deleteAllChats": "Supprimer tous les chats",
+			"deleteAllChatsDescription": "Cette action ne peut pas être annulée. Cela supprimera définitivement TOUS vos chats et leurs messages de nos serveurs.",
+			"renameChat": "Renommer le chat",
+			"renameChatDescription": "Entrez un nouveau nom pour ce chat.",
+			"chatName": "Nom du chat"
+		},
+		"scenarios": {
+			"emergencyTraining": "Scénarios de formation d'urgence",
+			"conversationalLearning": "Apprentissage conversationnel",
+			"guidedReflection": "Réflexion guidée",
+			"description": "Pratiquez la réponse d'urgence par le biais d'une conversation guidée. Chaque scenario utilise des situations réalistes et le questionnement socratique pour vous aider à réfléchir aux décisions critiques et renforcer votre confiance.",
+			"adaptiveDescription": "Chaque scénario s'adapte à votre niveau de connaissances et vous encourage à réfléchir aux problèmes plutôt qu'à simplement mémoriser les procédures."
+		},
+		"sidebar": {
+			"searchPlaceholder": "Rechercher des conversations...",
+			"newChat": "Nouveau chat",
+			"deleteAllChats": "Supprimer tous les chats",
+			"creatingChatSession": "Création d'une nouvelle session de chat",
+			"pleaseWait": "Veuillez patienter...",
+			"error": "Erreur",
+			"sessionNoId": "Session créée mais aucun ID retourné",
+			"chatCreated": "Chat créé",
+			"newChatSessionStarted": "Nouvelle session de chat démarrée avec succès",
+			"failedToCreateChat": "Échec de la création du chat",
+			"failedToUpdateChat": "Échec de la mise à jour du chat",
+			"chatDeleted": "Chat supprimé",
+			"chatDeletedSuccess": "Le chat a été supprimé avec succès",
+			"allChatsDeleted": "Tous les chats supprimés",
+			"successfullyDeleted": "{count} sessions de chat supprimées avec succès",
+			"unexpectedError": "Erreur inattendue",
+			"noChatsFound": "Aucun chat trouvé",
+			"pinConversations": "Épinglez des conversations pour les voir ici",
+			"archiveConversations": "Archivez les conversations pour les stocker pour référence ultérieure",
+			"startNewConversation": "Commencer une nouvelle conversation",
+			"justNow": "À l'instant",
+			"minutesAgo": "{minutes} min",
+			"hoursAgo": "{hours} h",
+			"yesterday": "Hier",
+			"daysAgo": "{days} j",
+			"pin": "Épingler",
+			"unpin": "Désépingler",
+			"moreOptions": "Plus d'options",
+			"rename": "Renommer",
+			"archive": "Archiver",
+			"unarchive": "Désarchiver",
+			"delete": "Supprimer",
+			"deleteChat": "Supprimer le chat",
+			"deleteChatWarning": "Cette action ne peut pas être annulée. Cela supprimera définitivement le chat et tous ses messages de nos serveurs.",
+			"cancel": "Annuler",
+			"deleteAllChatsTitle": "Supprimer tous les chats",
+			"deleteAllChatsWarning": "Cette action ne peut pas être annulée. Cela supprimera définitivement TOUS vos chats et leurs messages de nos serveurs.",
+			"deleteAll": "Tout supprimer",
+			"renameChat": "Renommer le chat",
+			"renameChatDescription": "Entrez un nouveau nom pour ce chat.",
+			"chatNamePlaceholder": "Nom du chat",
+			"save": "Sauvegarder"
+		}
+	},
+	"scenarios": {
+		"dialog": {
+			"title": "Choisir un scénario",
+			"description": "Sélectionnez un scénario de premiers secours pour commencer"
+		},
+		"picker": {
+			"title": "Choisir un scénario",
+			"subtitle": "Sélectionnez un scénario prédéfini pour commencer une conversation avec l'assistant IA",
+			"allScenariosTitle": "Tous les scénarios",
+			"allScenariosSubtitle": "Parcourez tous les scénarios disponibles pour tout besoin d'urgence ou de formation",
+			"browseAllScenarios": "Parcourir tous les scénarios",
+			"backToEmergencyScenarios": "← Retour aux scénarios d'urgence",
+			"newConversationSubtitle": "Ou commencez une conversation à partir de zéro",
+			"newConversation": "Nouvelle conversation"
+		},
+		"conversational": {
+			"title": "Formation conversationnelle",
+			"startTraining": "Commencer la formation",
+			"learningGoals": "Vous apprendrez :",
+			"location": "Lieu",
+			"timeOfDay": "Heure",
+			"urgency": "Urgence",
+			"people": "Personnes impliquées",
+			"environment": "Environnement",
+			"resources": "Ressources disponibles",
+			"constraints": "Contraintes"
+		},
+		"interactive": {
+			"title": "Scénarios interactifs",
+			"initializing": "Initialisation du scénario...",
+			"timeRemaining": "Temps restant",
+			"score": "Score",
+			"inProgress": "En cours",
+			"goodDecision": "Bonne décision !",
+			"learningOpportunity": "Opportunité d'apprentissage",
+			"timeUp": "Temps écoulé !",
+			"autoSelecting": "Sélection automatique de la première option en raison de la limite de temps."
+		},
+		"engine": {
+			"starting": "Démarrage du scénario",
+			"continue": "Continuer le scénario",
+			"conclusion": "Conclusion du scénario"
+		},
+		"performance": {
+			"score": "Score",
+			"correctAnswers": "Réponses correctes",
+			"timeSpent": "Temps passé",
+			"performance": "Performance",
+			"excellent": "Excellent",
+			"good": "Bien",
+			"needsImprovement": "Peut être amélioré"
+		},
+		"conclusion": {
+			"scenarioComplete": "Scénario terminé",
+			"congratulations": "Félicitations !",
+			"yourPerformance": "Votre performance",
+			"restart": "Redémarrer",
+			"close": "Fermer"
+		},
+		"decision": {
+			"decisionRequired": "Décision requise",
+			"chooseAction": "Choisissez votre action :",
+			"timeUrgent": "Urgent ! Le temps presse !",
+			"decisionMade": "Décision prise"
+		},
+		"performanceFeedback": {
+			"badges": {
+				"excellent": "Excellent",
+				"veryGood": "Très bien",
+				"good": "Bien",
+				"fair": "Correct",
+				"needsImprovement": "À améliorer"
+			},
+			"sections": {
+				"overallPerformance": "Performance globale",
+				"decisionAnalysis": "Analyse des décisions",
+				"learningObjectives": "Objectifs d'apprentissage"
+			},
+			"metrics": {
+				"outOfPoints": "sur {{points}} points",
+				"correctDecisions": "décisions correctes",
+				"totalTime": "temps total",
+				"avgTime": "Temps moy.",
+				"decision": "Décision {{number}}",
+				"weight": "Poids : {{weight}}",
+				"achieved": "Atteint",
+				"missed": "Manqué",
+				"notEncountered": "Non rencontré",
+				"correct": "Correct",
+				"incorrect": "Incorrect"
+			},
+			"status": {
+				"scenarioPassed": "Scénario réussi !",
+				"scenarioNotPassed": "Scénario non réussi",
+				"successMessage": "Vous avez démontré de solides compétences de réponse d'urgence et atteint les objectifs d'apprentissage.",
+				"failureMessage": "Vous avez besoin de {{score}} points pour réussir. Révisez les commentaires et réessayez.",
+				"scenarioCompletedSuccess": "Scénario terminé avec succès !",
+				"scenarioCompleted": "Scénario terminé",
+				"scenarioNeedsReview": "Scénario à réviser"
+			},
+			"buttons": {
+				"tryAgain": "Réessayer",
+				"continueLearning": "Continuer l'apprentissage"
+			},
+			"timing": {
+				"averageDecisionTime": "Temps de décision moyen :",
+				"excellentResponseTime": "- Excellent temps de réponse !",
+				"goodResponseTime": "- Bon temps de réponse.",
+				"practiceResponseTime": "- Considérez vous entraîner pour une prise de décision plus rapide.",
+				"elapsed": "Écoulé",
+				"duration": "Durée"
+			},
+			"objectives": {
+				"completed": "{{count}} objectif atteint",
+				"completedPlural": "{{count}} objectifs atteints",
+				"missed": "{{count}} objectif manqué",
+				"missedPlural": "{{count}} objectifs manqués",
+				"remaining": "{{count}} objectif restant",
+				"remainingPlural": "{{count}} objectifs restants",
+				"xOutOfY": "{{completed}}/{{total}} terminés"
+			},
+			"decisionHistory": "Historique des décisions",
+			"feedbackMessages": {
+				"excellentWork": "Excellent travail ! Vous avez démontré de solides compétences de réponse d'urgence.",
+				"goodEffort": "Bon effort ! Révisez les commentaires pour améliorer votre réponse.",
+				"needsReview": "Considérez réviser le matériel d'apprentissage et réessayer."
+			},
+			"headers": {
+				"finalResults": "Résultats finaux",
+				"live": "En direct"
+			}
+		},
+		"enhancedPicker": {
+			"title": "Formation d'urgence interactive",
+			"description": "Vivez des scénarios d'urgence réalistes avec des points de décision structurés, des commentaires en temps réel et une évaluation complète des performances.",
+			"toggleInteractive": "Scénarios interactifs",
+			"toggleAll": "Tous les scénarios",
+			"features": {
+				"decisionPoints": {
+					"title": "Points de décision",
+					"description": "Prenez des choix en temps réel avec des conséquences"
+				},
+				"smartFeedback": {
+					"title": "Commentaires intelligents",
+					"description": "Évaluation et orientation immédiates"
+				},
+				"performanceTracking": {
+					"title": "Suivi des performances",
+					"description": "Progression détaillée et développement des compétences"
+				}
+			},
+			"metadata": {
+				"interactive": "Interactif",
+				"goals": "objectifs",
+				"structuredLearning": "Apprentissage structuré avec commentaires en temps réel"
+			},
+			"conversationPrompt": "Ou commencez une conversation à partir de zéro"
+		},
+		"emergency": {
+			"officeCardiacArrest": {
+				"title": "Arrêt cardiaque au bureau",
+				"description": "Réponse vitale lorsqu'un collègue s'effondre soudainement"
+			},
+			"restaurantChoking": {
+				"title": "Étouffement au restaurant",
+				"description": "Réponse d'urgence lorsque quelqu'un s'étouffe en public"
+			},
+			"hikingBleeding": {
+				"title": "Blessure sur sentier de randonnée",
+				"description": "Urgence de saignement grave en milieu sauvage isolé"
+			},
+			"kitchenBurn": {
+				"title": "Urgence de brûlure en cuisine",
+				"description": "Blessure grave par brûlure lors d'un accident de cuisine familial"
+			},
+			"poolDrowning": {
+				"title": "Urgence de noyade en piscine",
+				"description": "Sauvetage aquatique et réanimation en piscine familiale"
+			},
+			"allergicReaction": {
+				"title": "Réaction allergique sévère",
+				"description": "Urgence anaphylactique à la cafétéria de l'école"
+			},
+			"workplaceSeizure": {
+				"title": "Urgence de crise épileptique au travail",
+				"description": "Collègue ayant une crise épileptique en environnement de bureau"
+			}
+		},
+		"office-cardiac-arrest": {
+			"title": "Urgence cardiaque au bureau",
+			"description": "Un collègue s'effondre au travail - guidez votre réponse d'urgence par une conversation naturelle",
+			"duration": "15min"
+		},
+		"child-choking": {
+			"title": "Enfant qui s'étouffe au restaurant",
+			"description": "Un tout-petit s'étouffe dans un restaurant familial - naviguez dans cette urgence sous haute pression",
+			"duration": "10min"
+		},
+		"conversationalScenarios": {
+			"office-cardiac-arrest": {
+				"title": "Urgence cardiaque au bureau",
+				"description": "Un collègue s'effondre au travail - guidez votre réponse d'urgence par une conversation naturelle",
+				"situation": {
+					"location": "Espace de bureau ouvert, 3e étage d'un immeuble du centre-ville",
+					"timeOfDay": "14h30 un mardi",
+					"weather": "Clair, température intérieure confortable",
+					"environment": "Bureau occupé avec plus de 20 personnes, salles de conférence à proximité, accès par ascenseur"
+				},
+				"learningGoals": {
+					"scene-safety": "Évaluer la sécurité des lieux et prendre le contrôle de la situation",
+					"primary-assessment": "Évaluer rapidement la réactivité et la respiration",
+					"cpr-technique": "Démontrer une technique de RCR appropriée et la coordination",
+					"emergency-services": "Coordonner avec les services d'urgence et déléguer les tâches",
+					"aed-usage": "Localiser et utiliser correctement un DEA si disponible"
+				}
+			},
+			"child-choking": {
+				"title": "Enfant qui s'étouffe au restaurant",
+				"description": "Un tout-petit s'étouffe dans un restaurant familial - naviguez dans cette urgence sous haute pression",
+				"situation": {
+					"location": "Restaurant familial, heure de pointe du dîner",
+					"timeOfDay": "19h15 un vendredi soir",
+					"weather": "Environnement intérieur, occupé et bruyant",
+					"environment": "Espace bondé, niveau de bruit élevé"
+				},
+				"learningGoals": {
+					"recognize-choking": "Identifier rapidement l'étouffement grave chez un enfant",
+					"infant-cpr": "Technique appropriée pour le soulagement de l'étouffement chez les tout-petits"
+				}
+			}
+		},
+		"difficulty": {
+			"beginner": "Débutant",
+			"intermediate": "Intermédiaire",
+			"advanced": "Avancé"
+		},
+		"urgency": {
+			"low": "Urgence faible",
+			"medium": "Urgence moyenne",
+			"high": "Urgence élevée",
+			"critical": "Urgence critique"
+		}
+	},
+	"flashcards": {
+		"study": "Étudier",
+		"create": "Créer",
+		"manage": "Gérer",
+		"stats": "Statistiques",
+		"aiAssistant": "Assistant IA",
+		"deck": "Paquet",
+		"decks": "Paquets",
+		"card": "Carte",
+		"cards": "Cartes",
+		"question": "Question",
+		"answer": "Réponse",
+		"showAnswer": "Montrer la réponse",
+		"hideAnswer": "Masquer la réponse",
+		"again": "Encore",
+		"hard": "Difficile",
+		"good": "Bien",
+		"easy": "Facile",
+		"newCards": "Nouvelles cartes",
+		"dueCards": "Cartes à réviser",
+		"studyComplete": "Étude terminée !",
+		"noCardsToStudy": "Aucune carte à étudier pour le moment",
+		"comeBackLater": "Revenez plus tard pour plus de cartes",
+		"createNewDeck": "Créer un nouveau paquet",
+		"deckName": "Nom du paquet",
+		"deckDescription": "Description du paquet",
+		"addCard": "Ajouter une carte",
+		"editCard": "Modifier la carte",
+		"deleteCard": "Supprimer la carte",
+		"cardDeleted": "Carte supprimée avec succès",
+		"deckCreated": "Paquet créé avec succès",
+		"deckUpdated": "Paquet mis à jour avec succès",
+		"deckDeleted": "Paquet supprimé avec succès"
+	},
+	"multiplayer": {
+		"createLobby": "Créer un salon",
+		"joinLobby": "Rejoindre un salon",
+		"lobbyCode": "Code du salon",
+		"enterCode": "Entrez le code du salon",
+		"players": "Joueurs",
+		"waiting": "En attente des joueurs...",
+		"startGame": "Commencer le jeu",
+		"gameSettings": "Paramètres de jeu",
+		"roundDuration": "Durée du tour",
+		"numberOfRounds": "Nombre de tours",
+		"difficulty": "Difficulté",
+		"shareCode": "Partager le code",
+		"copyCode": "Copier le code",
+		"codeCopied": "Code copié dans le presse-papiers",
+		"gameStarting": "Le jeu commence...",
+		"round": "Tour",
+		"score": "Score",
+		"timeLeft": "Temps restant",
+		"finalResults": "Résultats finaux",
+		"winner": "Vainqueur",
+		"playAgain": "Rejouer",
+		"leaveGame": "Quitter le jeu"
+	},
+	"settings": {
+		"general": "Général",
+		"language": "Langue",
+		"theme": "Thème",
+		"notifications": "Notifications",
+		"preferences": "Préférences",
+		"aiSettings": "Paramètres IA",
+		"ragSettings": "Paramètres RAG",
+		"modelProvider": "Fournisseur de modèle",
+		"model": "Modèle",
+		"systemPrompt": "Invite système",
+		"maxTokens": "Tokens maximum",
+		"temperature": "Température",
+		"enableRag": "Activer RAG",
+		"ragCollection": "Collection RAG",
+		"contextSize": "Taille du contexte",
+		"saveSettings": "Sauvegarder les paramètres",
+		"settingsSaved": "Paramètres sauvegardés avec succès",
+		"resetToDefaults": "Restaurer les valeurs par défaut",
+		"confirmReset": "Êtes-vous sûr de vouloir restaurer tous les paramètres aux valeurs par défaut ?",
+		"tabs": {
+			"appearance": "Apparence",
+			"privacy": "Confidentialité"
+		},
+		"learning": {
+			"title": "Préférences d'apprentissage",
+			"description": "Personnalisez votre expérience d'apprentissage",
+			"dailyReminder": "Rappel d'étude quotidien",
+			"cardsPerDay": "Cartes à réviser par jour",
+			"weekendReminders": "Rappels de fin de semaine",
+			"timeOptions": {
+				"8am": "8h00",
+				"12pm": "12h00",
+				"6pm": "18h00",
+				"9pm": "21h00"
+			},
+			"cardOptions": {
+				"10cards": "10 cartes",
+				"20cards": "20 cartes",
+				"50cards": "50 cartes",
+				"100cards": "100 cartes"
+			}
+		},
+		"appearance": {
+			"title": "Thème",
+			"description": "Personnalisez l'apparence de l'application",
+			"light": "Clair",
+			"dark": "Sombre",
+			"system": "Système"
+		},
+		"notificationSettings": {
+			"title": "Paramètres de notification",
+			"description": "Gérez comment vous recevez les notifications",
+			"studyReminders": "Rappels d'étude",
+			"studyRemindersDescription": "Recevoir des notifications pour les rappels d'étude quotidiens",
+			"achievements": "Réussites",
+			"achievementsDescription": "Recevoir des notifications lorsque vous obtenez des réussites",
+			"emailNotifications": "Notifications par e-mail",
+			"emailDescription": "Recevoir des e-mails de résumé hebdomadaire sur vos progrès"
+		},
+		"privacy": {
+			"title": "Paramètres de confidentialité",
+			"description": "Gérez vos paramètres de confidentialité et de données",
+			"shareActivity": "Partager l'activité",
+			"shareActivityDescription": "Partager votre activité d'apprentissage avec des amis",
+			"dataCollection": "Collecte de données",
+			"dataCollectionDescription": "Permettre la collecte anonyme de données pour améliorer la plateforme",
+			"downloadData": "Télécharger mes données"
+		},
+		"buttons": {
+			"saveChanges": "Sauvegarder les modifications",
+			"saving": "Sauvegarde..."
+		}
+	},
+	"notFound": {
+		"title": "404 - Page non trouvée",
+		"description": "La page que vous cherchez n'existe pas ou a été déplacée.",
+		"goToLogin": "Aller à la connexion",
+		"goToChat": "Aller au chat"
+	},
+	"emergency": {
+		"title": "INTERFACE DE SECOURS D'URGENCE CHARGÉE",
+		"fallbackUi": "Interface de secours d'urgence",
+		"error": "Erreur :",
+		"chatSessions": "Sessions de chat",
+		"pinned": "ÉPINGLÉ",
+		"description": "Si vous voyez ceci, cela signifie qu'il y a eu un problème avec les composants de chat principaux.",
+		"tryRefresh": "Veuillez essayer d'actualiser la page ou contactez le support.",
+		"technicalInfo": "Informations techniques :"
+	},
+	"errors": {
+		"somethingWentWrong": "Quelque chose s'est mal passé",
+		"tryAgain": "Veuillez réessayer",
+		"networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
+		"unauthorized": "Vous n'êtes pas autorisé à effectuer cette action",
+		"notFound": "La ressource demandée n'a pas été trouvée",
+		"serverError": "Erreur serveur. Veuillez réessayer plus tard.",
+		"validationError": "Veuillez vérifier votre saisie et réessayer"
+	},
+	"success": {
+		"saved": "Sauvegardé avec succès",
+		"updated": "Mis à jour avec succès",
+		"created": "Créé avec succès",
+		"deleted": "Supprimé avec succès"
+	},
+	"testPage": {
+		"title": "Page de test d'internationalisation",
+		"description": "Test des traductions à travers différents espaces de noms",
+		"commonTranslations": "Traductions communes",
+		"authentication": "Authentification",
+		"chat": "Chat",
+		"successTitle": "Succès !",
+		"successMessage": "Toutes les traductions fonctionnent correctement. Essayez de changer de langue en utilisant le sélecteur de langue dans l'en-tête."
+	},
+	"homePage": {
+		"title": "Centre de Formation Croix-Rouge",
+		"subtitle": "Plateforme de Formation aux Interventions d'Urgence",
+		"getStarted": "Commencer",
+		"continueToChat": "Continuer vers le Chat"
+	}
+}

@@ -25,9 +25,7 @@ const Tooltip = React.memo(function Tooltip({
 	children,
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-	const instanceId = React.useRef(
-		`tooltip-${Math.random().toString(36).substr(2, 9)}`,
-	).current;
+	const instanceId = React.useId();
 
 	// Add debug logging
 	// console.log(
@@ -58,9 +56,7 @@ const Tooltip = React.memo(function Tooltip({
 const TooltipTrigger = React.memo(function TooltipTrigger({
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-	const instanceId = React.useRef(
-		`trigger-${Math.random().toString(36).substr(2, 9)}`,
-	).current;
+	const instanceId = React.useId();
 
 	// Add debug logging
 	// console.log(
@@ -88,9 +84,7 @@ const TooltipContent = React.memo(function TooltipContent({
 	children,
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
-	const instanceId = React.useRef(
-		`content-${Math.random().toString(36).substr(2, 9)}`,
-	).current;
+	const instanceId = React.useId();
 
 	// Add debug logging
 	// console.log(

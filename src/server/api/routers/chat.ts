@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
+import { getChatSystemPrompt } from "~/lib/prompts/system-prompts";
 import { AIService } from "~/lib/services/ai";
 import type { ChatMessage } from "~/lib/services/ai";
 import { db } from "../../db";
@@ -19,74 +20,66 @@ function generateTitleFromMessage(content: string): string {
 
 export const chatRouter = createTRPCRouter({
 	// Delete all chat sessions for a user
-	deleteAllSessions: protectedProcedure
-		.mutation(async ({ ctx }) => {
-			const userId = ctx.auth.user?.id;
-			if (!userId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "You must be logged in to delete chat sessions",
-				});
-			}
+	deleteAllSessions: protectedProcedure.mutation(async ({ ctx }) => {
+		const userId = ctx.auth.user?.id;
+		if (!userId) {
+			throw new TRPCError({
+				code: "UNAUTHORIZED",
+				message: "You must be logged in to delete chat sessions",
+			});
+		}
 
-			try {
-				// Use a transaction to ensure consistency
-				return await db.transaction(async (tx) => {
-					// Get all session IDs belonging to the user
-					const userSessions = await tx
-						.select({ id: chatSessions.id })
-						.from(chatSessions)
-						.where(eq(chatSessions.user_id, userId));
-					
-					const sessionIds = userSessions.map(session => session.id);
-					
-					if (sessionIds.length === 0) {
-						return { success: true, count: 0 };
-					}
+		try {
+			// Use a transaction to ensure consistency
+			return await db.transaction(async (tx) => {
+				// Get all session IDs belonging to the user
+				const userSessions = await tx
+					.select({ id: chatSessions.id })
+					.from(chatSessions)
+					.where(eq(chatSessions.user_id, userId));
 
-					// Delete all messages for these sessions
-					await tx
-						.delete(chatMessages)
-						.where(inArray(chatMessages.session_id, sessionIds));
+				const sessionIds = userSessions.map((session) => session.id);
 
-					// Delete all the sessions
-					const result = await tx
-						.delete(chatSessions)
-						.where(eq(chatSessions.user_id, userId))
-						.returning({ id: chatSessions.id });
+				if (sessionIds.length === 0) {
+					return { success: true, count: 0 };
+				}
 
-					return {
-						success: true,
-						count: result.length,
-					};
-				});
-			} catch (error) {
-				console.error("Error deleting all sessions:", error);
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message: "Failed to delete all chat sessions",
-					cause: error,
-				});
-			}
-		}),
+				// Delete all messages for these sessions
+				await tx
+					.delete(chatMessages)
+					.where(inArray(chatMessages.session_id, sessionIds));
+
+				// Delete all the sessions
+				const result = await tx
+					.delete(chatSessions)
+					.where(eq(chatSessions.user_id, userId))
+					.returning({ id: chatSessions.id });
+
+				return {
+					success: true,
+					count: result.length,
+				};
+			});
+		} catch (error) {
+			console.error("Error deleting all sessions:", error);
+			throw new TRPCError({
+				code: "INTERNAL_SERVER_ERROR",
+				message: "Failed to delete all chat sessions",
+				cause: error,
+			});
+		}
+	}),
 
 	// Create a new chat session
 	createSession: protectedProcedure
 		.input(
 			z.object({
 				title: z.string().default("New Chat"),
-				is_pinned: z.boolean().optional().default(false), // Changed from isPinned to is_pinned
+				is_pinned: z.boolean().optional().default(false),
 				position: z.number().int().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			console.log("[chat.createSession] - Request received with input:", input);
-			console.log("[chat.createSession] - Auth context:", {
-				hasAuth: !!ctx.auth,
-				hasUser: !!ctx.auth.user,
-				userId: ctx.auth.user?.id || "none",
-			});
-
 			const userId = ctx.auth.user?.id;
 			if (!userId) {
 				throw new TRPCError({
@@ -95,115 +88,46 @@ export const chatRouter = createTRPCRouter({
 				});
 			}
 
-			// Ensure we have a title, even if it wasn't provided
 			const title = input.title || "New Chat";
-			console.log(
-				`[chat.createSession] - Creating session with title "${title}" for user: ${userId}`,
-			);
 
 			try {
-				// Try to create a real session in the database
-				try {
-					console.log(
-						"[chat.createSession] - Attempting to create session in database",
-					);
+				// Get the highest position value for this user's sessions
+				let position = input.position;
+				if (position === undefined) {
+					try {
+						const result = await db
+							.select({ maxPosition: sql`MAX(${chatSessions.position})` })
+							.from(chatSessions)
+							.where(eq(chatSessions.user_id, userId));
 
-					// Get the highest position value for this user's sessions to place new one at top
-					let position = 0;
-					if (input.position === undefined) {
-						try {
-							const highestPositionResult = await db
-								.select({ maxPosition: sql`MAX(${chatSessions.position})` })
-								.from(chatSessions)
-								.where(eq(chatSessions.user_id, userId));
-
-							// Safely handle the result which might be NULL from SQL
-							const maxPos = highestPositionResult[0]?.maxPosition;
-							position = typeof maxPos === "number" ? maxPos + 1 : 1;
-							console.log(
-								`[chat.createSession] - Calculated position for new session: ${position}`,
-							);
-						} catch (posErr) {
-							console.error(
-								"[chat.createSession] - Error getting highest position:",
-								posErr,
-							);
-							// Continue with default position 0
-						}
-					} else {
-						position = input.position;
+						const maxPos = result[0]?.maxPosition;
+						position = typeof maxPos === "number" ? maxPos + 1 : 1;
+					} catch {
+						position = 0; // Default position on error
 					}
-
-					// Insert new session with the new schema fields
-					const newSession = await db
-						.insert(chatSessions)
-						.values({
-							id: uuidv4(),
-							user_id: userId,
-							title: title,
-							position: position,
-							is_pinned: input.is_pinned,
-							status: "active",
-							created_at: new Date(),
-							updated_at: new Date(),
-						})
-						.returning();
-
-					if (newSession && newSession.length > 0) {
-						console.log(
-							`[chat.createSession] - Successfully created session in database: ${newSession[0]?.id}`,
-						);
-						return newSession[0];
-					}
-				} catch (dbError) {
-					console.error("[chat.createSession] - Database error:", dbError);
-					console.log(
-						"[chat.createSession] - Falling back to mock session due to database error",
-					);
 				}
 
-				// Fallback: Create a mock session
-				console.log("[chat.createSession] - Creating mock session");
-				const sessionId = uuidv4();
-				console.log(
-					`[chat.createSession] - Generated session ID: ${sessionId}`,
-				);
+				// Create new session
+				const newSession = await db
+					.insert(chatSessions)
+					.values({
+						id: uuidv4(),
+						user_id: userId,
+						title,
+						position,
+						is_pinned: input.is_pinned ?? false,
+						status: "active",
+						created_at: new Date(),
+						updated_at: new Date(),
+					})
+					.returning();
 
-				// Calculate position for mock sessions too
-				let position = 0;
-				if (input.position === undefined) {
-					// For mock data, just use a timestamp-based position to ensure uniqueness
-					position = Date.now();
-				} else {
-					position = input.position;
+				if (!newSession.length) {
+					throw new Error("Failed to create session");
 				}
 
-				// Create a mock session object with the updated structure
-				const mockSession = {
-					id: sessionId,
-					user_id: userId,
-					title: title,
-					position: position,
-					is_pinned: input.is_pinned || false,
-					status: "active",
-					created_at: new Date().toISOString(),
-					updated_at: new Date().toISOString(),
-				};
-
-				console.log(
-					`[chat.createSession] - Successfully created mock session: ${mockSession.id}`,
-				);
-
-				// Wait a moment to simulate a database operation
-				await new Promise((resolve) => setTimeout(resolve, 500));
-
-				return mockSession;
+				return newSession[0];
 			} catch (error) {
-				console.error("[chat.createSession] - Error:", error);
-				console.error(
-					"[chat.createSession] - Error stack:",
-					error instanceof Error ? error.stack : "No stack trace",
-				);
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
 					message: `Failed to create chat session: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -612,8 +536,10 @@ export const chatRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			// Skip validation if given an empty session ID
-			if (!input.session_id || input.session_id.trim() === '') {
-				console.log("[chat.getMessages] - Empty session ID provided, returning empty array");
+			if (!input.session_id || input.session_id.trim() === "") {
+				console.log(
+					"[chat.getMessages] - Empty session ID provided, returning empty array",
+				);
 				return [];
 			}
 			console.log(
@@ -637,10 +563,12 @@ export const chatRouter = createTRPCRouter({
 				// Verify the session belongs to the user if we have a valid session ID
 				// For UUIDs, they should be 36 characters long
 				if (input.session_id.length !== 36) {
-					console.log(`[chat.getMessages] - Invalid session ID format: ${input.session_id}`);
+					console.log(
+						`[chat.getMessages] - Invalid session ID format: ${input.session_id}`,
+					);
 					return []; // Return empty array for invalid session IDs
 				}
-				
+
 				const session = await db
 					.select()
 					.from(chatSessions)
@@ -954,6 +882,98 @@ export const chatRouter = createTRPCRouter({
 			}
 		}),
 
+	// Save a message directly to the database (for scenario intros, system messages, etc.)
+	saveMessage: protectedProcedure
+		.input(
+			z.object({
+				session_id: z.string().uuid().optional(),
+				content: z.string().min(1),
+				role: z.enum(["user", "assistant", "system"]),
+				title: z.string().optional(), // For new session title
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const userId = ctx.auth.user?.id;
+			if (!userId) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "You must be logged in to save messages",
+				});
+			}
+
+			// Get or create session
+			let session_id = input.session_id;
+			let isNewSession = false;
+
+			if (!session_id) {
+				// Create new session
+				const newSession = await db
+					.insert(chatSessions)
+					.values({
+						id: uuidv4(),
+						user_id: userId,
+						title: input.title || generateTitleFromMessage(input.content),
+						position: 0,
+						is_pinned: false,
+						status: "active",
+						created_at: new Date(),
+						updated_at: new Date(),
+					})
+					.returning();
+
+				if (newSession && newSession.length > 0 && newSession[0]?.id) {
+					session_id = newSession[0].id;
+					isNewSession = true;
+				} else {
+					throw new TRPCError({
+						code: "INTERNAL_SERVER_ERROR",
+						message: "Failed to create chat session: no ID returned",
+					});
+				}
+			} else {
+				// Verify session belongs to user
+				const session = await db
+					.select()
+					.from(chatSessions)
+					.where(
+						and(
+							eq(chatSessions.id, session_id),
+							eq(chatSessions.user_id, userId),
+						),
+					)
+					.limit(1);
+
+				if (!session.length) {
+					throw new TRPCError({
+						code: "NOT_FOUND",
+						message: "Chat session not found",
+					});
+				}
+
+				// Update session timestamp
+				await db
+					.update(chatSessions)
+					.set({ updated_at: new Date() })
+					.where(eq(chatSessions.id, session_id));
+			}
+
+			// Save message to database
+			const message_id = uuidv4();
+			await db.insert(chatMessages).values({
+				id: message_id,
+				session_id: session_id,
+				role: input.role,
+				content: input.content,
+				timestamp: new Date(),
+			});
+
+			return {
+				session_id,
+				message_id,
+				isNewSession,
+			};
+		}),
+
 	// Send message and get AI response
 	sendMessage: protectedProcedure
 		.input(
@@ -1041,8 +1061,7 @@ export const chatRouter = createTRPCRouter({
 				.limit(20);
 
 			// Format messages for AI
-			const systemPrompt =
-				"You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately. Provide reliable information based on official Red Cross guidelines.";
+			const systemPrompt = getChatSystemPrompt();
 
 			const messages: ChatMessage[] = [
 				{ role: "system", content: systemPrompt },

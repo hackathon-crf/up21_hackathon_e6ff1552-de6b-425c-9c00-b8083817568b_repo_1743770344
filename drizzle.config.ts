@@ -8,6 +8,4 @@ export default {
 	dbCredentials: {
 		url: env.DATABASE_URL,
 	},
-	// No table prefix filter needed since we're not using prefixes
-	// tablesFilter: ["*"],
 } satisfies Config;

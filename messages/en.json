@@ -1,0 +1,628 @@
+{
+	"common": {
+		"loading": "Loading...",
+		"error": "Error",
+		"save": "Save",
+		"cancel": "Cancel",
+		"delete": "Delete",
+		"edit": "Edit",
+		"create": "Create",
+		"back": "Back",
+		"next": "Next",
+		"submit": "Submit",
+		"retry": "Retry",
+		"close": "Close",
+		"confirm": "Confirm",
+		"search": "Search",
+		"filter": "Filter",
+		"settings": "Settings",
+		"help": "Help",
+		"logout": "Logout",
+		"notifications": "Notifications"
+	},
+	"navigation": {
+		"chat": "Chat",
+		"flashcards": "Flashcards",
+		"multiplayer": "Multiplayer",
+		"dashboard": "Dashboard",
+		"profile": "Profile"
+	},
+	"auth": {
+		"signIn": "Sign In",
+		"signUp": "Sign Up",
+		"email": "Email",
+		"password": "Password",
+		"confirmPassword": "Confirm Password",
+		"forgotPassword": "Forgot Password?",
+		"createAccount": "Create Account",
+		"alreadyHaveAccount": "Already have an account?",
+		"dontHaveAccount": "Don't have an account?",
+		"signInWithEmail": "Sign in with Email",
+		"signUpWithEmail": "Sign up with Email",
+		"checkEmail": "Check your email",
+		"verificationSent": "We've sent you a verification link",
+		"invalidCredentials": "Invalid email or password",
+		"emailRequired": "Email is required",
+		"passwordRequired": "Password is required",
+		"passwordTooShort": "Password must be at least 8 characters",
+		"passwordsDoNotMatch": "Passwords do not match",
+		"form": {
+			"title": "Secours",
+			"subtitle": "Your Emergency Response Training Platform",
+			"login": "Login",
+			"loginDescription": "Enter your credentials to access your account",
+			"register": "Register",
+			"registerDescription": "Enter your information to create an account",
+			"emailPlaceholder": "name@example.com",
+			"passwordPlaceholder": "••••••••",
+			"firstName": "First name",
+			"firstNamePlaceholder": "John",
+			"lastName": "Last name",
+			"lastNamePlaceholder": "Doe",
+			"signingIn": "Signing in...",
+			"creatingAccount": "Creating account...",
+			"orContinueWith": "or continue with",
+			"orRegisterWith": "or register with",
+			"showPassword": "Show password",
+			"hidePassword": "Hide password",
+			"passwordRequirements": "Password requirements:",
+			"atLeast8Characters": "At least 8 characters",
+			"atLeastOneUppercase": "At least one uppercase letter",
+			"atLeastOneLowercase": "At least one lowercase letter",
+			"atLeastOneNumber": "At least one number",
+			"atLeastOneSpecial": "At least one special character",
+			"noSpaces": "No spaces"
+		},
+		"strength": {
+			"weak": "Weak",
+			"fair": "Fair",
+			"good": "Good",
+			"strong": "Strong"
+		},
+		"providers": {
+			"google": "Google",
+			"github": "GitHub"
+		}
+	},
+	"chat": {
+		"newChat": "New Chat",
+		"startConversation": "Start a conversation",
+		"typeMessage": "Type a message...",
+		"send": "Send",
+		"chooseScenario": "Choose a Scenario",
+		"browseAllScenarios": "Browse All Scenarios",
+		"newConversation": "New Conversation",
+		"deleteAllChats": "Delete All Chats",
+		"confirmDeleteAll": "Are you sure you want to delete all chats? This action cannot be undone.",
+		"allChatsDeleted": "All chats have been deleted",
+		"sessionDeleted": "Chat session deleted",
+		"sessionRenamed": "Chat session renamed",
+		"ui": {
+			"refreshPage": "Refresh Page",
+			"aiAssistant": "AI Assistant",
+			"aiDescription": "Ask questions and get personalized first aid guidance",
+			"askAboutFirstAid": "Ask about first aid procedures, emergency response, or CPR techniques...",
+			"attachFile": "Attach file",
+			"attachImage": "Attach image",
+			"sendMessage": "Send message",
+			"aiTyping": "AI is typing...",
+			"poweredBy": "Powered by Red Cross AI",
+			"enterToSend": "Enter",
+			"toSend": "to send",
+			"shiftEnterNewLine": "Shift+Enter",
+			"forNewLine": "for new line",
+			"source": "source",
+			"sources": "sources",
+			"referenceSources": "Reference Sources",
+			"conversationalTraining": "Conversational Training",
+			"newScenario": "New Scenario",
+			"startNewScenario": "Start New Scenario",
+			"chatSettings": "Chat Settings",
+			"searchConversations": "Search conversations...",
+			"noChatFound": "No chats found",
+			"pinConversations": "Pin conversations to see them here",
+			"archiveConversations": "Archive conversations to store them for later reference",
+			"startNewConversation": "Start a new conversation"
+		},
+		"errors": {
+			"somethingWentWrong": "Something went wrong",
+			"loadingError": "There was an error loading the chat interface.",
+			"genericError": "An error occurred"
+		},
+		"tabs": {
+			"all": "All",
+			"pinned": "Pinned",
+			"archived": "Archived"
+		},
+		"actions": {
+			"pin": "Pin",
+			"unpin": "Unpin",
+			"rename": "Rename",
+			"archive": "Archive",
+			"unarchive": "Unarchive",
+			"delete": "Delete",
+			"moreOptions": "More options"
+		},
+		"dialogs": {
+			"deleteChat": "Delete Chat",
+			"deleteChatDescription": "This action cannot be undone. This will permanently delete the chat and all its messages from our servers.",
+			"deleteAllChats": "Delete All Chats",
+			"deleteAllChatsDescription": "This action cannot be undone. This will permanently delete ALL your chats and their messages from our servers.",
+			"renameChat": "Rename Chat",
+			"renameChatDescription": "Enter a new name for this chat.",
+			"chatName": "Chat name"
+		},
+		"scenarios": {
+			"emergencyTraining": "Emergency Training Scenarios",
+			"conversationalLearning": "Conversational Learning",
+			"guidedReflection": "Guided Reflection",
+			"description": "Practice emergency response through guided conversation. Each scenario uses realistic situations and Socratic questioning to help you think through critical decisions and build confidence.",
+			"adaptiveDescription": "Each scenario adapts to your knowledge level and encourages you to think through problems rather than just memorize procedures."
+		},
+		"sidebar": {
+			"searchPlaceholder": "Search conversations...",
+			"newChat": "New Chat",
+			"deleteAllChats": "Delete all chats",
+			"creatingChatSession": "Creating new chat session",
+			"pleaseWait": "Please wait...",
+			"error": "Error",
+			"sessionNoId": "Session created but no ID returned",
+			"chatCreated": "Chat created",
+			"newChatSessionStarted": "New chat session started successfully",
+			"failedToCreateChat": "Failed to create chat",
+			"failedToUpdateChat": "Failed to update chat",
+			"chatDeleted": "Chat deleted",
+			"chatDeletedSuccess": "The chat has been successfully deleted",
+			"allChatsDeleted": "All chats deleted",
+			"successfullyDeleted": "Successfully deleted {count} chat sessions",
+			"unexpectedError": "Unexpected Error",
+			"noChatsFound": "No chats found",
+			"pinConversations": "Pin conversations to see them here",
+			"archiveConversations": "Archive conversations to store them for later reference",
+			"startNewConversation": "Start a new conversation",
+			"justNow": "Just now",
+			"minutesAgo": "{minutes}m ago",
+			"hoursAgo": "{hours}h ago",
+			"yesterday": "Yesterday",
+			"daysAgo": "{days}d ago",
+			"pin": "Pin",
+			"unpin": "Unpin",
+			"moreOptions": "More options",
+			"rename": "Rename",
+			"archive": "Archive",
+			"unarchive": "Unarchive",
+			"delete": "Delete",
+			"deleteChat": "Delete Chat",
+			"deleteChatWarning": "This action cannot be undone. This will permanently delete the chat and all its messages from our servers.",
+			"cancel": "Cancel",
+			"deleteAllChatsTitle": "Delete All Chats",
+			"deleteAllChatsWarning": "This action cannot be undone. This will permanently delete ALL your chats and their messages from our servers.",
+			"deleteAll": "Delete All",
+			"renameChat": "Rename Chat",
+			"renameChatDescription": "Enter a new name for this chat.",
+			"chatNamePlaceholder": "Chat name",
+			"save": "Save"
+		}
+	},
+	"scenarios": {
+		"dialog": {
+			"title": "Choose a Scenario",
+			"description": "Select a first aid scenario to get started"
+		},
+		"picker": {
+			"title": "Choose a Scenario",
+			"subtitle": "Select a predefined scenario to start a conversation with the AI assistant",
+			"allScenariosTitle": "All Scenarios",
+			"allScenariosSubtitle": "Browse all available scenarios for any emergency or training need",
+			"browseAllScenarios": "Browse All Scenarios",
+			"backToEmergencyScenarios": "← Back to Emergency Scenarios",
+			"newConversationSubtitle": "Or start a conversation from scratch",
+			"newConversation": "New Conversation"
+		},
+		"conversational": {
+			"title": "Conversational Training",
+			"startTraining": "Start Training",
+			"learningGoals": "You'll learn:",
+			"location": "Location",
+			"timeOfDay": "Time",
+			"urgency": "Urgency",
+			"people": "People involved",
+			"environment": "Environment",
+			"resources": "Available resources",
+			"constraints": "Constraints"
+		},
+		"interactive": {
+			"title": "Interactive Scenarios",
+			"initializing": "Initializing scenario...",
+			"timeRemaining": "Time remaining",
+			"score": "Score",
+			"inProgress": "In Progress",
+			"goodDecision": "Good decision!",
+			"learningOpportunity": "Learning opportunity",
+			"timeUp": "Time's up!",
+			"autoSelecting": "Auto-selecting first option due to time limit."
+		},
+		"engine": {
+			"starting": "Starting scenario",
+			"continue": "Continue scenario",
+			"conclusion": "Scenario conclusion"
+		},
+		"performance": {
+			"score": "Score",
+			"correctAnswers": "Correct answers",
+			"timeSpent": "Time spent",
+			"performance": "Performance",
+			"excellent": "Excellent",
+			"good": "Good",
+			"needsImprovement": "Needs improvement"
+		},
+		"conclusion": {
+			"scenarioComplete": "Scenario Complete",
+			"congratulations": "Congratulations!",
+			"yourPerformance": "Your Performance",
+			"restart": "Restart",
+			"close": "Close"
+		},
+		"decision": {
+			"decisionRequired": "Decision Required",
+			"chooseAction": "Choose your action:",
+			"timeUrgent": "Urgent! Time is running out!",
+			"decisionMade": "Decision Made"
+		},
+		"performanceFeedback": {
+			"badges": {
+				"excellent": "Excellent",
+				"veryGood": "Very Good",
+				"good": "Good",
+				"fair": "Fair",
+				"needsImprovement": "Needs Improvement"
+			},
+			"sections": {
+				"overallPerformance": "Overall Performance",
+				"decisionAnalysis": "Decision Analysis",
+				"learningObjectives": "Learning Objectives"
+			},
+			"metrics": {
+				"outOfPoints": "out of {{points}} points",
+				"correctDecisions": "correct decisions",
+				"totalTime": "total time",
+				"avgTime": "Avg Time",
+				"decision": "Decision {{number}}",
+				"weight": "Weight: {{weight}}",
+				"achieved": "Achieved",
+				"missed": "Missed",
+				"notEncountered": "Not Encountered",
+				"correct": "Correct",
+				"incorrect": "Incorrect"
+			},
+			"status": {
+				"scenarioPassed": "Scenario Passed!",
+				"scenarioNotPassed": "Scenario Not Passed",
+				"successMessage": "You demonstrated strong emergency response skills and achieved the learning objectives.",
+				"failureMessage": "You need {{score}} points to pass. Review the feedback and try again.",
+				"scenarioCompletedSuccess": "Scenario Completed Successfully!",
+				"scenarioCompleted": "Scenario Completed",
+				"scenarioNeedsReview": "Scenario Needs Review"
+			},
+			"buttons": {
+				"tryAgain": "Try Again",
+				"continueLearning": "Continue Learning"
+			},
+			"timing": {
+				"averageDecisionTime": "Average decision time:",
+				"excellentResponseTime": "- Excellent response time!",
+				"goodResponseTime": "- Good response time.",
+				"practiceResponseTime": "- Consider practicing for faster decision making.",
+				"elapsed": "Elapsed",
+				"duration": "Duration"
+			},
+			"objectives": {
+				"completed": "{{count}} objective achieved",
+				"completedPlural": "{{count}} objectives achieved",
+				"missed": "{{count}} objective missed",
+				"missedPlural": "{{count}} objectives missed",
+				"remaining": "{{count}} objective remaining",
+				"remainingPlural": "{{count}} objectives remaining",
+				"xOutOfY": "{{completed}}/{{total}} completed"
+			},
+			"decisionHistory": "Decision History",
+			"feedbackMessages": {
+				"excellentWork": "Excellent work! You demonstrated strong emergency response skills.",
+				"goodEffort": "Good effort! Review the feedback to improve your response.",
+				"needsReview": "Consider reviewing the learning materials and trying again."
+			},
+			"headers": {
+				"finalResults": "Final Results",
+				"live": "Live"
+			}
+		},
+		"enhancedPicker": {
+			"title": "Interactive Emergency Training",
+			"description": "Experience realistic emergency scenarios with structured decision points, real-time feedback, and comprehensive performance assessment.",
+			"toggleInteractive": "Interactive Scenarios",
+			"toggleAll": "All Scenarios",
+			"features": {
+				"decisionPoints": {
+					"title": "Decision Points",
+					"description": "Make real-time choices with consequences"
+				},
+				"smartFeedback": {
+					"title": "Smart Feedback",
+					"description": "Immediate assessment and guidance"
+				},
+				"performanceTracking": {
+					"title": "Performance Tracking",
+					"description": "Detailed progress and skill development"
+				}
+			},
+			"metadata": {
+				"interactive": "Interactive",
+				"goals": "goals",
+				"structuredLearning": "Structured learning with real-time feedback"
+			},
+			"conversationPrompt": "Or start a conversation from scratch"
+		},
+		"emergency": {
+			"officeCardiacArrest": {
+				"title": "Office Cardiac Arrest",
+				"description": "Life-saving response when a coworker suddenly collapses"
+			},
+			"restaurantChoking": {
+				"title": "Restaurant Choking",
+				"description": "Emergency response when someone is choking in public"
+			},
+			"hikingBleeding": {
+				"title": "Hiking Trail Injury",
+				"description": "Severe bleeding emergency in remote wilderness setting"
+			},
+			"kitchenBurn": {
+				"title": "Kitchen Burn Emergency",
+				"description": "Serious burn injury during family cooking accident"
+			},
+			"poolDrowning": {
+				"title": "Pool Drowning Emergency",
+				"description": "Water rescue and resuscitation at family pool"
+			},
+			"allergicReaction": {
+				"title": "Severe Allergic Reaction",
+				"description": "Anaphylaxis emergency at school cafeteria"
+			},
+			"workplaceSeizure": {
+				"title": "Workplace Seizure Emergency",
+				"description": "Coworker having seizure in office environment"
+			}
+		},
+		"office-cardiac-arrest": {
+			"title": "Office Cardiac Emergency",
+			"description": "A colleague collapses at work - guide your emergency response through natural conversation",
+			"duration": "15min"
+		},
+		"child-choking": {
+			"title": "Choking Child at Restaurant",
+			"description": "A toddler is choking at a family restaurant - navigate this high-pressure emergency",
+			"duration": "10min"
+		},
+		"conversationalScenarios": {
+			"office-cardiac-arrest": {
+				"title": "Office Cardiac Emergency",
+				"description": "A colleague collapses at work - guide your emergency response through natural conversation",
+				"situation": {
+					"location": "Open office space, 3rd floor of downtown building",
+					"timeOfDay": "2:30 PM on a Tuesday",
+					"weather": "Clear, comfortable indoor temperature",
+					"environment": "Busy office with 20+ people, conference rooms nearby, elevator access"
+				},
+				"learningGoals": {
+					"scene-safety": "Assess scene safety and take control of the situation",
+					"primary-assessment": "Quickly assess responsiveness and breathing",
+					"cpr-technique": "Demonstrate proper CPR technique and coordination",
+					"emergency-services": "Coordinate with emergency services and delegate tasks",
+					"aed-usage": "Locate and properly use an AED if available"
+				}
+			},
+			"child-choking": {
+				"title": "Choking Child at Restaurant",
+				"description": "A toddler is choking at a family restaurant - navigate this high-pressure emergency",
+				"situation": {
+					"location": "Family restaurant, dinner rush hour",
+					"timeOfDay": "7:15 PM on a Friday evening",
+					"weather": "Indoor environment, busy and noisy",
+					"environment": "Crowded space, noise level"
+				},
+				"learningGoals": {
+					"recognize-choking": "Quickly identify severe choking in a child",
+					"infant-cpr": "Proper technique for choking relief in toddlers"
+				}
+			}
+		},
+		"difficulty": {
+			"beginner": "Beginner",
+			"intermediate": "Intermediate",
+			"advanced": "Advanced"
+		},
+		"urgency": {
+			"low": "Low urgency",
+			"medium": "Medium urgency",
+			"high": "High urgency",
+			"critical": "Critical urgency"
+		}
+	},
+	"flashcards": {
+		"study": "Study",
+		"create": "Create",
+		"manage": "Manage",
+		"stats": "Stats",
+		"aiAssistant": "AI Assistant",
+		"deck": "Deck",
+		"decks": "Decks",
+		"card": "Card",
+		"cards": "Cards",
+		"question": "Question",
+		"answer": "Answer",
+		"showAnswer": "Show Answer",
+		"hideAnswer": "Hide Answer",
+		"again": "Again",
+		"hard": "Hard",
+		"good": "Good",
+		"easy": "Easy",
+		"newCards": "New Cards",
+		"dueCards": "Due Cards",
+		"studyComplete": "Study Complete!",
+		"noCardsToStudy": "No cards to study right now",
+		"comeBackLater": "Come back later for more cards",
+		"createNewDeck": "Create New Deck",
+		"deckName": "Deck Name",
+		"deckDescription": "Deck Description",
+		"addCard": "Add Card",
+		"editCard": "Edit Card",
+		"deleteCard": "Delete Card",
+		"cardDeleted": "Card deleted successfully",
+		"deckCreated": "Deck created successfully",
+		"deckUpdated": "Deck updated successfully",
+		"deckDeleted": "Deck deleted successfully"
+	},
+	"multiplayer": {
+		"createLobby": "Create Lobby",
+		"joinLobby": "Join Lobby",
+		"lobbyCode": "Lobby Code",
+		"enterCode": "Enter lobby code",
+		"players": "Players",
+		"waiting": "Waiting for players...",
+		"startGame": "Start Game",
+		"gameSettings": "Game Settings",
+		"roundDuration": "Round Duration",
+		"numberOfRounds": "Number of Rounds",
+		"difficulty": "Difficulty",
+		"shareCode": "Share Code",
+		"copyCode": "Copy Code",
+		"codeCopied": "Code copied to clipboard",
+		"gameStarting": "Game starting...",
+		"round": "Round",
+		"score": "Score",
+		"timeLeft": "Time Left",
+		"finalResults": "Final Results",
+		"winner": "Winner",
+		"playAgain": "Play Again",
+		"leaveGame": "Leave Game"
+	},
+	"settings": {
+		"general": "General",
+		"language": "Language",
+		"theme": "Theme",
+		"notifications": "Notifications",
+		"preferences": "Preferences",
+		"aiSettings": "AI Settings",
+		"ragSettings": "RAG Settings",
+		"modelProvider": "Model Provider",
+		"model": "Model",
+		"systemPrompt": "System Prompt",
+		"maxTokens": "Max Tokens",
+		"temperature": "Temperature",
+		"enableRag": "Enable RAG",
+		"ragCollection": "RAG Collection",
+		"contextSize": "Context Size",
+		"saveSettings": "Save Settings",
+		"settingsSaved": "Settings saved successfully",
+		"resetToDefaults": "Reset to Defaults",
+		"confirmReset": "Are you sure you want to reset all settings to defaults?",
+		"tabs": {
+			"appearance": "Appearance",
+			"privacy": "Privacy"
+		},
+		"learning": {
+			"title": "Learning Preferences",
+			"description": "Customize your learning experience",
+			"dailyReminder": "Daily study reminder",
+			"cardsPerDay": "Cards to review per day",
+			"weekendReminders": "Weekend reminders",
+			"timeOptions": {
+				"8am": "8:00 AM",
+				"12pm": "12:00 PM",
+				"6pm": "6:00 PM",
+				"9pm": "9:00 PM"
+			},
+			"cardOptions": {
+				"10cards": "10 cards",
+				"20cards": "20 cards",
+				"50cards": "50 cards",
+				"100cards": "100 cards"
+			}
+		},
+		"appearance": {
+			"title": "Theme",
+			"description": "Customize the appearance of the application",
+			"light": "Light",
+			"dark": "Dark",
+			"system": "System"
+		},
+		"notificationSettings": {
+			"title": "Notification Settings",
+			"description": "Manage how you receive notifications",
+			"studyReminders": "Study reminders",
+			"studyRemindersDescription": "Receive notifications for daily study reminders",
+			"achievements": "Achievements",
+			"achievementsDescription": "Receive notifications when you earn achievements",
+			"emailNotifications": "Email notifications",
+			"emailDescription": "Receive weekly summary emails about your progress"
+		},
+		"privacy": {
+			"title": "Privacy Settings",
+			"description": "Manage your privacy and data settings",
+			"shareActivity": "Share activity",
+			"shareActivityDescription": "Share your learning activity with friends",
+			"dataCollection": "Data collection",
+			"dataCollectionDescription": "Allow anonymous data collection to improve the platform",
+			"downloadData": "Download My Data"
+		},
+		"buttons": {
+			"saveChanges": "Save Changes",
+			"saving": "Saving..."
+		}
+	},
+	"notFound": {
+		"title": "404 - Page Not Found",
+		"description": "The page you're looking for doesn't exist or has been moved.",
+		"goToLogin": "Go to Login",
+		"goToChat": "Go to Chat"
+	},
+	"emergency": {
+		"title": "EMERGENCY FALLBACK LOADED",
+		"fallbackUi": "Emergency Fallback UI",
+		"error": "Error:",
+		"chatSessions": "Chat Sessions",
+		"pinned": "PINNED",
+		"description": "If you're seeing this, it means there was an issue with the main chat components.",
+		"tryRefresh": "Please try refreshing the page or contact support.",
+		"technicalInfo": "Technical Information:"
+	},
+	"errors": {
+		"somethingWentWrong": "Something went wrong",
+		"tryAgain": "Please try again",
+		"networkError": "Network error. Please check your connection.",
+		"unauthorized": "You are not authorized to perform this action",
+		"notFound": "The requested resource was not found",
+		"serverError": "Server error. Please try again later.",
+		"validationError": "Please check your input and try again"
+	},
+	"success": {
+		"saved": "Saved successfully",
+		"updated": "Updated successfully",
+		"created": "Created successfully",
+		"deleted": "Deleted successfully"
+	},
+	"testPage": {
+		"title": "Internationalization Test Page",
+		"description": "Testing translations across different namespaces",
+		"commonTranslations": "Common Translations",
+		"authentication": "Authentication",
+		"chat": "Chat",
+		"successTitle": "Success!",
+		"successMessage": "All translations are working correctly. Try switching languages using the language selector in the header."
+	},
+	"homePage": {
+		"title": "Red Cross Training Hub",
+		"subtitle": "Emergency Response Training Platform",
+		"getStarted": "Get Started",
+		"continueToChat": "Continue to Chat"
+	}
+}

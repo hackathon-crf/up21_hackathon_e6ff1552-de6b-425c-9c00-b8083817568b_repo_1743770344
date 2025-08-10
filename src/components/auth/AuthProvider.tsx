@@ -2,7 +2,6 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import type { Session, User } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
 import {
 	createContext,
 	useCallback,
@@ -12,6 +11,7 @@ import {
 	useState,
 } from "react";
 import { env } from "~/env";
+import { useRouter } from "~/i18n/navigation";
 
 type AuthResult = {
 	success: boolean;
@@ -241,13 +241,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					} else if (
 						event === "SIGNED_IN" &&
 						initialAuthCheckComplete &&
-						!window.location.pathname.includes("/dashboard")
+						!window.location.pathname.includes("/chat")
 					) {
 						// Only redirect on explicit sign-in events (not initial page load auth checks)
 						console.log(
-							`🔒 AUTH PROVIDER [${effectId}]: User signed in, redirecting to dashboard`,
+							`🔒 AUTH PROVIDER [${effectId}]: User signed in, redirecting to chat`,
 						);
-						router.push("/dashboard");
+						router.push("/chat");
 					}
 				} catch (error) {
 					console.error(

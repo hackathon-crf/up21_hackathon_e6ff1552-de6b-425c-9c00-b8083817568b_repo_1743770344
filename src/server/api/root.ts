@@ -1,9 +1,6 @@
 import { aiRouter } from "./routers/ai";
 import { chatRouter } from "./routers/chat";
-import { dashboardRouter } from "./routers/dashboard";
-import { flashcardRouter } from "./routers/flashcard";
-import { postRouter } from "./routers/post";
-import { userRouter } from "./routers/user";
+import { preferencesRouter } from "./routers/preferences";
 import { createTRPCRouter, publicProcedure } from "./trpc";
 
 /**
@@ -14,10 +11,7 @@ import { createTRPCRouter, publicProcedure } from "./trpc";
 export const appRouter = createTRPCRouter({
 	chat: chatRouter,
 	ai: aiRouter,
-	flashcard: flashcardRouter,
-	post: postRouter,
-	user: userRouter,
-	dashboard: dashboardRouter,
+	preferences: preferencesRouter,
 
 	// Simple healthcheck procedure for server health monitoring
 	healthcheck: publicProcedure.query(() => {

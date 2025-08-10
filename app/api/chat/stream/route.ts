@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { getStreamingSystemPrompt } from "~/lib/prompts/system-prompts";
 import { AIService } from "~/lib/services/ai";
 import type { ChatMessage } from "~/lib/services/ai";
 import { getDb } from "~/server/db";
@@ -19,12 +20,11 @@ function formatMessagesForAI(
 	messages: InputMessage[],
 	systemPrompt?: string,
 ): ChatMessage[] {
-	// Use provided system prompt or fall back to default
-	const defaultSystemPrompt =
-		"You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately. Provide reliable information based on official Red Cross guidelines.";
+	// Use provided system prompt or fall back to unified default
+	const finalSystemPrompt = systemPrompt || getStreamingSystemPrompt();
 
 	return [
-		{ role: "system", content: systemPrompt || defaultSystemPrompt },
+		{ role: "system", content: finalSystemPrompt },
 		...messages.map((msg) => ({
 			role: msg.role as "user" | "assistant" | "system",
 			content: msg.content,
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 		const cookieStore = await cookies();
 		const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 		const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-		
+
 		// Create Supabase client
 		const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
 			cookies: {
@@ -55,21 +55,27 @@ export async function POST(request: NextRequest) {
 
 		// Get authentication session
 		const authResult = await supabase.auth.getSession();
-		console.log("[stream] Auth result:", JSON.stringify({
-			hasSession: !!authResult.data.session,
-			hasUser: !!authResult.data.session?.user,
-		}));
+		console.log(
+			"[stream] Auth result:",
+			JSON.stringify({
+				hasSession: !!authResult.data.session,
+				hasUser: !!authResult.data.session?.user,
+			}),
+		);
 
 		// Require authentication
 		if (!authResult.data.session?.user) {
 			console.error("[stream] Unauthorized: No valid user session found");
-			return new Response(JSON.stringify({ 
-				error: "Unauthorized",
-				message: "Authentication required. Please log in to continue."
-			}), {
-				status: 401,
-				headers: { "Content-Type": "application/json" },
-			});
+			return new Response(
+				JSON.stringify({
+					error: "Unauthorized",
+					message: "Authentication required. Please log in to continue.",
+				}),
+				{
+					status: 401,
+					headers: { "Content-Type": "application/json" },
+				},
+			);
 		}
 
 		// Authentication successful
@@ -78,18 +84,30 @@ export async function POST(request: NextRequest) {
 		console.log(`[stream] Authenticated user: ${userId.slice(0, 8)}...`);
 
 		// Parse request body
-		let requestBody;
+		let requestBody: {
+			session_id?: string;
+			messages: Array<{ role: string; content: string }>;
+			provider: string;
+			model: string;
+			temperature: number;
+			maxTokens: number;
+			apiKey: string;
+			streamingSystemPrompt: string;
+		};
 		try {
 			requestBody = await request.json();
 		} catch (error) {
 			console.error("[stream] Failed to parse request body:", error);
-			return new Response(JSON.stringify({ 
-				error: "Bad Request",
-				message: "Invalid request format. Expected JSON body."
-			}), {
-				status: 400,
-				headers: { "Content-Type": "application/json" },
-			});
+			return new Response(
+				JSON.stringify({
+					error: "Bad Request",
+					message: "Invalid request format. Expected JSON body.",
+				}),
+				{
+					status: 400,
+					headers: { "Content-Type": "application/json" },
+				},
+			);
 		}
 
 		// Extract request parameters
@@ -107,60 +125,71 @@ export async function POST(request: NextRequest) {
 		// Validate messages
 		if (!messages || !Array.isArray(messages) || messages.length === 0) {
 			console.error("[stream] Invalid messages in request");
-			return new Response(JSON.stringify({ 
-				error: "Bad Request",
-				message: "Messages must be a non-empty array"
-			}), {
-				status: 400,
-				headers: { "Content-Type": "application/json" },
-			});
+			return new Response(
+				JSON.stringify({
+					error: "Bad Request",
+					message: "Messages must be a non-empty array",
+				}),
+				{
+					status: 400,
+					headers: { "Content-Type": "application/json" },
+				},
+			);
 		}
 
 		// Get API key - prefer server-side env var but fall back to client-provided key
 		const apiKeyEnvVar = `${provider.toUpperCase()}_API_KEY`;
 		const serverApiKey = process.env[apiKeyEnvVar];
-		
+
 		// Clean API keys (remove whitespace and quotes)
-		const cleanedClientApiKey = clientApiKey?.trim().replace(/['"]/g, '');
-		const cleanedServerApiKey = serverApiKey?.trim().replace(/['"]/g, '');
-		
+		const cleanedClientApiKey = clientApiKey?.trim().replace(/['"]/g, "");
+		const cleanedServerApiKey = serverApiKey?.trim().replace(/['"]/g, "");
+
 		// OVERRIDE: Temporarily force use of client key for debugging
 		const apiKey = cleanedClientApiKey || cleanedServerApiKey;
-		
+
 		// Log detailed key information for debugging
-		console.log(`[stream] DETAILED KEY INFO:`, {
+		console.log("[stream] DETAILED KEY INFO:", {
 			clientKeyLength: cleanedClientApiKey?.length || 0,
-			clientKeyPrefix: cleanedClientApiKey ? cleanedClientApiKey.substring(0, 5) + '...' : 'none',
+			clientKeyPrefix: cleanedClientApiKey
+				? `${cleanedClientApiKey.substring(0, 5)}...`
+				: "none",
 			serverKeyLength: cleanedServerApiKey?.length || 0,
-			serverKeyPrefix: cleanedServerApiKey ? cleanedServerApiKey.substring(0, 5) + '...' : 'none',
-			usingKey: cleanedClientApiKey ? 'CLIENT' : 'SERVER',
-			usingPrefix: apiKey?.substring(0, 5) + '...'
+			serverKeyPrefix: cleanedServerApiKey
+				? `${cleanedServerApiKey.substring(0, 5)}...`
+				: "none",
+			usingKey: cleanedClientApiKey ? "CLIENT" : "SERVER",
+			usingPrefix: `${apiKey?.substring(0, 5)}...`,
 		});
-		
+
 		// Check and warn about key mismatches
-		if (cleanedClientApiKey && cleanedServerApiKey && cleanedClientApiKey !== cleanedServerApiKey) {
+		if (
+			cleanedClientApiKey &&
+			cleanedServerApiKey &&
+			cleanedClientApiKey !== cleanedServerApiKey
+		) {
 			console.warn(`[stream] ⚠️ WARNING: API key mismatch detected for ${provider}!
 			- Server environment variable key (${apiKeyEnvVar}): ${cleanedServerApiKey.substring(0, 3)}...${cleanedServerApiKey.substring(cleanedServerApiKey.length - 3)}
 			- Client-side settings key: ${cleanedClientApiKey.substring(0, 3)}...${cleanedClientApiKey.substring(cleanedClientApiKey.length - 3)}
-			This might cause issues if your server is preferring environment variables. Currently using: ${apiKey === cleanedServerApiKey ? 'SERVER' : 'CLIENT'} key.`);
+			This might cause issues if your server is preferring environment variables. Currently using: ${apiKey === cleanedServerApiKey ? "SERVER" : "CLIENT"} key.`);
 		}
 
 		// Add detailed logging for API key handling
-		console.log(`[stream] API key info:`, {
+		console.log("[stream] API key info:", {
 			provider,
 			hasServerKey: !!serverApiKey,
 			hasClientKey: !!clientApiKey,
 			usingClientKey: !serverApiKey && !!clientApiKey,
 			apiKeyLength: apiKey ? apiKey.length : 0,
-			apiKeyPrefix: apiKey ? apiKey.substring(0, 3) + '...' : '',
+			apiKeyPrefix: apiKey ? `${apiKey.substring(0, 3)}...` : "",
 		});
 
 		if (!apiKey) {
 			console.error(`[stream] API key for ${provider} is not configured`);
 			return new Response(
-				JSON.stringify({ 
+				JSON.stringify({
 					error: "API Key Required",
-					message: `API key for ${provider} is not configured. Add it in settings.`
+					message: `API key for ${provider} is not configured. Add it in settings.`,
 				}),
 				{
 					status: 403,
@@ -168,14 +197,14 @@ export async function POST(request: NextRequest) {
 				},
 			);
 		}
-		
+
 		// Verify API key format
 		if (apiKey.length < 10 || !apiKey.match(/^[A-Za-z0-9_\-]+$/)) {
 			console.error(`[stream] Invalid API key format for ${provider}`);
 			return new Response(
-				JSON.stringify({ 
+				JSON.stringify({
 					error: "Invalid API Key",
-					message: `The API key for ${provider} appears to be invalid. Please check your settings.`
+					message: `The API key for ${provider} appears to be invalid. Please check your settings.`,
 				}),
 				{
 					status: 403,
@@ -226,6 +255,12 @@ export async function POST(request: NextRequest) {
 
 		// Get user message (should be the last one)
 		const userMessage = messages[messages.length - 1];
+		if (!userMessage) {
+			return new Response(JSON.stringify({ error: "No user message found" }), {
+				status: 400,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
 		console.log(
 			`[stream] Processing user message: ${userMessage.content.slice(0, 30)}...`,
 		);
@@ -238,7 +273,7 @@ export async function POST(request: NextRequest) {
 			// Create title from first message
 			const firstLine = userMessage.content.split("\n")[0];
 			const title =
-				firstLine.length > 30
+				firstLine && firstLine.length > 30
 					? `${firstLine.substring(0, 30)}...`
 					: firstLine || "New Chat";
 
@@ -321,10 +356,10 @@ export async function POST(request: NextRequest) {
 		// Create AI service
 		const aiService = new AIService(provider, apiKey, model);
 
-		// Format messages for AI
+		// Format messages for AI using unified system prompt
 		const formattedMessages = formatMessagesForAI(
 			messages,
-			streamingSystemPrompt,
+			getStreamingSystemPrompt(streamingSystemPrompt),
 		);
 
 		// Create the streaming response
@@ -345,8 +380,12 @@ export async function POST(request: NextRequest) {
 
 					// Generate AI response (streaming)
 					console.log("[stream] Starting AI streaming response generation");
-					
-					let streamGenerator;
+
+					let streamGenerator: AsyncGenerator<
+						{ content?: string; done?: boolean },
+						void,
+						unknown
+					>;
 					try {
 						streamGenerator = await aiService.generateStreamingResponse(
 							formattedMessages,
@@ -357,20 +396,26 @@ export async function POST(request: NextRequest) {
 						);
 					} catch (streamError) {
 						console.error("[stream] Error initializing stream:", streamError);
-						const errorMessage = streamError instanceof Error ? streamError.message : "Unknown error";
-						
+						const errorMessage =
+							streamError instanceof Error
+								? streamError.message
+								: "Unknown error";
+
 						// Check specifically for auth errors
-						const isAuthError = 
-							errorMessage.includes("401") || 
-							errorMessage.includes("auth") || 
+						const isAuthError =
+							errorMessage.includes("401") ||
+							errorMessage.includes("auth") ||
 							errorMessage.includes("Unauthorized") ||
 							errorMessage.includes("Invalid API key");
-							
+
 						if (isAuthError) {
-							throw new Error(`Authentication failed with provider: ${provider}. Please check your API key.`);
-						} else {
-							throw new Error(`Failed to initialize stream with ${provider}: ${errorMessage}`);
+							throw new Error(
+								`Authentication failed with provider: ${provider}. Please check your API key.`,
+							);
 						}
+						throw new Error(
+							`Failed to initialize stream with ${provider}: ${errorMessage}`,
+						);
 					}
 
 					// Stream chunks to the client
