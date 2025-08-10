@@ -35,7 +35,6 @@ A modern interactive t3. Set up environment variables:
 - [Project Structure](#-project-structure)
 - [Technology Stack](#-technology-stack)
 - [Authentication](#-authentication)
-- [Database Schema](#-database-schema)
 - [API Architecture](#-api-architecture)
 - [Deployment](#-deployment)
 - [License](#-license)
