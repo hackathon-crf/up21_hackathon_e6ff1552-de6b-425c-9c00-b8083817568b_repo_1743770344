@@ -23,12 +23,9 @@ A modern interactive t3. Set up environment variables:
 
 ## 🌟 Features
 
-- **Adaptive Flashcard Learning**: Spaced repetition system (SRS) with customizable study schedules
 - **AI-Powered Assistance**: Intelligent chat interface with context-aware responses
-- **Multiplayer Quiz Modes**: Competitive and collaborative learning sessions
 - **Responsive Design**: Optimized for desktop and mobile devices
 - **User Authentication**: Secure login system with OTP verification
-- **Real-Time Communication**: Live chat and voice options during multiplayer sessions
 - **Modern Tech Stack**: Built with Next.js, tRPC, Tailwind CSS, and Supabase
 
 ## 📋 Table of Contents
@@ -120,10 +117,6 @@ We follow TypeScript best practices and use Biome for code formatting and lintin
 │   ├── api/                # API routes (auth, chat streaming)
 │   ├── auth/               # Authentication pages
 │   ├── chat/               # Chat interface
-│   ├── dashboard/          # User dashboard
-│   ├── flashcards/         # Flashcard study, creation, management
-│   ├── game/               # Solo game modes
-│   └── multiplayer/        # Multiplayer game modes
 ├── drizzle/                # Database migrations
 ├── public/                 # Static assets
 ├── src/
@@ -175,25 +168,10 @@ We use Supabase Auth with the following features:
   - `user`: Profile with email and authentication details
   - `user_preference`: JSON settings for application preferences
 
-- **Flashcards**:
-  - `flashcard_deck`: Collections of cards with owner, name, description
-  - `flashcard`: Card data with SRS fields (repetitions, ease_factor, interval)
-  - `study_stat`: Learning metrics (streaks, counts, dates)
-
 - **Chat**:
   - `chat_session`: Conversation containers with user and title
   - `chat_message`: Individual messages with role, content, metrics
   - `feedback`: User ratings and comments on responses
-
-- **Multiplayer**:
-  - `game_lobby`: Session management with join code and host
-  - `game_player`: Participant tracking with scores
-  - `game_round`: Question sequences with timing
-  - `game_answer`: Player responses with timing and scoring
-
-### Database Diagram
-
-![Database Schema Diagram](public/db.svg)
 
 ## 🌐 API Architecture
 
@@ -206,7 +184,6 @@ We use tRPC for end-to-end typesafe APIs:
 
 Key routers:
 - `user.ts`: User profiles and preferences
-- `flashcard.ts`: Flashcard CRUD and study algorithms
 - `chat.ts`: Chat sessions and message handling
 - `ai.ts`: AI model integration for chat and flashcards
 
@@ -255,16 +232,6 @@ MISTRAL_API_KEY=your-mistral-api-key
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
-
-## 🚧 Current Status
-
-The platform is in active development with the following status:
-
-- **Core Database**: ✅ Completed (100%)
-- **Backend API**: ✅ Mostly complete (90%)
-- **Frontend Components**: ✅ Mostly complete (80%)
-- **Multiplayer Features**: ⏳ UI complete, backend pending (50%)
-- **Mobile Optimization**: ✅ Significantly improved
 
 ## 🤝 Contributing
 
