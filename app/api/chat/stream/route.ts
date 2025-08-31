@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { env } from "~/env";
 import { getStreamingSystemPrompt } from "~/lib/prompts/system-prompts";
 import { AIService } from "~/lib/services/ai";
 import type { ChatMessage } from "~/lib/services/ai";
@@ -14,6 +15,24 @@ type InputMessage = {
 	role: string;
 	content: string;
 };
+
+// Helper function to get API key from environment based on provider
+function getEnvApiKey(provider: "mistral" | "openai" | "anthropic" | "gemini" | "openrouter"): string | undefined {
+	switch (provider) {
+		case "mistral":
+			return env.MISTRAL_API_KEY;
+		case "openai":
+			return env.OPENAI_API_KEY;
+		case "anthropic":
+			return env.ANTHROPIC_API_KEY;
+		case "gemini":
+			return env.GEMINI_API_KEY;
+		case "openrouter":
+			return env.OPENROUTER_API_KEY;
+		default:
+			return undefined;
+	}
+}
 
 // Helper to format messages for streaming
 function formatMessagesForAI(
@@ -138,8 +157,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Get API key - prefer server-side env var but fall back to client-provided key
-		const apiKeyEnvVar = `${provider.toUpperCase()}_API_KEY`;
-		const serverApiKey = process.env[apiKeyEnvVar];
+		const serverApiKey = getEnvApiKey(provider as "mistral" | "openai" | "anthropic" | "gemini" | "openrouter");
 
 		// Clean API keys (remove whitespace and quotes)
 		const cleanedClientApiKey = clientApiKey?.trim().replace(/['"]/g, "");
@@ -168,8 +186,9 @@ export async function POST(request: NextRequest) {
 			cleanedServerApiKey &&
 			cleanedClientApiKey !== cleanedServerApiKey
 		) {
+			const apiKeyEnvName = `${provider.toUpperCase()}_API_KEY`;
 			console.warn(`[stream] ⚠️ WARNING: API key mismatch detected for ${provider}!
-			- Server environment variable key (${apiKeyEnvVar}): ${cleanedServerApiKey.substring(0, 3)}...${cleanedServerApiKey.substring(cleanedServerApiKey.length - 3)}
+			- Server environment variable key (${apiKeyEnvName}): ${cleanedServerApiKey.substring(0, 3)}...${cleanedServerApiKey.substring(cleanedServerApiKey.length - 3)}
 			- Client-side settings key: ${cleanedClientApiKey.substring(0, 3)}...${cleanedClientApiKey.substring(cleanedClientApiKey.length - 3)}
 			This might cause issues if your server is preferring environment variables. Currently using: ${apiKey === cleanedServerApiKey ? "SERVER" : "CLIENT"} key.`);
 		}

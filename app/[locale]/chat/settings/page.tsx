@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Link } from "~/i18n/navigation";
@@ -37,11 +37,13 @@ export default function ChatSettingsPage() {
 		temperature,
 		maxTokens,
 		systemPrompt,
+		apiKeys,
 		setProvider,
 		setModel,
 		setTemperature,
 		setMaxTokens,
 		setSystemPrompt,
+		setApiKey,
 	} = useSettingsStore();
 
 	// Local state
@@ -51,10 +53,12 @@ export default function ChatSettingsPage() {
 	const [selectedModel, setSelectedModel] = useState(
 		model || "mistral-small-latest",
 	);
+	const [showApiKey, setShowApiKey] = useState(false);
+	const [currentApiKey, setCurrentApiKey] = useState("");
 
 	// Get providers and models from tRPC
-	const { data: providers } = api.ai.getProviders.useQuery();
-	const { data: models } = api.ai.getModelsByProvider.useQuery(
+	const { data: providers, isLoading: providersLoading } = api.ai.getProviders.useQuery();
+	const { data: models, isLoading: modelsLoading, error: modelsError, refetch: refetchModels } = api.ai.getModelsByProvider.useQuery(
 		{
 			provider: selectedProvider as
 				| "mistral"
@@ -62,22 +66,63 @@ export default function ChatSettingsPage() {
 				| "anthropic"
 				| "gemini"
 				| "openrouter",
+			apiKey: apiKeys[selectedProvider as keyof typeof apiKeys], // Pass the API key
 		},
-		{ enabled: !!selectedProvider },
+		{ 
+			enabled: !!selectedProvider && ["mistral", "openai", "anthropic", "gemini", "openrouter"].includes(selectedProvider),
+		},
 	);
+
+	// Debug logging
+	useEffect(() => {
+		console.log("Settings Debug:", {
+			selectedProvider,
+			providersLoading,
+			providers,
+			modelsLoading,
+			models,
+			modelsError: modelsError?.message,
+		});
+	}, [selectedProvider, providersLoading, providers, modelsLoading, models, modelsError]);
 
 	// Update settings when selections change
 	useEffect(() => {
 		setProvider(selectedProvider);
-	}, [selectedProvider, setProvider]);
+		// Update current API key when provider changes
+		const providerKey = apiKeys[selectedProvider as keyof typeof apiKeys] || "";
+		setCurrentApiKey(providerKey);
+	}, [selectedProvider, setProvider, apiKeys]);
 
 	useEffect(() => {
 		setModel(selectedModel);
 	}, [selectedModel, setModel]);
 
+	// Refetch models when provider or API key changes
+	useEffect(() => {
+		console.log("Provider or API key changed, refetching models...");
+		refetchModels();
+	}, [selectedProvider, apiKeys, refetchModels]);
+
+	// Auto-select first model when provider changes and models are loaded
+	useEffect(() => {
+		if (models && models.length > 0) {
+			// Check if current selectedModel exists in the new provider's models
+			const modelExists = models.some(m => m.id === selectedModel);
+			if (!modelExists) {
+				// Select first model if current model doesn't exist
+				console.log("Auto-selecting first model:", models[0]?.id);
+				setSelectedModel(models[0]?.id || "");
+			}
+		}
+	}, [models, selectedModel]);
+
 	const handleSave = () => {
 		// Settings are automatically saved to the store
 		console.log("Settings saved");
+		// Optionally validate API key by refetching models
+		if (currentApiKey) {
+			refetchModels();
+		}
 	};
 
 	return (
@@ -102,15 +147,61 @@ export default function ChatSettingsPage() {
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
+								{/* API Key Input */}
+								<div className="space-y-2">
+									<Label htmlFor="api-key">API Key for {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)}</Label>
+									<div className="relative">
+										<Input
+											id="api-key"
+											type={showApiKey ? "text" : "password"}
+											value={currentApiKey}
+											onChange={(e) => {
+												setCurrentApiKey(e.target.value);
+												setApiKey(selectedProvider, e.target.value);
+											}}
+											placeholder={`Enter your ${selectedProvider} API key`}
+											className="pr-10"
+										/>
+										<button
+											type="button"
+											onClick={() => setShowApiKey(!showApiKey)}
+											className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+											aria-label={showApiKey ? "Hide API key" : "Show API key"}
+										>
+											{showApiKey ? (
+												<EyeOff className="h-4 w-4" />
+											) : (
+												<Eye className="h-4 w-4" />
+											)}
+										</button>
+									</div>
+									<p className="text-sm text-muted-foreground">
+										Your API key is stored locally and never sent to our servers.
+									</p>
+									{modelsError && currentApiKey && (
+										<p className="text-sm text-destructive">
+											Invalid API key or connection error. Please check your key.
+										</p>
+									)}
+									{models && models.length > 0 && currentApiKey && (
+										<p className="text-sm text-green-600">
+											✓ API key is valid - {models.length} models available
+										</p>
+									)}
+								</div>
+
 								<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 									<div className="space-y-2">
 										<Label htmlFor="provider">Provider</Label>
 										<Select
 											value={selectedProvider}
 											onValueChange={setSelectedProvider}
+											disabled={providersLoading}
 										>
 											<SelectTrigger>
-												<SelectValue placeholder="Select provider" />
+												<SelectValue 
+													placeholder={providersLoading ? "Loading providers..." : "Select provider"} 
+												/>
 											</SelectTrigger>
 											<SelectContent>
 												{providers?.map((provider) => (
@@ -127,19 +218,37 @@ export default function ChatSettingsPage() {
 										<Select
 											value={selectedModel}
 											onValueChange={setSelectedModel}
-											disabled={!models || models.length === 0}
+											disabled={modelsLoading || !models || models.length === 0}
 										>
 											<SelectTrigger>
-												<SelectValue placeholder="Select model" />
+												<SelectValue 
+													placeholder={
+														modelsLoading 
+															? "Loading models..." 
+															: modelsError 
+															? "Error loading models"
+															: "Select model"
+													} 
+												/>
 											</SelectTrigger>
 											<SelectContent>
-												{models?.map((model) => (
-													<SelectItem key={model.id} value={model.id}>
+												{models?.map((model, index) => (
+													<SelectItem key={`${model.id}-${index}`} value={model.id}>
 														{model.name}
 													</SelectItem>
 												))}
+												{!models?.length && !modelsLoading && (
+													<SelectItem value="" disabled>
+														No models available
+													</SelectItem>
+												)}
 											</SelectContent>
 										</Select>
+										{modelsError && (
+											<p className="text-sm text-destructive">
+												Error: {modelsError.message}
+											</p>
+										)}
 									</div>
 								</div>
 

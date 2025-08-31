@@ -13,6 +13,10 @@ export const env = createEnv({
 			.default("development"),
 		SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 		MISTRAL_API_KEY: z.string().min(1).optional(),
+		OPENAI_API_KEY: z.string().min(1).optional(),
+		ANTHROPIC_API_KEY: z.string().min(1).optional(),
+		GEMINI_API_KEY: z.string().min(1).optional(),
+		OPENROUTER_API_KEY: z.string().min(1).optional(),
 	},
 
 	/**
@@ -36,6 +40,10 @@ export const env = createEnv({
 		NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
 		NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 		MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
+		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+		GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

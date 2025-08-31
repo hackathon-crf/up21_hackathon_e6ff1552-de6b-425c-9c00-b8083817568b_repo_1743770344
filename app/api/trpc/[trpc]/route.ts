@@ -181,70 +181,33 @@ const handler = async (req: NextRequest) => {
 				: undefined,
 	});
 
-	// Log the response for debugging
-	try {
-		const clonedResponse = response.clone();
-		const responseText = await clonedResponse.text();
+	// Log basic response info (simplified to avoid JSON parsing issues)
+	if (env.NODE_ENV === "development") {
 		console.log("[API] Response status:", response.status);
 		console.log(
 			"[API] Response headers:",
 			Object.fromEntries(response.headers.entries()),
 		);
-		console.log(
-			"[API] Response body:",
-			responseText.length > 1000
-				? `${responseText.substring(0, 1000)}...`
-				: responseText,
-		);
-
-		// Try to parse as JSON and log it
-		try {
-			const jsonData = JSON.parse(responseText);
-			console.log(
-				"[API] Full response payload:",
-				JSON.stringify(
-					jsonData,
-					(key, value) => {
-						// Safe stringification, replaces circular references
-						if (typeof value === "object" && value !== null) {
-							if (key === "error" && value.stack) {
-								return { message: value.message, name: value.name };
-							}
-							const seen = new Set();
-							return Object.entries(value).reduce(
-								(acc: Record<string, unknown>, [k, v]) => {
-									// Don't log large objects or circular references
-									if (
-										typeof v !== "function" &&
-										(!v || typeof v !== "object" || !seen.has(v))
-									) {
-										if (v && typeof v === "object") seen.add(v);
-										acc[k] = v;
-									}
-									return acc;
-								},
-								{},
-							);
-						}
-						return value;
-					},
-					2,
-				).substring(0, 2000),
-			);
-		} catch (e) {
-			console.log("[API] Response is not valid JSON:", e);
+		
+		// Only log response body for non-streaming responses to avoid issues
+		if (!response.headers.get("content-type")?.includes("stream")) {
+			try {
+				const clonedResponse = response.clone();
+				const responseText = await clonedResponse.text();
+				console.log(
+					"[API] Response body preview:",
+					responseText.length > 500
+						? `${responseText.substring(0, 500)}...`
+						: responseText,
+				);
+			} catch (error) {
+				console.log("[API] Could not read response body for logging");
+			}
 		}
-
-		// Return the original response
-		return new Response(responseText, {
-			status: response.status,
-			statusText: response.statusText,
-			headers: response.headers,
-		});
-	} catch (error) {
-		console.error("[API] Error logging response:", error);
-		return response;
 	}
+
+	// Return the original response directly (avoid cloning/recreation issues)
+	return response;
 };
 
 export { handler as GET, handler as POST };

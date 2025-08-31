@@ -167,6 +167,7 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 		streamingEnabled,
 		systemPrompt, // Renamed from defaultPrompt
 		ragEnabled,
+		apiKeys,
 	} = useSettingsStore();
 
 	// Auto-scroll to bottom when messages change
@@ -431,7 +432,7 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 		}
 
 		// Check if API key is available for selected provider
-		const apiKey = localStorage.getItem(`${provider}_api_key`);
+		const apiKey = apiKeys[provider as keyof typeof apiKeys];
 
 		if (!apiKey) {
 			toast({
@@ -596,8 +597,8 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 				),
 			);
 
-			// Get the API key from localStorage - ensure we get the most current value
-			const apiKey = localStorage.getItem(`${provider}_api_key`);
+			// Get the API key from store - ensure we get the most current value
+			const apiKey = apiKeys[provider as keyof typeof apiKeys];
 			console.log(
 				`Using API key for ${provider}: ${apiKey ? `Key present (length: ${apiKey.length})` : "Not found"}`,
 			);
@@ -981,8 +982,8 @@ function ChatPageImpl({ initialSessionId }: ChatPageProps) {
 
 	// Initialize rich scenario conversation with immediate AI response
 	const initializeScenarioConversation = async (scenario: Scenario) => {
-		// Get API key from localStorage and clean it
-		const apiKey = localStorage.getItem(`${provider}_api_key`);
+		// Get API key from store and clean it
+		const apiKey = apiKeys[provider as keyof typeof apiKeys];
 		const cleanedApiKey = apiKey?.trim().replace(/['"]/g, "");
 
 		// Create a user message that triggers the scenario

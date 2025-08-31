@@ -34,6 +34,15 @@ interface SettingsState {
 	temperature: number;
 	maxTokens: number;
 
+	// API Keys
+	apiKeys: {
+		mistral?: string;
+		openai?: string;
+		anthropic?: string;
+		gemini?: string;
+		openrouter?: string;
+	};
+
 	// Prompt settings
 	systemPrompt: string; // Renamed from defaultPrompt
 	streamingSystemPrompt: string; // System prompt used for streaming responses
@@ -64,6 +73,7 @@ interface SettingsState {
 	setModel: (model: string) => void;
 	setTemperature: (temperature: number) => void;
 	setMaxTokens: (maxTokens: number) => void;
+	setApiKey: (provider: string, key: string) => void; // Add API key setter
 	setSystemPrompt: (prompt: string) => void; // Renamed from setDefaultPrompt
 	setStreamingSystemPrompt: (prompt: string) => void; // Setter for streaming system prompt
 	setChatRouterSystemPrompt: (prompt: string) => void; // Setter for chat router system prompt
@@ -90,6 +100,7 @@ export const useSettingsStore = create<SettingsState>()(
 			model: "mistral-small",
 			temperature: 0.7,
 			maxTokens: 4000,
+			apiKeys: {}, // Initialize empty API keys object
 			systemPrompt:
 				"You are a helpful Red Cross AI assistant. Answer questions about first aid and emergency response concisely and accurately.", // Renamed from defaultPrompt
 			streamingSystemPrompt:
@@ -119,6 +130,13 @@ export const useSettingsStore = create<SettingsState>()(
 			setModel: (model) => set({ model }),
 			setTemperature: (temperature) => set({ temperature }),
 			setMaxTokens: (maxTokens) => set({ maxTokens }),
+			setApiKey: (provider, key) => 
+				set((state) => ({
+					apiKeys: {
+						...state.apiKeys,
+						[provider]: key,
+					},
+				})),
 			setSystemPrompt: (prompt) => set({ systemPrompt: prompt }), // Renamed from setDefaultPrompt
 			setStreamingSystemPrompt: (prompt) =>
 				set({ streamingSystemPrompt: prompt }),
